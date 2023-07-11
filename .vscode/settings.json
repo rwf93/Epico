@@ -75,6 +75,15 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "iostream": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "cinttypes": "cpp",
+        "condition_variable": "cpp",
+        "cstdarg": "cpp",
+        "deque": "cpp",
+        "unordered_set": "cpp",
+        "queue": "cpp",
+        "ranges": "cpp",
+        "regex": "cpp",
+        "stack": "cpp"
     }
 }

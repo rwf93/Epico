@@ -1,5 +1,6 @@
 add_executable(${PROJECT}
 	main.cpp
+    vulkan.cpp
 )
 
 target_precompile_headers(${PROJECT} PUBLIC pch.h)
@@ -28,11 +29,3 @@ target_link_libraries(${PROJECT}
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
-
-execute_process(
-    COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_HEAD
-)
-
-message(${GIT_HEAD})

@@ -12,7 +12,7 @@ foreach(SHADER ${SHADER_FILES})
         OUTPUT ${OUTPUT}/assets/shaders/${FILENAME_WE}.spv
         COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${SHADER} -o ${OUTPUT}/assets/shaders/${FILENAME_WE}.spv
         DEPENDS ${SHADER}
-        COMMENT "Compiling Shadefile: ${FILENAME}"
+        COMMENT "Compiling Shaderfile: ${FILENAME}"
     )
 
     list(APPEND COMPILED_SHADERS ${OUTPUT}/assets/shaders/${FILENAME_WE}.spv)
