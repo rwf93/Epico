@@ -1,19 +1,42 @@
 #pragma once
 
-#define FUNC_CREATE_VK_INSTANCE gameGlobals *game
-#define FUNC_CREATE_SURFACE gameGlobals *game
-#define FUNC_CREATE_DEVICE gameGlobals *game
-#define FUNC_CREATE_SWAPCHAIN gameGlobals *game
-#define FUNC_GET_QUEUES gameGlobals *game
-#define FUNC_CREATE_RENDER_PASS gameGlobals *game
-#define FUNC_CREATE_SHADER gameGlobals *game, const std::vector<char> &code
-#define FUNC_CREATE_GRAPHICS_PIPELINE gameGlobals *game
+#define FUNC_CREATE_SHADER const std::vector<char> &code
 
-bool create_vk_instance(FUNC_CREATE_VK_INSTANCE);
-bool create_surface(FUNC_CREATE_SURFACE);
-bool create_device(FUNC_CREATE_DEVICE);
-bool create_swapchain(FUNC_CREATE_SWAPCHAIN);
-bool get_queues(FUNC_GET_QUEUES);
-bool create_render_pass(FUNC_CREATE_RENDER_PASS);
-VkShaderModule create_shader(FUNC_CREATE_SHADER);
-bool create_graphics_pipeline(FUNC_CREATE_GRAPHICS_PIPELINE);
+class vulkanRenderer {
+public:
+    vulkanRenderer(gameGlobals *game);
+    ~vulkanRenderer();
+
+    bool create_vk_instance();
+    bool create_surface();
+    bool create_device();
+    bool create_swapchain();
+    bool create_queues();
+
+    bool setup();
+
+    VkShaderModule create_shader(FUNC_CREATE_SHADER);
+
+private:
+    gameGlobals *game;
+
+    vkb::Instance instance;
+	VkSurfaceKHR surface;
+	vkb::Device device;
+
+    vkb::Swapchain swapchain;
+    std::vector<VkImage> swapchain_images;
+    std::vector<VkImageView> swapchain_image_views;
+
+    VkQueue graphics_queue;
+    uint32_t graphics_queue_family;
+
+};
+
+class renderPassConstructor {
+
+};
+
+class renderPipelineConstructor {
+
+};

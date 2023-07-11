@@ -1,34 +1,30 @@
 int main(int argc, char *args[]) {
 	gameGlobals game;
+	vulkanRenderer renderer(&game);
+
+	//renderPassConstructor render_pass(&game, &renderer);
+	//renderPipelineConstructor graphics_pipeline(&game, &renderer, &render_pass)
 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		fmt::println("SDL Failed to init with error: {}", SDL_GetError());
 		return 0;
 	}
 
-	if(!create_window(&game)) 			 return 0;
-	if(!create_vk_instance(&game)) 		 return 0;
-	if(!create_surface(&game)) 			 return 0;
-	if(!create_device(&game)) 			 return 0;
-	if(!create_swapchain(&game)) 		 return 0;
-	if(!get_queues(&game))				 return 0;
-	if(!create_render_pass(&game))		 return 0;
-	if(!create_graphics_pipeline(&game)) return 0;
-
-	fmt::println("Epico instance: {}", 	(void*)game.instance.instance);
-	fmt::println("Epico dewice: {}", 	(void*)game.device.device);
-	fmt::println("Epico swapchain: {}", (void*)game.swapchain.swapchain);
+	if(!create_window(&game)) return 0;
+	if(!renderer.setup()) return 0;
 
 	static bool quit = false;
 	while(!quit) {
 		SDL_Event e;
+
 		while(SDL_PollEvent(&e)) {
 			if(e.type == SDL_QUIT)
 				quit = true;
 		}
 	}
 
-	cleanup(&game);
+	SDL_DestroyWindow(game.window);
+	SDL_Quit();
 
 	return 0;
 }
@@ -58,17 +54,4 @@ std::vector<char> read_file(FUNC_READ_FILE) {
 	file.close();
 
 	return buffer;
-}
-
-void cleanup(FUNC_CLEANUP) {
-	vkDestroyPipelineLayout(game->device, game->graphics_pipeline_layout, nullptr);
-	vkDestroyRenderPass(game->device, game->render_pass, nullptr);
-
-	vkb::destroy_swapchain(game->swapchain);
-	vkb::destroy_device(game->device);
-	vkb::destroy_surface(game->instance, game->surface);
-	vkb::destroy_instance(game->instance);
-
-	SDL_DestroyWindow(game->window);
-	SDL_Quit();
 }
