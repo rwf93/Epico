@@ -1,6 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-    "builtin-baseline": "dafef74af53669ef1cc9015f55e0ce809ead62aa",
+    "builtin-baseline": "79a6c094989d1952da01a7bc3abf30198f8da860",
     "dependencies": [
         "fmt",
         "vulkan",
