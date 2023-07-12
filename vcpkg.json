@@ -3,6 +3,7 @@
     "builtin-baseline": "79a6c094989d1952da01a7bc3abf30198f8da860",
     "dependencies": [
         "fmt",
+        "spdlog",
         "vulkan",
         "vk-bootstrap",
         "glm",

@@ -8,6 +8,9 @@ target_precompile_headers(${PROJECT} PUBLIC pch.h)
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE fmt::fmt-header-only)
 
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries(${PROJECT} PRIVATE spdlog::spdlog_header_only)
+
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE Vulkan::Vulkan)
 

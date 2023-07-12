@@ -18,5 +18,7 @@
 
 #include <glm/common.hpp>
 
+#include <spdlog/spdlog.h>
+
 #include "globals.h"
 #include "vulkan.h"
