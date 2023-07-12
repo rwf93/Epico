@@ -1,3 +1,10 @@
+#include <map>
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <vector>
+
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 
@@ -6,11 +13,8 @@
 
 #include <VkBootstrap.h>
 
-#include <map>
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <vector>
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
 
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>

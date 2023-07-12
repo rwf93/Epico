@@ -57,7 +57,6 @@ private:
     std::vector<VkSemaphore> available_semaphores;
     std::vector<VkSemaphore> finished_semaphores;
     std::vector<VkFence> in_flight_fences;
-    std::vector<VkFence> images_in_flight;
 
     uint64_t image_index;
 

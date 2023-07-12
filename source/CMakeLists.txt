@@ -17,6 +17,9 @@ target_link_libraries(${PROJECT} PRIVATE Vulkan::Vulkan)
 find_package(vk-bootstrap CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE vk-bootstrap::vk-bootstrap)
 
+find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
+target_link_libraries(${PROJECT} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
+
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
 

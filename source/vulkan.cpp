@@ -274,7 +274,6 @@ bool vulkanRenderer::create_sync_objects() {
 	available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-	images_in_flight.resize(swapchain.image_count, VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
