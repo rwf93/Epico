@@ -84,6 +84,7 @@
         "queue": "cpp",
         "ranges": "cpp",
         "regex": "cpp",
-        "stack": "cpp"
+        "stack": "cpp",
+        "shared_mutex": "cpp"
     }
 }

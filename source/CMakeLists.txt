@@ -1,7 +1,10 @@
 add_executable(${PROJECT}
 	main.cpp
-    vulkan.cpp
+    renderer/vk/vulkan.cpp
+    renderer/vk/pipeline.cpp
 )
+
+include_directories(${SOURCE})
 
 target_precompile_headers(${PROJECT} PUBLIC pch.h)
 

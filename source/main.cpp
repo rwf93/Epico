@@ -20,7 +20,6 @@ int main(int argc, char *args[]) {
 				quit = true;
 		}
 
-
 		if(!renderer.draw()) {
 			return false;
 		}
@@ -33,7 +32,7 @@ int main(int argc, char *args[]) {
 }
 
 bool create_window(FUNC_CREATE_WINDOW) {
-	game->window = SDL_CreateWindow("Epico", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN );
+	game->window = SDL_CreateWindow("Epico", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN );
 	if(game->window == NULL) {
 		spdlog::error("Failed to create SDL Window {}", SDL_GetError());
 		return false;

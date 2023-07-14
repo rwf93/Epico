@@ -5,6 +5,8 @@ vulkanRenderer::vulkanRenderer(gameGlobals *game) {
 }
 
 vulkanRenderer::~vulkanRenderer() {
+	vkQueueWaitIdle(present_queue);
+
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, finished_semaphores[i], nullptr);
 		vkDestroySemaphore(device, available_semaphores[i], nullptr);
@@ -15,6 +17,10 @@ vulkanRenderer::~vulkanRenderer() {
 
 	for(auto framebuffer: framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
+
+	vkDestroyPipelineCache(device, pipeline_cache, nullptr);
+
+	triangle_pipeline.destroy();
 
 	vkDestroyRenderPass(device, render_pass, nullptr);
 
@@ -256,7 +262,7 @@ bool vulkanRenderer::create_command_pool() {
 
 		vkCmdBeginRenderPass(command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, triangle_pipeline.pipeline);
 
 		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
 
@@ -302,12 +308,19 @@ bool vulkanRenderer::create_sync_objects() {
 	return true;
 }
 
+bool vulkanRenderer::create_imgui() {
+	return true;
+}
+
 bool vulkanRenderer::draw() {
 	vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &in_flight_fences[current_frame]);
 
 	uint32_t image_index = 0;
-	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+
+	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR)
+		return rebuild_swapchain();
 
 	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -324,9 +337,8 @@ bool vulkanRenderer::draw() {
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = signal_semaphores;
 
-	if(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]) != VK_SUCCESS) {
+	if(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]) != VK_SUCCESS)
 		return false;
-	}
 
 	VkSwapchainKHR swap_chains[] = { swapchain };
 
@@ -338,58 +350,52 @@ bool vulkanRenderer::draw() {
 	present_info.pSwapchains = swap_chains;
 	present_info.pImageIndices = &image_index;
 
-	vkQueuePresentKHR(present_queue, &present_info);
+	VkResult present_result = vkQueuePresentKHR(present_queue, &present_info);
+
+	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
+		return rebuild_swapchain();
 
 	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	return true;
 }
 
-static std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+bool vulkanRenderer::rebuild_swapchain() {
+	spdlog::debug("Rebuilding swapchain");
 
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file!");
-    }
+	vkDeviceWaitIdle(device);
 
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<char> buffer(fileSize);
+	vkDestroyCommandPool(device, command_pool, nullptr);
 
-	file.seekg(0);
-	file.read(buffer.data(), fileSize);
+	for(auto framebuffer: framebuffers)
+		vkDestroyFramebuffer(device, framebuffer, nullptr);
 
-	file.close();
+	swapchain.destroy_image_views(swapchain_image_views);
 
-	return buffer;
+	if(!create_swapchain()) 		return false;
+	if(!create_framebuffers()) 		return false;
+	if(!create_command_pool()) 		return false;
+
+	return true;
 }
 
+bool vulkanRenderer::create_pipeline_cache() {
+	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
+	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
-bool vulkanRenderer::create_test_pipeline() {
-	VkShaderModule frag = create_shader(readFile("C:\\Users\\rwf93\\Desktop\\epico\\output\\assets\\shaders\\frag.spv"));
-	VkShaderModule vert = create_shader(readFile("C:\\Users\\rwf93\\Desktop\\epico\\output\\assets\\shaders\\vert.spv"));
+	if(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache) != VK_SUCCESS) {
+		spdlog::error("Failed to create Vulkan Pipeline Cache");
+		return false;
+	}
 
-	VkPipelineShaderStageCreateInfo vert_stage_info = {};
-	vert_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vert_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vert_stage_info.module = vert;
-	vert_stage_info.pName = "main";
+	return true;
+}
 
-	VkPipelineShaderStageCreateInfo frag_stage_info = {};
-	frag_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	frag_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	frag_stage_info.module = frag;
-	frag_stage_info.pName = "main";
+bool vulkanRenderer::create_pipelines() {
+	VkShaderModule vert = create_shader(read_file<char>("C:\\Users\\rwf93\\Desktop\\epico\\output\\assets\\shaders\\vert.spv", true));
+	VkShaderModule frag = create_shader(read_file<char>("C:\\Users\\rwf93\\Desktop\\epico\\output\\assets\\shaders\\frag.spv", true));
 
-	VkPipelineShaderStageCreateInfo shader_stages[] = { vert_stage_info, frag_stage_info };
-
-	VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
-	vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertex_input_info.vertexBindingDescriptionCount = 0;
-	vertex_input_info.vertexAttributeDescriptionCount = 0;
-
-	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
-	input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	input_assembly.primitiveRestartEnable = VK_FALSE;
+	triangle_pipeline.pipeline_add_shader(VK_SHADER_STAGE_VERTEX_BIT, vert);
+	triangle_pipeline.pipeline_add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, frag);
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -403,84 +409,16 @@ bool vulkanRenderer::create_test_pipeline() {
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchain.extent;
 
-	VkPipelineViewportStateCreateInfo viewport_state = {};
-	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewport_state.viewportCount = 1;
-	viewport_state.pViewports = &viewport;
-	viewport_state.scissorCount = 1;
-	viewport_state.pScissors = &scissor;
+	triangle_pipeline.pipeline_add_viewport(viewport);
+	triangle_pipeline.pipeline_add_scissor(scissor);
 
-	VkPipelineRasterizationStateCreateInfo rasterizer = {};
-	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizer.depthClampEnable = VK_FALSE;
-	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	rasterizer.depthBiasEnable = VK_FALSE;
+	triangle_pipeline.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
+	triangle_pipeline.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
 
-	VkPipelineMultisampleStateCreateInfo multisampling = {};
-	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	triangle_pipeline.build(device, render_pass, pipeline_cache);
 
-	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
-
-	VkPipelineColorBlendStateCreateInfo color_blending = {};
-	color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	color_blending.logicOpEnable = VK_FALSE;
-	color_blending.logicOp = VK_LOGIC_OP_COPY;
-	color_blending.attachmentCount = 1;
-	color_blending.pAttachments = &colorBlendAttachment;
-	color_blending.blendConstants[0] = 0.0f;
-	color_blending.blendConstants[1] = 0.0f;
-	color_blending.blendConstants[2] = 0.0f;
-	color_blending.blendConstants[3] = 0.0f;
-
-	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
-	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipeline_layout_info.setLayoutCount = 0;
-	pipeline_layout_info.pushConstantRangeCount = 0;
-
-	if(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
-		spdlog::error("Failed to create Example Vulkan Pipeline Layout");
-		return false;
-	}
-
-	std::vector<VkDynamicState> dynamic_states = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-
-	VkPipelineDynamicStateCreateInfo dynamic_info = {};
-	dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamic_info.dynamicStateCount = static_cast<uint32_t> (dynamic_states.size ());
-	dynamic_info.pDynamicStates = dynamic_states.data ();
-
-	VkGraphicsPipelineCreateInfo pipeline_info = {};
-	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipeline_info.stageCount = 2;
-	pipeline_info.pStages = shader_stages;
-	pipeline_info.pVertexInputState = &vertex_input_info;
-	pipeline_info.pInputAssemblyState = &input_assembly;
-	pipeline_info.pViewportState = &viewport_state;
-	pipeline_info.pRasterizationState = &rasterizer;
-	pipeline_info.pMultisampleState = &multisampling;
-	pipeline_info.pColorBlendState = &color_blending;
-	pipeline_info.pDynamicState = &dynamic_info;
-	pipeline_info.layout = pipeline_layout;
-	pipeline_info.renderPass = render_pass;
-	pipeline_info.subpass = 0;
-	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
-
-	if(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &graphics_pipeline) != VK_SUCCESS) {
-		spdlog::error("Couldnt do some shit..");
-		return false;
-	}
-
-	vkDestroyShaderModule(device, frag, nullptr);
 	vkDestroyShaderModule(device, vert, nullptr);
+	vkDestroyShaderModule(device, frag, nullptr);
 
 	return true;
 }
@@ -492,7 +430,8 @@ bool vulkanRenderer::setup() {
 	if(!create_swapchain()) 		return false;
 	if(!create_queues())			return false;
 	if(!create_render_pass())		return false;
-	if(!create_test_pipeline())		return false; // remove l8r
+	if(!create_pipeline_cache())	return false;
+	if(!create_pipelines())			return false; // remove l8r
 	if(!create_framebuffers())		return false;
 	if(!create_command_pool())		return false;
 	if(!create_sync_objects())		return false;
@@ -513,8 +452,4 @@ VkShaderModule vulkanRenderer::create_shader(FUNC_CREATE_SHADER) {
 	}
 
 	return shader_module;
-}
-
-VkPipeline renderPipelineConstructor::build(VkDevice device, VkRenderPass pass) {
-	return nullptr;
 }

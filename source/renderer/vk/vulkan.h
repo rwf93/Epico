@@ -19,16 +19,17 @@ private:
     bool create_swapchain();
     bool create_queues();
     bool create_render_pass();
+    bool create_pipeline_cache();
+    bool create_pipelines();
     bool create_framebuffers();
     bool create_command_pool();
     bool create_sync_objects();
+    bool create_imgui();
 
+    bool rebuild_swapchain();
 private:
-    bool create_test_pipeline();
-
-private:
-    VkPipelineLayout pipeline_layout;
-	VkPipeline graphics_pipeline;
+    renderPipelineConstructor triangle_pipeline;
+    VkPipelineCache pipeline_cache;
 
 private:
     gameGlobals *game;
@@ -58,22 +59,5 @@ private:
     std::vector<VkSemaphore> finished_semaphores;
     std::vector<VkFence> in_flight_fences;
 
-    uint64_t image_index;
-
     size_t current_frame = 0;
-};
-
-// 4l8r
-class renderPipelineConstructor {
-    VkPipeline build(VkDevice device, VkRenderPass pass);
-private:
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-    VkPipelineVertexInputStateCreateInfo vertex_input_info;
-    VkPipelineInputAssemblyStateCreateInfo input_assembly;
-    VkViewport view_port;
-    VkRect2D scissor;
-    VkPipelineRasterizationStateCreateInfo rasterizer;
-    VkPipelineColorBlendAttachmentState color_blend_attachment;
-    VkPipelineMultisampleStateCreateInfo multisampling;
-    VkPipelineLayout pipelineLayout;
 };

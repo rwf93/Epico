@@ -1,5 +1,7 @@
 #pragma once
 
+#define UNIMPLEMENTED spdlog::error("Unimplemented @ {}:{}:{}", __func__, __FILE__, __LINE__);
+
 struct gameGlobals {
 	SDL_Window *window;
 };
