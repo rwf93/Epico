@@ -1,4 +1,7 @@
+#include "tools.h"
 #include "pipeline.h"
+
+using namespace render;
 
 renderPipelineConstructor::renderPipelineConstructor() {
 

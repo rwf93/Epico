@@ -1,18 +1,26 @@
 add_executable(${PROJECT}
 	main.cpp
+    fs.cpp
+
     renderer/vk/vulkan.cpp
     renderer/vk/pipeline.cpp
 )
 
+set_property(TARGET ${PROJECT} PROPERTY CXX_STANDARD 23)
+set_property(TARGET ${PROJECT} PROPERTY C_STANDARD 23)
+
 include_directories(${SOURCE})
 
-target_precompile_headers(${PROJECT} PUBLIC pch.h)
+target_precompile_headers(${PROJECT} PUBLIC stdafx.h)
 
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE fmt::fmt-header-only)
 
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE spdlog::spdlog_header_only)
+
+find_package(magic_enum CONFIG REQUIRED)
+target_link_libraries(${PROJECT} PRIVATE magic_enum::magic_enum)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE Vulkan::Vulkan)

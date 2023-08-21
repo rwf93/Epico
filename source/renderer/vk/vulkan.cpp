@@ -1,4 +1,12 @@
+#include "globals.h"
+
+#include "tools.h"
+#include "pipeline.h"
 #include "vulkan.h"
+
+#include "fs.h"
+
+using namespace render;
 
 vulkanRenderer::vulkanRenderer(gameGlobals *game) {
 	this->game = game;
@@ -165,10 +173,7 @@ bool vulkanRenderer::create_render_pass() {
 	render_pass_info.dependencyCount = 1;
 	render_pass_info.pDependencies = &dependency;
 
-	if(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS) {
-		spdlog::error("Failed to create Vulkan Render Pass");
-		return false;
-	}
+	VK_CHECK_RESULT(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
 
 	return true;
 }
@@ -187,10 +192,7 @@ bool vulkanRenderer::create_framebuffers() {
 
  	for(size_t i = 0; i < swapchain_image_count; i++) {
 		framebuffer_info.pAttachments = &swapchain_image_views[i];
-		if(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &framebuffers[i]) != VK_SUCCESS) {
-			spdlog::error("Failed to create Vulkan Framebuffer {}", i);
-			return false;
-		}
+		VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &framebuffers[i]));
 
 		spdlog::debug("New Framebuffer @ {}", (void*)framebuffers[i]);
 	}
@@ -207,10 +209,7 @@ bool vulkanRenderer::create_command_pool() {
 	command_pool_info.queueFamilyIndex = graphics_queue_index;
 	command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	if(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool) != VK_SUCCESS) {
-		spdlog::error("Couldn't Vulkan Command Buffer");
-		return false;
-	}
+	VK_CHECK_RESULT(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
 
 	VkCommandBufferAllocateInfo command_allocate_info = {};
 	command_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -218,10 +217,7 @@ bool vulkanRenderer::create_command_pool() {
 	command_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	command_allocate_info.commandBufferCount = (uint32_t)command_buffers.size();
 
-	if(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()) != VK_SUCCESS) {
-		spdlog::error("Failed to allocate Vulkan Command Buffers");
-		return false;
-	}
+	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
 	// begin recording the command buffer
 	for(size_t i = 0; i < command_buffers.size(); i++) {
@@ -252,10 +248,7 @@ bool vulkanRenderer::create_command_pool() {
 		VkCommandBufferBeginInfo begin_info = {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-		if(vkBeginCommandBuffer(command_buffers[i], &begin_info) != VK_SUCCESS) {
-			spdlog::error("Failed to start Vulkan Buffer Recording");
-			return false;
-		}
+		VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[i], &begin_info));
 
 		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
 		vkCmdSetScissor (command_buffers[i], 0, 1, &scissor);
@@ -268,10 +261,7 @@ bool vulkanRenderer::create_command_pool() {
 
 		vkCmdEndRenderPass(command_buffers[i]);
 
-		if(vkEndCommandBuffer(command_buffers[i]) != VK_SUCCESS) {
-			spdlog::error("Failed to end Vulkan Buffer Recording");
-			return false;
-		}
+		VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[i]));
 	}
 
 	return true;
@@ -289,20 +279,9 @@ bool vulkanRenderer::create_sync_objects() {
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]) != VK_SUCCESS) {
-			spdlog::error("Failed to create Vulkan Available Semaphore {}", i);
-			return false;
-		}
-
-		if(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]) != VK_SUCCESS) {
-			spdlog::error("Failed to create Vulkan Finished Semaphore {}", i);
-			return false;
-		}
-
-		if(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]) != VK_SUCCESS) {
-			spdlog::error("Failed to create Vulkan Flying Fences {} (kek)", i);
-			return false;
-		}
+		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]));
+		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]));
+		VK_CHECK_RESULT(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
 	}
 
 	return true;
@@ -337,8 +316,7 @@ bool vulkanRenderer::draw() {
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = signal_semaphores;
 
-	if(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]) != VK_SUCCESS)
-		return false;
+	VK_CHECK_RESULT(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
 
 	VkSwapchainKHR swap_chains[] = { swapchain };
 
@@ -352,8 +330,9 @@ bool vulkanRenderer::draw() {
 
 	VkResult present_result = vkQueuePresentKHR(present_queue, &present_info);
 
-	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
+	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR) {
 		return rebuild_swapchain();
+	}
 
 	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	return true;
@@ -382,17 +361,14 @@ bool vulkanRenderer::create_pipeline_cache() {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
-	if(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache) != VK_SUCCESS) {
-		spdlog::error("Failed to create Vulkan Pipeline Cache");
-		return false;
-	}
+	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
 
 	return true;
 }
 
 bool vulkanRenderer::create_pipelines() {
-	VkShaderModule vert = create_shader(read_file<char>("C:\\Users\\rwf93\\Desktop\\epico\\output\\assets\\shaders\\vert.spv", true));
-	VkShaderModule frag = create_shader(read_file<char>("C:\\Users\\rwf93\\Desktop\\epico\\output\\assets\\shaders\\frag.spv", true));
+	VkShaderModule vert = create_shader(fs::read_asset<char>("shaders/triangle.vert.spv", true));
+	VkShaderModule frag = create_shader(fs::read_asset<char>("shaders/triangle.frag.spv", true));
 
 	triangle_pipeline.pipeline_add_shader(VK_SHADER_STAGE_VERTEX_BIT, vert);
 	triangle_pipeline.pipeline_add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, frag);
@@ -419,6 +395,8 @@ bool vulkanRenderer::create_pipelines() {
 
 	vkDestroyShaderModule(device, vert, nullptr);
 	vkDestroyShaderModule(device, frag, nullptr);
+
+
 
 	return true;
 }

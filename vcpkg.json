@@ -4,6 +4,7 @@
     "dependencies": [
         "fmt",
         "spdlog",
+        "magic-enum",
         "vulkan",
         "vk-bootstrap",
         "vulkan-memory-allocator",

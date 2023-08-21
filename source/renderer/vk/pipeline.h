@@ -6,6 +6,8 @@
 #define FUNC_PIPELINE_ADD_SCISSOR VkRect2D scissor
 #define FUNC_PIPELINE_ADD_DYNAMIC_STATE VkDynamicState state
 
+namespace render {
+
 // 4l8r
 class renderPipelineConstructor {
 public:
@@ -39,3 +41,5 @@ private:
     std::vector<VkDynamicState> dynamic_states;
 
 };
+
+}

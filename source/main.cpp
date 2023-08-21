@@ -1,6 +1,11 @@
+#include "globals.h"
+
+#include "renderer/vk/pipeline.h"
+#include "renderer/vk/vulkan.h"
+
 int main(int argc, char *args[]) {
 	gameGlobals game;
-	vulkanRenderer renderer(&game);
+	render::vulkanRenderer renderer(&game);
 
 	spdlog::set_level(spdlog::level::debug);
 

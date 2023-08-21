@@ -2,6 +2,8 @@
 
 #define FUNC_CREATE_SHADER const std::vector<char> &code
 
+namespace render {
+
 class vulkanRenderer {
 public:
     vulkanRenderer(gameGlobals *game);
@@ -61,3 +63,5 @@ private:
 
     size_t current_frame = 0;
 };
+
+}

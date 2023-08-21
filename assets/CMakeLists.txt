@@ -6,16 +6,15 @@ file(GLOB_RECURSE SHADER_FILES
 
 foreach(SHADER ${SHADER_FILES})
     get_filename_component(FILENAME ${SHADER} NAME)
-    get_filename_component(FILENAME_WE ${SHADER} NAME_WE)
 
     add_custom_command(
-        OUTPUT ${OUTPUT}/assets/shaders/${FILENAME_WE}.spv
-        COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${SHADER} -o ${OUTPUT}/assets/shaders/${FILENAME_WE}.spv
+        OUTPUT ${OUTPUT}/assets/shaders/${FILENAME}.spv
+        COMMAND ${Vulkan_GLSLC_EXECUTABLE} ${SHADER} -o ${OUTPUT}/assets/shaders/${FILENAME}.spv
         DEPENDS ${SHADER}
         COMMENT "Compiling Shaderfile: ${FILENAME}"
     )
 
-    list(APPEND COMPILED_SHADERS ${OUTPUT}/assets/shaders/${FILENAME_WE}.spv)
+    list(APPEND COMPILED_SHADERS ${OUTPUT}/assets/shaders/${FILENAME}.spv)
 endforeach()
 
 add_custom_target(ShaderCompile ALL DEPENDS ${COMPILED_SHADERS})
