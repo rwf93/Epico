@@ -8,10 +8,10 @@
             "name": "Epico",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/output/epico.exe",
+            "program": "${command:cmake.launchTargetPath}",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${command:cmake.launchTargetDirectory}",
             "environment": [],
             "console": "externalTerminal"
         }

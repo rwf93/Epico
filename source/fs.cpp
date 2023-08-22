@@ -6,7 +6,3 @@
 #include "fs.h"
 
 using namespace fs;
-
-template<typename T> void jejer(T nuts) {
-    UNIMPLEMENTED
-}
