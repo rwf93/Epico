@@ -60,10 +60,7 @@ bool renderPipelineConstructor::build(FUNC_PIPELINE_BUILD) {
 	pipeline_layout_info.setLayoutCount = 0;
 	pipeline_layout_info.pushConstantRangeCount = 0;
 
-	if(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
-		spdlog::error("Failed to create pipeline layout");
-		return false;
-	}
+	VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &pipeline_layout));
 
 	VkPipelineDynamicStateCreateInfo dynamic_info = {};
 	dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -86,10 +83,7 @@ bool renderPipelineConstructor::build(FUNC_PIPELINE_BUILD) {
 	pipeline_info.subpass = 0;
 	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-	if(vkCreateGraphicsPipelines(device, cache, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
-		spdlog::error("Failed to create pipeline");
-		return false;
-	};
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, cache, 1, &pipeline_info, nullptr, &pipeline));
 
 	return true;
 }

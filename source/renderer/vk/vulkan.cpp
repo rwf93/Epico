@@ -219,6 +219,7 @@ bool vulkanRenderer::create_command_pool() {
 
 	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
+	/*
 	// begin recording the command buffer
 	for(size_t i = 0; i < command_buffers.size(); i++) {
 		spdlog::debug("Recording to command buffer @ {}", i);
@@ -251,7 +252,7 @@ bool vulkanRenderer::create_command_pool() {
 		VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[i], &begin_info));
 
 		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
-		vkCmdSetScissor (command_buffers[i], 0, 1, &scissor);
+		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
 
 		vkCmdBeginRenderPass(command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -263,6 +264,7 @@ bool vulkanRenderer::create_command_pool() {
 
 		VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[i]));
 	}
+	*/
 
 	return true;
 }
@@ -298,8 +300,44 @@ bool vulkanRenderer::draw() {
 	uint32_t image_index = 0;
 	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
 
-	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR)
+	VK_CHECK_RESULT(vkResetCommandBuffer(command_buffers[image_index], 0));
+
+	VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
+	VkRenderPassBeginInfo render_pass_info = {};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	render_pass_info.renderPass = render_pass;
+	render_pass_info.framebuffer = framebuffers[image_index];
+	render_pass_info.renderArea.offset = { 0, 0 };
+	render_pass_info.renderArea.extent = swapchain.extent;
+	render_pass_info.clearValueCount = 1;
+	render_pass_info.pClearValues = &clearColor;
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchain.extent.width;
+	viewport.height = (float)swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchain.extent;
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
+
+	vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
+	vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
+	vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, triangle_pipeline.pipeline);
+	vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
+	vkCmdEndRenderPass(command_buffers[image_index]);
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[image_index]));
+
+	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
 		return rebuild_swapchain();
+	}
 
 	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -342,6 +380,8 @@ bool vulkanRenderer::rebuild_swapchain() {
 	spdlog::debug("Rebuilding swapchain");
 
 	vkDeviceWaitIdle(device);
+
+	vkDestroySwapchainKHR(device, swapchain, nullptr);
 
 	vkDestroyCommandPool(device, command_pool, nullptr);
 
@@ -395,8 +435,6 @@ bool vulkanRenderer::create_pipelines() {
 
 	vkDestroyShaderModule(device, vert, nullptr);
 	vkDestroyShaderModule(device, frag, nullptr);
-
-
 
 	return true;
 }

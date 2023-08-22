@@ -28,6 +28,8 @@ private:
     bool create_sync_objects();
     bool create_imgui();
 
+    bool record_triangle_command(int current_frame);
+
     bool rebuild_swapchain();
 private:
     renderPipelineConstructor triangle_pipeline;

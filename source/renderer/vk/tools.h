@@ -12,9 +12,9 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string>
 #define VK_CHECK_RESULT(f)																				\
 {																										\
 	VkResult res = (f);																					\
-	if (res != VK_SUCCESS)																				\
-	{																									\
-		spdlog::error("VkResult is {}", res);                                                           \
+	if (res != VK_SUCCESS) {																			\
+		spdlog::error("VkResult is {} in {} @ {}", res, __FILE__, __LINE__);							\
 		assert(res == VK_SUCCESS);																		\
+		return false;																					\
 	}																									\
 }
