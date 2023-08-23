@@ -4,8 +4,8 @@
 #include "renderer/vk/vulkan.h"
 
 int main(int argc, char *args[]) {
-	gameGlobals game;
-	render::vulkanRenderer renderer(&game);
+	GameGlobals game;
+	render::VulkanRenderer renderer(&game);
 
 	spdlog::set_level(spdlog::level::debug);
 
@@ -23,6 +23,8 @@ int main(int argc, char *args[]) {
 		while(SDL_PollEvent(&e)) {
 			if(e.type == SDL_QUIT)
 				quit = true;
+
+			ImGui_ImplSDL2_ProcessEvent(&e);
 		}
 
 		if(!renderer.draw()) {

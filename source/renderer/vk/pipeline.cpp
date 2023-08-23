@@ -3,17 +3,21 @@
 
 using namespace render;
 
-renderPipelineConstructor::renderPipelineConstructor() {
+RenderPipelineConstructor::RenderPipelineConstructor() {
 
 }
 
-renderPipelineConstructor::~renderPipelineConstructor() {
+RenderPipelineConstructor::~RenderPipelineConstructor() {
 
 }
 
-bool renderPipelineConstructor::build(FUNC_PIPELINE_BUILD) {
+void RenderPipelineConstructor::setup(FUNC_PIPELINE_SETUP) {
 	this->device = device;
+	this->pass = pass;
+	this->cache = cache;
+}
 
+bool RenderPipelineConstructor::build(FUNC_PIPELINE_BUILD) {
 	pipeline_add_vertex_input_info();
 	pipeline_add_vertex_input_assembly();
 
@@ -83,12 +87,12 @@ bool renderPipelineConstructor::build(FUNC_PIPELINE_BUILD) {
 	pipeline_info.subpass = 0;
 	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, cache, 1, &pipeline_info, nullptr, &pipeline));
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, cache, 1, &pipeline_info, nullptr, pipeline));
 
 	return true;
 }
 
-void renderPipelineConstructor::pipeline_add_shader(FUNC_PIPELINE_ADD_SHADER) {
+void RenderPipelineConstructor::pipeline_add_shader(FUNC_PIPELINE_ADD_SHADER) {
 	VkPipelineShaderStageCreateInfo shader_stage_info = {};
 	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shader_stage_info.stage = stage;
@@ -98,7 +102,7 @@ void renderPipelineConstructor::pipeline_add_shader(FUNC_PIPELINE_ADD_SHADER) {
 	shader_stages.push_back(shader_stage_info);
 }
 
-void renderPipelineConstructor::pipeline_add_vertex_input_info() {
+void RenderPipelineConstructor::pipeline_add_vertex_input_info() {
 	VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
 	vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertex_input_info.vertexBindingDescriptionCount = 0;
@@ -107,7 +111,7 @@ void renderPipelineConstructor::pipeline_add_vertex_input_info() {
 	this->vertex_input_info = vertex_input_info;
 }
 
-void renderPipelineConstructor::pipeline_add_vertex_input_assembly() {
+void RenderPipelineConstructor::pipeline_add_vertex_input_assembly() {
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
 	input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -116,7 +120,6 @@ void renderPipelineConstructor::pipeline_add_vertex_input_assembly() {
 	this->input_assembly = input_assembly;
 }
 
-void renderPipelineConstructor::destroy() {
-	vkDestroyPipeline(device, pipeline, nullptr);
+void RenderPipelineConstructor::destroy() {
 	vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
 }

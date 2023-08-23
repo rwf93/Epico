@@ -21,8 +21,10 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+#include <shaderc/shaderc.hpp>
+
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 
-#include <glm/common.hpp>
+#include <glm/glm.hpp>

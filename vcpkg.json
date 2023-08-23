@@ -8,6 +8,7 @@
         "vulkan",
         "vk-bootstrap",
         "vulkan-memory-allocator",
+        "shaderc",
         "glm",
         "assimp",
         {

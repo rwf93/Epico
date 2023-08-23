@@ -8,12 +8,18 @@
 
 using namespace render;
 
-vulkanRenderer::vulkanRenderer(gameGlobals *game) {
+VulkanRenderer::VulkanRenderer(GameGlobals *game) {
 	this->game = game;
 }
 
-vulkanRenderer::~vulkanRenderer() {
+VulkanRenderer::~VulkanRenderer() {
 	vkQueueWaitIdle(present_queue);
+
+	ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
+
+	vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, finished_semaphores[i], nullptr);
@@ -26,9 +32,9 @@ vulkanRenderer::~vulkanRenderer() {
 	for(auto framebuffer: framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 
+	vkDestroyPipeline(device, triangle_pipeline, nullptr);
+	pipeline_constructor.destroy();
 	vkDestroyPipelineCache(device, pipeline_cache, nullptr);
-
-	triangle_pipeline.destroy();
 
 	vkDestroyRenderPass(device, render_pass, nullptr);
 
@@ -40,7 +46,142 @@ vulkanRenderer::~vulkanRenderer() {
 	vkb::destroy_instance(instance);
 }
 
-bool vulkanRenderer::create_vk_instance() {
+bool VulkanRenderer::setup() {
+	if(!create_vk_instance()) 		return false;
+	if(!create_surface()) 			return false;
+	if(!create_device()) 			return false;
+	if(!create_swapchain()) 		return false;
+	if(!create_queues())			return false;
+	if(!create_render_pass())		return false;
+	if(!create_pipeline_cache())	return false;
+	if(!create_pipelines())			return false; // remove l8r
+	if(!create_framebuffers())		return false;
+	if(!create_command_pool())		return false;
+	if(!create_sync_objects())		return false;
+	if(!create_descriptor_pool())	return false;
+
+	if(!setup_imgui())				return false;
+
+	return true;
+}
+
+bool VulkanRenderer::draw() {
+	ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Hello World\n");
+
+	ImGui::Render();
+
+	VK_CHECK_RESULT(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
+	VK_CHECK_RESULT(vkResetFences(device, 1, &in_flight_fences[current_frame]));
+
+	uint32_t image_index = 0;
+	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+
+	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
+		return rebuild_swapchain();
+	}
+
+	VK_CHECK_RESULT(vkResetFences(device, 1, &in_flight_fences[current_frame]));
+
+	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	VkSemaphore signal_semaphores[] = { finished_semaphores[current_frame] };
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.waitSemaphoreCount = 1;
+	submit_info.pWaitSemaphores = wait_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffers[image_index];
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = signal_semaphores;
+
+	/* Begin recording our command buffer, intended on sending it to the GPU */
+	VK_CHECK_RESULT(vkResetCommandBuffer(command_buffers[image_index], 0));
+
+	VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
+	VkRenderPassBeginInfo render_pass_info = {};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	render_pass_info.renderPass = render_pass;
+	render_pass_info.framebuffer = framebuffers[image_index];
+	render_pass_info.renderArea.offset = { 0, 0 };
+	render_pass_info.renderArea.extent = swapchain.extent;
+	render_pass_info.clearValueCount = 1;
+	render_pass_info.pClearValues = &clearColor;
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchain.extent.width;
+	viewport.height = (float)swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchain.extent;
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
+
+	vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
+	vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
+
+	vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
+
+	// draw triangle
+	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, triangle_pipeline);
+	vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
+
+	vkCmdEndRenderPass(command_buffers[image_index]);
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[image_index]));
+	/* End recording our command buffer, intended on sending it to the GPU */
+
+	VK_CHECK_RESULT(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
+
+	VkSwapchainKHR swap_chains[] = { swapchain };
+
+	VkPresentInfoKHR present_info = {};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores = signal_semaphores;
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = swap_chains;
+	present_info.pImageIndices = &image_index;
+
+	VkResult present_result = vkQueuePresentKHR(present_queue, &present_info);
+
+	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR) {
+		return rebuild_swapchain();
+	}
+
+	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+	return true;
+}
+
+VkShaderModule VulkanRenderer::create_shader(FUNC_CREATE_SHADER) {
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.codeSize = code.size();
+	create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+	VkShaderModule shader_module;
+	if(vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
+		spdlog::error("Warning: couldn't create shader module");
+		return VK_NULL_HANDLE;
+	}
+
+	return shader_module;
+}
+
+bool VulkanRenderer::create_vk_instance() {
 	vkb::InstanceBuilder instance_builder;
 	auto instance_builder_ret = instance_builder
 									.set_app_name("Epico")
@@ -60,7 +201,7 @@ bool vulkanRenderer::create_vk_instance() {
 	return true;
 }
 
-bool vulkanRenderer::create_surface() {
+bool VulkanRenderer::create_surface() {
 	if (!SDL_Vulkan_CreateSurface(game->window, instance.instance, &surface)) {
 		spdlog::error("Failed to create SDL Surface {}", SDL_GetError());
 		return false;
@@ -69,7 +210,7 @@ bool vulkanRenderer::create_surface() {
 	return true;
 }
 
-bool vulkanRenderer::create_device() {
+bool VulkanRenderer::create_device() {
 	vkb::PhysicalDeviceSelector device_selector(instance);
 	auto device_selector_ret = device_selector
 								.set_surface(surface)
@@ -93,7 +234,7 @@ bool vulkanRenderer::create_device() {
 	return true;
 }
 
-bool vulkanRenderer::create_swapchain() {
+bool VulkanRenderer::create_swapchain() {
 	vkb::SwapchainBuilder swapchain_builder { device };
 	auto swapchain_builder_ret = swapchain_builder.build();
 
@@ -109,7 +250,7 @@ bool vulkanRenderer::create_swapchain() {
 	return true;
 }
 
-bool vulkanRenderer::create_queues() {
+bool VulkanRenderer::create_queues() {
 	auto gq = device.get_queue(vkb::QueueType::graphics);
 	auto pq = device.get_queue(vkb::QueueType::present);
 	auto gqi = device.get_queue_index(vkb::QueueType::graphics);
@@ -136,7 +277,7 @@ bool vulkanRenderer::create_queues() {
 	return true;
 }
 
-bool vulkanRenderer::create_render_pass() {
+bool VulkanRenderer::create_render_pass() {
 	VkAttachmentDescription color_attachment = {};
 	color_attachment.format = swapchain.image_format;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -178,7 +319,7 @@ bool vulkanRenderer::create_render_pass() {
 	return true;
 }
 
-bool vulkanRenderer::create_framebuffers() {
+bool VulkanRenderer::create_framebuffers() {
 	VkFramebufferCreateInfo framebuffer_info = {};
 	framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	framebuffer_info.renderPass = render_pass;
@@ -200,7 +341,7 @@ bool vulkanRenderer::create_framebuffers() {
 	return true;
 }
 
-bool vulkanRenderer::create_command_pool() {
+bool VulkanRenderer::create_command_pool() {
 	command_buffers.resize(framebuffers.size());
 
 	VkCommandPoolCreateInfo command_pool_info = {};
@@ -268,7 +409,7 @@ bool vulkanRenderer::create_command_pool() {
 
 	return true;
 }
-bool vulkanRenderer::create_sync_objects() {
+bool VulkanRenderer::create_sync_objects() {
 	available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -289,94 +430,76 @@ bool vulkanRenderer::create_sync_objects() {
 	return true;
 }
 
-bool vulkanRenderer::create_imgui() {
+bool VulkanRenderer::create_descriptor_pool() {
+	VkDescriptorPoolSize pool_size = {};
+	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_size.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.poolSizeCount = 1;
+	pool_info.pPoolSizes = &pool_size;
+	pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+	VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
+
 	return true;
 }
 
-bool vulkanRenderer::draw() {
-	vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
-	vkResetFences(device, 1, &in_flight_fences[current_frame]);
+bool VulkanRenderer::setup_imgui() {
 
-	uint32_t image_index = 0;
-	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-	VK_CHECK_RESULT(vkResetCommandBuffer(command_buffers[image_index], 0));
+	ImGui::StyleColorsDark();
 
-	VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
-	VkRenderPassBeginInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	render_pass_info.renderPass = render_pass;
-	render_pass_info.framebuffer = framebuffers[image_index];
-	render_pass_info.renderArea.offset = { 0, 0 };
-	render_pass_info.renderArea.extent = swapchain.extent;
-	render_pass_info.clearValueCount = 1;
-	render_pass_info.pClearValues = &clearColor;
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.extent.width;
-	viewport.height = (float)swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.extent;
+	ImGui_ImplSDL2_InitForVulkan(game->window);
+
+	ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = instance;
+	init_info.PhysicalDevice = device.physical_device;
+	init_info.Device = device;
+	init_info.QueueFamily = graphics_queue_index;
+	init_info.Queue = graphics_queue;
+	init_info.PipelineCache = pipeline_cache;
+	init_info.DescriptorPool = descriptor_pool;
+	init_info.Subpass = 0;
+	init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
+	init_info.ImageCount = framebuffers.size();
+	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.Allocator = nullptr;
+	init_info.CheckVkResultFn = nullptr;
+	ImGui_ImplVulkan_Init(&init_info, render_pass);
+
+	/* Upload IMGUI fonts and textures to the GPU */
+	VK_CHECK_RESULT(vkResetCommandPool(device, command_pool, 0));
+
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
+	VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
 
-	vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
-	vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
-	vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, triangle_pipeline.pipeline);
-	vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
-	vkCmdEndRenderPass(command_buffers[image_index]);
+	ImGui_ImplVulkan_CreateFontsTexture(command_buffers[current_frame]);
 
-	VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[image_index]));
-
-	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
-		return rebuild_swapchain();
-	}
-
-	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
-	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-	VkSemaphore signal_semaphores[] = { finished_semaphores[current_frame] };
+	VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[current_frame]));
 
 	VkSubmitInfo submit_info = {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = wait_semaphores;
-	submit_info.pWaitDstStageMask = wait_stages;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &command_buffers[image_index];
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = signal_semaphores;
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffers[current_frame];
 
-	VK_CHECK_RESULT(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
+	VK_CHECK_RESULT(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 
-	VkSwapchainKHR swap_chains[] = { swapchain };
+	vkDeviceWaitIdle(device);
 
-	VkPresentInfoKHR present_info = {};
-	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = signal_semaphores;
-	present_info.swapchainCount = 1;
-	present_info.pSwapchains = swap_chains;
-	present_info.pImageIndices = &image_index;
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-	VkResult present_result = vkQueuePresentKHR(present_queue, &present_info);
-
-	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR) {
-		return rebuild_swapchain();
-	}
-
-	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	return true;
 }
 
-bool vulkanRenderer::rebuild_swapchain() {
+bool VulkanRenderer::rebuild_swapchain() {
 	spdlog::debug("Rebuilding swapchain");
 
 	vkDeviceWaitIdle(device);
@@ -397,7 +520,7 @@ bool vulkanRenderer::rebuild_swapchain() {
 	return true;
 }
 
-bool vulkanRenderer::create_pipeline_cache() {
+bool VulkanRenderer::create_pipeline_cache() {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
@@ -406,12 +529,16 @@ bool vulkanRenderer::create_pipeline_cache() {
 	return true;
 }
 
-bool vulkanRenderer::create_pipelines() {
-	VkShaderModule vert = create_shader(fs::read_asset<char>("shaders/triangle.vert.spv", true));
-	VkShaderModule frag = create_shader(fs::read_asset<char>("shaders/triangle.frag.spv", true));
+bool VulkanRenderer::create_pipelines() {
+	pipeline_constructor.setup(device, render_pass, pipeline_cache);
 
-	triangle_pipeline.pipeline_add_shader(VK_SHADER_STAGE_VERTEX_BIT, vert);
-	triangle_pipeline.pipeline_add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, frag);
+	/* begin simple triangle */
+
+	VkShaderModule triangle_vert = create_shader(fs::read_asset<char>("shaders/triangle.vert.spv", true));
+	VkShaderModule triangle_frag = create_shader(fs::read_asset<char>("shaders/triangle.frag.spv", true));
+
+	pipeline_constructor.pipeline_add_shader(VK_SHADER_STAGE_VERTEX_BIT, triangle_vert);
+	pipeline_constructor.pipeline_add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, triangle_frag);
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -425,47 +552,18 @@ bool vulkanRenderer::create_pipelines() {
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchain.extent;
 
-	triangle_pipeline.pipeline_add_viewport(viewport);
-	triangle_pipeline.pipeline_add_scissor(scissor);
+	pipeline_constructor.pipeline_add_viewport(viewport);
+	pipeline_constructor.pipeline_add_scissor(scissor);
 
-	triangle_pipeline.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
-	triangle_pipeline.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
+	pipeline_constructor.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
+	pipeline_constructor.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
 
-	triangle_pipeline.build(device, render_pass, pipeline_cache);
+	pipeline_constructor.build(&triangle_pipeline);
 
-	vkDestroyShaderModule(device, vert, nullptr);
-	vkDestroyShaderModule(device, frag, nullptr);
+	vkDestroyShaderModule(device, triangle_vert, nullptr);
+	vkDestroyShaderModule(device, triangle_frag, nullptr);
 
-	return true;
-}
-
-bool vulkanRenderer::setup() {
-	if(!create_vk_instance()) 		return false;
-	if(!create_surface()) 			return false;
-	if(!create_device()) 			return false;
-	if(!create_swapchain()) 		return false;
-	if(!create_queues())			return false;
-	if(!create_render_pass())		return false;
-	if(!create_pipeline_cache())	return false;
-	if(!create_pipelines())			return false; // remove l8r
-	if(!create_framebuffers())		return false;
-	if(!create_command_pool())		return false;
-	if(!create_sync_objects())		return false;
+	/* end simple triangle */
 
 	return true;
-}
-
-VkShaderModule vulkanRenderer::create_shader(FUNC_CREATE_SHADER) {
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.codeSize = code.size();
-	create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-	VkShaderModule shader_module;
-	if(vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
-		spdlog::error("Warning: couldn't create shader module");
-		return VK_NULL_HANDLE;
-	}
-
-	return shader_module;
 }

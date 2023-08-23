@@ -1,20 +1,26 @@
 #pragma once
 
-#define FUNC_PIPELINE_BUILD VkDevice device, VkRenderPass pass, VkPipelineCache cache
+#define FUNC_PIPELINE_SETUP VkDevice device, VkRenderPass pass, VkPipelineCache cache
+#define FUNC_PIPELINE_BUILD VkPipeline *pipeline
 #define FUNC_PIPELINE_ADD_SHADER VkShaderStageFlagBits stage, VkShaderModule shader
 #define FUNC_PIPELINE_ADD_VIEWPORT VkViewport viewport
 #define FUNC_PIPELINE_ADD_SCISSOR VkRect2D scissor
 #define FUNC_PIPELINE_ADD_DYNAMIC_STATE VkDynamicState state
 
+
 namespace render {
 
 // 4l8r
-class renderPipelineConstructor {
+class RenderPipelineConstructor {
 public:
-    renderPipelineConstructor();
-    ~renderPipelineConstructor();
+    RenderPipelineConstructor();
+    ~RenderPipelineConstructor();
 
+    void setup(FUNC_PIPELINE_SETUP);
+
+    bool build_layout();
     bool build(FUNC_PIPELINE_BUILD);
+
     void destroy();
 
     void pipeline_add_shader(FUNC_PIPELINE_ADD_SHADER);
@@ -24,12 +30,12 @@ public:
     void pipeline_add_scissor(FUNC_PIPELINE_ADD_SCISSOR) { this->scissor = scissor; }
     void pipeline_add_dynamic_state(FUNC_PIPELINE_ADD_DYNAMIC_STATE) { dynamic_states.push_back(state); };
 
+    void pipeline_clear_shaders() { shader_stages.clear(); };
+
 public:
     VkPipelineLayout pipeline_layout;
-    VkPipeline pipeline;
 
 private:
-    VkDevice device;
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
     VkPipelineVertexInputStateCreateInfo vertex_input_info;
     VkPipelineInputAssemblyStateCreateInfo input_assembly;
@@ -40,6 +46,10 @@ private:
     VkRect2D scissor;
     std::vector<VkDynamicState> dynamic_states;
 
+private:
+    VkDevice device;
+    VkRenderPass pass;
+    VkPipelineCache cache;
 };
 
 }
