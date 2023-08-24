@@ -4,10 +4,17 @@
 #include "renderer/vk/vulkan.h"
 
 int main(int argc, char *args[]) {
-	GameGlobals game;
+	UNUSED(argc);
+	UNUSED(args);
+
+	GameGlobals game = {};
 	render::VulkanRenderer renderer(&game);
 
+#if !defined(NDEBUG)
 	spdlog::set_level(spdlog::level::debug);
+#else
+	spdlog::set_level(spdlog::level::info);
+#endif
 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		spdlog::error("SDL Failed to init with error: {}", SDL_GetError());

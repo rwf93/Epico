@@ -32,8 +32,14 @@ VulkanRenderer::~VulkanRenderer() {
 	for(auto framebuffer: framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 
-	vkDestroyPipeline(device, triangle_pipeline, nullptr);
-	pipeline_constructor.destroy();
+	//vkDestroyPipeline(device, triangle_pipeline, nullptr);
+	//vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+
+	for(auto &map: pipelines) {
+		vkDestroyPipeline(device, map.second, nullptr);
+		vkDestroyPipelineLayout(device, map.second, nullptr);
+	}
+
 	vkDestroyPipelineCache(device, pipeline_cache, nullptr);
 
 	vkDestroyRenderPass(device, render_pass, nullptr);
@@ -70,12 +76,12 @@ bool VulkanRenderer::draw() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Hello World\n");
+	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!\n");
 
 	ImGui::Render();
 
-	VK_CHECK_RESULT(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
-	VK_CHECK_RESULT(vkResetFences(device, 1, &in_flight_fences[current_frame]));
+	VK_CHECK_BOOL(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
+	VK_CHECK_BOOL(vkResetFences(device, 1, &in_flight_fences[current_frame]));
 
 	uint32_t image_index = 0;
 	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
@@ -84,7 +90,7 @@ bool VulkanRenderer::draw() {
 		return rebuild_swapchain();
 	}
 
-	VK_CHECK_RESULT(vkResetFences(device, 1, &in_flight_fences[current_frame]));
+	VK_CHECK_BOOL(vkResetFences(device, 1, &in_flight_fences[current_frame]));
 
 	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -102,7 +108,7 @@ bool VulkanRenderer::draw() {
 	submit_info.pSignalSemaphores = signal_semaphores;
 
 	/* Begin recording our command buffer, intended on sending it to the GPU */
-	VK_CHECK_RESULT(vkResetCommandBuffer(command_buffers[image_index], 0));
+	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[image_index], 0));
 
 	VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
 	VkRenderPassBeginInfo render_pass_info = {};
@@ -126,7 +132,7 @@ bool VulkanRenderer::draw() {
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
+	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
 
 	vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
 	vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
@@ -136,15 +142,15 @@ bool VulkanRenderer::draw() {
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 
 	// draw triangle
-	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, triangle_pipeline);
+	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
 	vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
 
 	vkCmdEndRenderPass(command_buffers[image_index]);
 
-	VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[image_index]));
+	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[image_index]));
 	/* End recording our command buffer, intended on sending it to the GPU */
 
-	VK_CHECK_RESULT(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
+	VK_CHECK_BOOL(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
 
 	VkSwapchainKHR swap_chains[] = { swapchain };
 
@@ -231,6 +237,8 @@ bool VulkanRenderer::create_device() {
 
 	device = device_builder_ret.value(); // ze bluechowth dewice has connectedey suchessfulley
 
+	spdlog::info("Found capable render device: {}", device.physical_device.name);
+
 	return true;
 }
 
@@ -314,7 +322,99 @@ bool VulkanRenderer::create_render_pass() {
 	render_pass_info.dependencyCount = 1;
 	render_pass_info.pDependencies = &dependency;
 
-	VK_CHECK_RESULT(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
+	VK_CHECK_BOOL(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
+
+	return true;
+}
+
+bool VulkanRenderer::create_pipeline_cache() {
+	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
+	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+	VK_CHECK_BOOL(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
+
+	return true;
+}
+
+PipelinePair VulkanRenderer::build_triangle_pipeline() {
+	PipelinePair pair = {};
+
+	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+
+	pipeline_constructor.pipeline_layout_info.setLayoutCount = 0;
+	pipeline_constructor.pipeline_layout_info.pushConstantRangeCount = 0;
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchain.extent.width;
+	viewport.height = (float)swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchain.extent;
+
+	/* begin simple triangle */
+
+	VkShaderModule triangle_vert = create_shader(fs::read_asset<char>("shaders/triangle.vert.spv", true));
+	VkShaderModule triangle_frag = create_shader(fs::read_asset<char>("shaders/triangle.frag.spv", true));
+
+	pipeline_constructor.input_info.vertexBindingDescriptionCount = 0;
+	pipeline_constructor.input_info.vertexAttributeDescriptionCount = 0;
+
+	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
+
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, triangle_vert);
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, triangle_frag);
+
+	pipeline_constructor.viewport_state.viewportCount = 1;
+	pipeline_constructor.viewport_state.pViewports = &viewport;
+	pipeline_constructor.viewport_state.scissorCount = 1;
+	pipeline_constructor.viewport_state.pScissors = &scissor;
+
+	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	pipeline_constructor.rasterizer.lineWidth = 1.0f;
+	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
+
+	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
+	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	color_blend_attachment.blendEnable = VK_FALSE;
+
+	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
+
+	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
+	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
+
+	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
+
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+
+	pipeline_constructor.build(&pair.pipeline, &pair.layout);
+
+	vkDestroyShaderModule(device, triangle_vert, nullptr);
+	vkDestroyShaderModule(device, triangle_frag, nullptr);
+
+	return pair;
+}
+
+bool VulkanRenderer::create_pipelines() {
+
+	pipelines["triangle"] = { build_triangle_pipeline() };
 
 	return true;
 }
@@ -333,7 +433,7 @@ bool VulkanRenderer::create_framebuffers() {
 
  	for(size_t i = 0; i < swapchain_image_count; i++) {
 		framebuffer_info.pAttachments = &swapchain_image_views[i];
-		VK_CHECK_RESULT(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &framebuffers[i]));
+		VK_CHECK_BOOL(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &framebuffers[i]));
 
 		spdlog::debug("New Framebuffer @ {}", (void*)framebuffers[i]);
 	}
@@ -350,7 +450,7 @@ bool VulkanRenderer::create_command_pool() {
 	command_pool_info.queueFamilyIndex = graphics_queue_index;
 	command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	VK_CHECK_RESULT(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
+	VK_CHECK_BOOL(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
 
 	VkCommandBufferAllocateInfo command_allocate_info = {};
 	command_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -358,7 +458,7 @@ bool VulkanRenderer::create_command_pool() {
 	command_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	command_allocate_info.commandBufferCount = (uint32_t)command_buffers.size();
 
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
+	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
 	/*
 	// begin recording the command buffer
@@ -390,7 +490,7 @@ bool VulkanRenderer::create_command_pool() {
 		VkCommandBufferBeginInfo begin_info = {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-		VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[i], &begin_info));
+		VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[i], &begin_info));
 
 		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
 		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
@@ -403,7 +503,7 @@ bool VulkanRenderer::create_command_pool() {
 
 		vkCmdEndRenderPass(command_buffers[i]);
 
-		VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[i]));
+		VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[i]));
 	}
 	*/
 
@@ -422,9 +522,9 @@ bool VulkanRenderer::create_sync_objects() {
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]));
-		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]));
-		VK_CHECK_RESULT(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
+		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]));
+		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]));
+		VK_CHECK_BOOL(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
 	}
 
 	return true;
@@ -441,7 +541,7 @@ bool VulkanRenderer::create_descriptor_pool() {
 	pool_info.pPoolSizes = &pool_size;
 	pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-	VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
+	VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
 
 	return true;
 }
@@ -467,30 +567,31 @@ bool VulkanRenderer::setup_imgui() {
 	init_info.DescriptorPool = descriptor_pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
-	init_info.ImageCount = framebuffers.size();
+	init_info.ImageCount = (uint32_t)framebuffers.size();
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	init_info.Allocator = nullptr;
 	init_info.CheckVkResultFn = nullptr;
+
 	ImGui_ImplVulkan_Init(&init_info, render_pass);
 
 	/* Upload IMGUI fonts and textures to the GPU */
-	VK_CHECK_RESULT(vkResetCommandPool(device, command_pool, 0));
+	VK_CHECK_BOOL(vkResetCommandPool(device, command_pool, 0));
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	VK_CHECK_RESULT(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
+	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
 
 	ImGui_ImplVulkan_CreateFontsTexture(command_buffers[current_frame]);
 
-	VK_CHECK_RESULT(vkEndCommandBuffer(command_buffers[current_frame]));
+	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[current_frame]));
 
 	VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &command_buffers[current_frame];
 
-	VK_CHECK_RESULT(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+	VK_CHECK_BOOL(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
 
 	vkDeviceWaitIdle(device);
 
@@ -516,54 +617,6 @@ bool VulkanRenderer::rebuild_swapchain() {
 	if(!create_swapchain()) 		return false;
 	if(!create_framebuffers()) 		return false;
 	if(!create_command_pool()) 		return false;
-
-	return true;
-}
-
-bool VulkanRenderer::create_pipeline_cache() {
-	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
-	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-
-	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
-
-	return true;
-}
-
-bool VulkanRenderer::create_pipelines() {
-	pipeline_constructor.setup(device, render_pass, pipeline_cache);
-
-	/* begin simple triangle */
-
-	VkShaderModule triangle_vert = create_shader(fs::read_asset<char>("shaders/triangle.vert.spv", true));
-	VkShaderModule triangle_frag = create_shader(fs::read_asset<char>("shaders/triangle.frag.spv", true));
-
-	pipeline_constructor.pipeline_add_shader(VK_SHADER_STAGE_VERTEX_BIT, triangle_vert);
-	pipeline_constructor.pipeline_add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, triangle_frag);
-
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.extent.width;
-	viewport.height = (float)swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.extent;
-
-	pipeline_constructor.pipeline_add_viewport(viewport);
-	pipeline_constructor.pipeline_add_scissor(scissor);
-
-	pipeline_constructor.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
-	pipeline_constructor.pipeline_add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
-
-	pipeline_constructor.build(&triangle_pipeline);
-
-	vkDestroyShaderModule(device, triangle_vert, nullptr);
-	vkDestroyShaderModule(device, triangle_frag, nullptr);
-
-	/* end simple triangle */
 
 	return true;
 }

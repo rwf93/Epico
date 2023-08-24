@@ -60,13 +60,13 @@ private:
     std::vector<VkFence> in_flight_fences;
 
     size_t current_frame = 0;
-private:
-    RenderPipelineConstructor pipeline_constructor;
+private: // oopsie my pipeline stalled >.<
+    PipelinePair build_triangle_pipeline();
+
     VkPipelineCache pipeline_cache;
-
-    VkPipeline triangle_pipeline;
-
+    std::map<std::string, PipelinePair> pipelines;
 private:
+/*
     struct {
         VkBuffer buffer;
         VmaAllocation allocation;
@@ -103,7 +103,7 @@ private:
             return attribute_descriptions;
         }
     } Vertex;
-
+*/
     VkDescriptorPool descriptor_pool;
 };
 
