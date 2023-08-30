@@ -32,20 +32,22 @@ std::array<VkVertexInputAttributeDescription, 2> EVertex::get_attribute_descript
 }
 
 void EMesh::allocate(VmaAllocator allocator) {
-    VkBufferCreateInfo buffer_info = {};
-    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = verticies.size() * sizeof(EVertex);
-    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    {
+        VmaAllocationInfo alloc_info;
 
-    VmaAllocationCreateInfo allocate_info = {};
-    allocate_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        VkBufferCreateInfo buffer_info = {};
+        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_info.size = verticies.size() * sizeof(EVertex);
+        buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
-    vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &vertex_buffer.buffer, &vertex_buffer.allocation, nullptr);
+        VmaAllocationCreateInfo allocate_info = {};
+        allocate_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        allocate_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    void *data = nullptr;
-    vmaMapMemory(allocator, vertex_buffer.allocation, &data);
-    memcpy(data, verticies.data(), verticies.size() * sizeof(EVertex));
-    vmaUnmapMemory(allocator, vertex_buffer.allocation);
+        vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &vertex_buffer.buffer, &vertex_buffer.allocation, &alloc_info);
+
+        memcpy(alloc_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
+    }
 }
 
 void EMesh::destroy(VmaAllocator allocator) {
