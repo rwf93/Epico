@@ -32,24 +32,38 @@ std::array<VkVertexInputAttributeDescription, 2> EVertex::get_attribute_descript
 }
 
 void EMesh::allocate(VmaAllocator allocator) {
-    {
-        VmaAllocationInfo alloc_info;
+    VmaAllocationInfo alloc_info = {};
 
+    {
         VkBufferCreateInfo buffer_info = {};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_info.size = verticies.size() * sizeof(EVertex);
-        buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
         VmaAllocationCreateInfo allocate_info = {};
         allocate_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
         allocate_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
         vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &vertex_buffer.buffer, &vertex_buffer.allocation, &alloc_info);
-
         memcpy(alloc_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
+    }
+
+    {
+        VkBufferCreateInfo buffer_info = {};
+        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_info.size = indicies.size() * sizeof(uint16_t);
+        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        VmaAllocationCreateInfo allocate_info = {};
+        allocate_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        allocate_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+        vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &index_buffer.buffer, &index_buffer.allocation, &alloc_info);
+        memcpy(alloc_info.pMappedData, indicies.data(), indicies.size() * sizeof(indicies));
     }
 }
 
 void EMesh::destroy(VmaAllocator allocator) {
+    vmaDestroyBuffer(allocator, index_buffer.buffer, index_buffer.allocation);
     vmaDestroyBuffer(allocator, vertex_buffer.buffer, vertex_buffer.allocation);
 }

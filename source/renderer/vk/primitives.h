@@ -23,8 +23,10 @@ struct EMesh {
     void destroy(VmaAllocator allocator);
 
     std::vector<EVertex> verticies = {};
-    EBuffer vertex_buffer = {};
-};
+    std::vector<uint16_t> indicies = {};
 
+    EBuffer vertex_buffer = {};
+    EBuffer index_buffer = {};
+};
 
 }

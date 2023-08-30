@@ -80,10 +80,16 @@ bool VulkanRenderer::setup() {
 	if(!setup_imgui())				return false;
 
 	triangle_mesh.verticies = {
-    	{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    	{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    	{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}
+ 		{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    	{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    	{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+    	{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}
 	};
+
+	triangle_mesh.indicies = {
+		 0, 1, 2, 2, 3, 0
+	};
+
 	triangle_mesh.allocate(allocator);
 
 	return true;
@@ -169,7 +175,8 @@ bool VulkanRenderer::draw() {
 	VkDeviceSize offsets[] = { 0 };
 
 	vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
-	vkCmdDraw(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.verticies.size()), 1, 0, 0);
+	vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
 
 	// draw triangle
 	//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
