@@ -45,7 +45,7 @@ int main(int argc, char *args[]) {
 	return 0;
 }
 
-bool create_window(FUNC_CREATE_WINDOW) {
+bool create_window(GameGlobals *game) {
 	game->window = SDL_CreateWindow("Epico", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN );
 	if(game->window == NULL) {
 		spdlog::error("Failed to create SDL Window {}", SDL_GetError());

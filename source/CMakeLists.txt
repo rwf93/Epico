@@ -1,9 +1,10 @@
 add_executable(${PROJECT}
-	main.cpp
+	  main.cpp
     fs.cpp
 
-    renderer/vk/vulkan.cpp
     renderer/vk/pipeline.cpp
+    renderer/vk/primitives.cpp
+    renderer/vk/vulkan.cpp
 )
 
 set_property(TARGET ${PROJECT} PROPERTY CXX_STANDARD 23)

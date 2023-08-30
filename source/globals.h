@@ -7,7 +7,4 @@ struct GameGlobals {
 	SDL_Window *window;
 };
 
-#define FUNC_CREATE_WINDOW GameGlobals *game
-#define FUNC_READ_FILE const std::string &filename, bool binary
-
-bool create_window(FUNC_CREATE_WINDOW);
+bool create_window(GameGlobals *game);

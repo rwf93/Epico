@@ -91,6 +91,9 @@
         "resumable": "cpp",
         "future": "cpp",
         "numeric": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "any": "cpp",
+        "bitset": "cpp",
+        "complex": "cpp"
     }
 }

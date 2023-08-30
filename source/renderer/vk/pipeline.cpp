@@ -4,10 +4,18 @@
 
 using namespace render;
 
-RenderPipelineConstructor::RenderPipelineConstructor(FUNC_PIPELINE_CONSTRUCTOR) {
-	this->device = device;
-	this->cache = pipeline_cache;
-	this->pass = render_pass;
+RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPass render_pass, VkPipelineCache pipeline_cache) {
+	this->input_info 			= {};
+    this->input_assembly 		= {};
+    this->viewport_state 		= {};
+    this->rasterizer 			= {};
+    this->multisampling 		= {};
+    this->color_attachments 	= {};
+    this->color_blending 		= {};
+    this->dynamic_states 		= {};
+    this->shader_stages 		= {};
+    this->pipeline_layout_info 	= {};
+    this->pipeline_info 		= {};
 
 	// set sTypes for all types... actual bruh
 	input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -18,13 +26,17 @@ RenderPipelineConstructor::RenderPipelineConstructor(FUNC_PIPELINE_CONSTRUCTOR) 
 	color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+
+	this->device = device;
+	this->cache = pipeline_cache;
+	this->pass = render_pass;
 }
 
 RenderPipelineConstructor::~RenderPipelineConstructor() {
 
 }
 
-void RenderPipelineConstructor::add_shader(FUNC_PIPELINE_ADD_SHADER) {
+void RenderPipelineConstructor::add_shader(VkShaderStageFlagBits stage, VkShaderModule shader) {
 	VkPipelineShaderStageCreateInfo shader_stage_info = {};
 	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shader_stage_info.stage = stage;
@@ -34,7 +46,7 @@ void RenderPipelineConstructor::add_shader(FUNC_PIPELINE_ADD_SHADER) {
 	shader_stages.push_back(shader_stage_info);
 }
 
-void RenderPipelineConstructor::build(FUNC_PIPELINE_BUILD) {
+void RenderPipelineConstructor::build(VkPipeline *pipeline, VkPipelineLayout *pipeline_layout) {
 	color_blending.attachmentCount = static_cast<uint32_t>(color_attachments.size());
 	color_blending.pAttachments = color_attachments.data();
 

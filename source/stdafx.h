@@ -1,3 +1,4 @@
+
 #include <map>
 #include <iostream>
 #include <string>
@@ -18,9 +19,6 @@
 
 #include <VkBootstrap.h>
 
-#define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
-
 #include <shaderc/shaderc.hpp>
 
 #include <imgui.h>
@@ -28,3 +26,4 @@
 #include <imgui_impl_vulkan.h>
 
 #include <glm/glm.hpp>
+#include <glm/ext.hpp>

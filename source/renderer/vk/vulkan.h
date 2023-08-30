@@ -1,6 +1,6 @@
 #pragma once
 
-#define FUNC_CREATE_SHADER const std::vector<char> &code
+#include <vk_mem_alloc.h>
 
 namespace render {
 
@@ -12,7 +12,7 @@ public:
     bool setup();
     bool draw();
 
-    VkShaderModule create_shader(FUNC_CREATE_SHADER);
+    VkShaderModule create_shader(const std::vector<uint32_t> &code);
 
 private:
     bool create_vk_instance();
@@ -27,6 +27,7 @@ private:
     bool create_command_pool();
     bool create_sync_objects();
     bool create_descriptor_pool();
+    bool create_vma_allocator();
 
     bool setup_imgui();
 
@@ -60,8 +61,11 @@ private:
     std::vector<VkFence> in_flight_fences;
 
     size_t current_frame = 0;
+
 private: // oopsie my pipeline stalled >.<
     PipelinePair build_triangle_pipeline();
+    PipelinePair build_vertex_pipeline();
+    PipelinePair build_imgui_pipeline();
 
     VkPipelineCache pipeline_cache;
     std::map<std::string, PipelinePair> pipelines;
@@ -104,6 +108,7 @@ private:
         }
     } Vertex;
 */
+    VmaAllocator allocator;
     VkDescriptorPool descriptor_pool;
 };
 

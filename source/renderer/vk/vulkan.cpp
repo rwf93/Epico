@@ -1,7 +1,11 @@
 #include "globals.h"
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h> // haunting cpp file...
+
 #include "tools.h"
 #include "pipeline.h"
+#include "primitives.h"
 #include "vulkan.h"
 
 #include "fs.h"
@@ -12,6 +16,8 @@ VulkanRenderer::VulkanRenderer(GameGlobals *game) {
 	this->game = game;
 }
 
+static EMesh triangle_mesh;
+
 VulkanRenderer::~VulkanRenderer() {
 	vkQueueWaitIdle(present_queue);
 
@@ -19,7 +25,11 @@ VulkanRenderer::~VulkanRenderer() {
     ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
 
+	triangle_mesh.destroy(allocator);
+
 	vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+
+	vmaDestroyAllocator(allocator);
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, finished_semaphores[i], nullptr);
@@ -65,8 +75,16 @@ bool VulkanRenderer::setup() {
 	if(!create_command_pool())		return false;
 	if(!create_sync_objects())		return false;
 	if(!create_descriptor_pool())	return false;
+	if(!create_vma_allocator())		return false;
 
 	if(!setup_imgui())				return false;
+
+	triangle_mesh.verticies = {
+    	{{0.0f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    	{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    	{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}
+	};
+	triangle_mesh.allocate(allocator);
 
 	return true;
 }
@@ -111,6 +129,7 @@ bool VulkanRenderer::draw() {
 	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[image_index], 0));
 
 	VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
+
 	VkRenderPassBeginInfo render_pass_info = {};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	render_pass_info.renderPass = render_pass;
@@ -119,6 +138,7 @@ bool VulkanRenderer::draw() {
 	render_pass_info.renderArea.extent = swapchain.extent;
 	render_pass_info.clearValueCount = 1;
 	render_pass_info.pClearValues = &clearColor;
+
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -126,9 +146,11 @@ bool VulkanRenderer::draw() {
 	viewport.height = (float)swapchain.extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
+
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchain.extent;
+
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -141,9 +163,17 @@ bool VulkanRenderer::draw() {
 
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 
+	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
+
+	VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
+	VkDeviceSize offsets[] = { 0 };
+
+	vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
+	vkCmdDraw(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.verticies.size()), 1, 0, 0);
+
 	// draw triangle
-	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
-	vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
+	//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
+	//vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
 
 	vkCmdEndRenderPass(command_buffers[image_index]);
 
@@ -172,7 +202,7 @@ bool VulkanRenderer::draw() {
 	return true;
 }
 
-VkShaderModule VulkanRenderer::create_shader(FUNC_CREATE_SHADER) {
+VkShaderModule VulkanRenderer::create_shader(const std::vector<uint32_t> &code) {
 	VkShaderModuleCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	create_info.codeSize = code.size();
@@ -187,14 +217,35 @@ VkShaderModule VulkanRenderer::create_shader(FUNC_CREATE_SHADER) {
 	return shader_module;
 }
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT serverity,
+	VkDebugUtilsMessageTypeFlagsEXT message_types,
+	const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
+	void *user_data
+) {
+	UNUSED(message_types);
+	UNUSED(user_data);
+
+	switch(serverity) {
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: 		spdlog::info(callback_data->pMessage); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: 	spdlog::warn(callback_data->pMessage); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: 	spdlog::error(callback_data->pMessage); break;
+	default: break;
+	}
+
+	return VK_FALSE;
+}
+
 bool VulkanRenderer::create_vk_instance() {
 	vkb::InstanceBuilder instance_builder;
 	auto instance_builder_ret = instance_builder
 									.set_app_name("Epico")
 									.set_engine_name("Epico Engine")
+									.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
 									.require_api_version(1,0,0)
 									.request_validation_layers()
-									.use_default_debug_messenger()
+									.set_debug_callback(vk_debug_callback)
 									.build();
 
 	if(!instance_builder_ret) {
@@ -338,7 +389,6 @@ bool VulkanRenderer::create_pipeline_cache() {
 
 PipelinePair VulkanRenderer::build_triangle_pipeline() {
 	PipelinePair pair = {};
-
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
 
 	pipeline_constructor.pipeline_layout_info.setLayoutCount = 0;
@@ -356,10 +406,8 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 	scissor.offset = { 0, 0 };
 	scissor.extent = swapchain.extent;
 
-	/* begin simple triangle */
-
-	VkShaderModule triangle_vert = create_shader(fs::read_asset<char>("shaders/triangle.vert.spv", true));
-	VkShaderModule triangle_frag = create_shader(fs::read_asset<char>("shaders/triangle.frag.spv", true));
+	VkShaderModule triangle_vert = create_shader(fs::read_asset<uint32_t>("shaders/triangle.vert.spv", true));
+	VkShaderModule triangle_frag = create_shader(fs::read_asset<uint32_t>("shaders/triangle.frag.spv", true));
 
 	pipeline_constructor.input_info.vertexBindingDescriptionCount = 0;
 	pipeline_constructor.input_info.vertexAttributeDescriptionCount = 0;
@@ -388,7 +436,7 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	color_blend_attachment.blendEnable = VK_FALSE;
 
 	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
@@ -412,9 +460,102 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 	return pair;
 }
 
-bool VulkanRenderer::create_pipelines() {
+PipelinePair VulkanRenderer::build_vertex_pipeline() {
+	PipelinePair pair = {};
+	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
 
-	pipelines["triangle"] = { build_triangle_pipeline() };
+	pipeline_constructor.pipeline_layout_info.setLayoutCount = 0;
+	pipeline_constructor.pipeline_layout_info.pushConstantRangeCount = 0;
+
+	auto binding_description = EVertex::get_binding_description();
+	auto attribute_descriptions = EVertex::get_attribute_descriptions();
+
+	pipeline_constructor.input_info.vertexBindingDescriptionCount = 1;
+	pipeline_constructor.input_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
+
+	pipeline_constructor.input_info.pVertexBindingDescriptions = &binding_description;
+	pipeline_constructor.input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchain.extent.width;
+	viewport.height = (float)swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchain.extent;
+
+	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
+	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
+
+	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
+
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, vertex_vert);
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, vertex_frag);
+
+	pipeline_constructor.viewport_state.viewportCount = 1;
+	pipeline_constructor.viewport_state.pViewports = &viewport;
+	pipeline_constructor.viewport_state.scissorCount = 1;
+	pipeline_constructor.viewport_state.pScissors = &scissor;
+
+	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	pipeline_constructor.rasterizer.lineWidth = 1.0f;
+	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
+
+	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
+	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	color_blend_attachment.blendEnable = VK_FALSE;
+
+	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
+
+	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
+	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
+
+	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
+
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+
+	pipeline_constructor.build(&pair.pipeline, &pair.layout);
+
+	vkDestroyShaderModule(device, vertex_vert, nullptr);
+	vkDestroyShaderModule(device, vertex_frag, nullptr);
+
+	return pair;
+}
+
+PipelinePair VulkanRenderer::build_imgui_pipeline() {
+	PipelinePair pair = {};
+	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+
+	VkShaderModule ui_vert = create_shader(fs::read_asset<uint32_t>("shaders/ui.vert.spv", true));
+	VkShaderModule ui_frag = create_shader(fs::read_asset<uint32_t>("shaders/ui.frag.spv", true));
+
+	vkDestroyShaderModule(device, ui_vert, nullptr);
+	vkDestroyShaderModule(device, ui_frag, nullptr);
+
+	return pair;
+}
+
+bool VulkanRenderer::create_pipelines() {
+	pipelines["triangle"] 	= { build_triangle_pipeline() };
+	pipelines["vertex"] 	= { build_vertex_pipeline() };
+	pipelines["imgui"] 		= { build_imgui_pipeline() };
 
 	return true;
 }
@@ -546,8 +687,18 @@ bool VulkanRenderer::create_descriptor_pool() {
 	return true;
 }
 
-bool VulkanRenderer::setup_imgui() {
+bool VulkanRenderer::create_vma_allocator() {
+	VmaAllocatorCreateInfo allocator_info = {};
+    allocator_info.physicalDevice = device.physical_device;
+    allocator_info.device = device;
+    allocator_info.instance = instance;
 
+	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
+
+	return true;
+}
+
+bool VulkanRenderer::setup_imgui() {
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls

@@ -23,7 +23,7 @@ foreach(CONFIGURATION ${CMAKE_CONFIGURATION_TYPES})
 
 endforeach(CONFIGURATION)
 
-set(PROJECT epico)
+set(PROJECT Epico)
 project(${PROJECT})
 
 add_subdirectory(source)
