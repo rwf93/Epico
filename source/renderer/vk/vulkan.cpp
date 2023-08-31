@@ -100,6 +100,8 @@ bool VulkanRenderer::draw() {
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
+	ImGui::ShowDemoWindow();
+
 	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!\n");
 
 	ImGui::Render();
@@ -167,7 +169,6 @@ bool VulkanRenderer::draw() {
 
 	vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 
 	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
 
@@ -181,6 +182,7 @@ bool VulkanRenderer::draw() {
 	// draw triangle
 	//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
 	//vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 
 	vkCmdEndRenderPass(command_buffers[image_index]);
 
@@ -564,6 +566,21 @@ bool VulkanRenderer::create_pipelines() {
 	pipelines["vertex"] 	= { build_vertex_pipeline() };
 	pipelines["imgui"] 		= { build_imgui_pipeline() };
 
+	{
+		size_t size = 0;
+
+		VK_CHECK_BOOL(vkGetPipelineCacheData(device, pipeline_cache, &size, nullptr));
+
+		std::vector<char> pipeline_data(size);
+		VK_CHECK_BOOL(vkGetPipelineCacheData(device, pipeline_cache, &size, static_cast<void*>(pipeline_data.data())));
+
+		std::ofstream file("pipeline_cache_data.bin", std::ofstream::out | std::ofstream::binary);
+
+		std::copy(pipeline_data.cbegin(), pipeline_data.cend(), std::ostream_iterator<char>(file));
+
+		file.close();
+	}
+
 	return true;
 }
 
@@ -608,7 +625,7 @@ bool VulkanRenderer::create_command_pool() {
 
 	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
-	/*
+	/* unused code, was originally the demo where you'd record command buffers. Useless considering it doesn't allow for dynamic rendering...
 	// begin recording the command buffer
 	for(size_t i = 0; i < command_buffers.size(); i++) {
 		spdlog::debug("Recording to command buffer @ {}", i);

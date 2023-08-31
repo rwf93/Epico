@@ -21,10 +21,14 @@ std::vector<T> read_file(const std::filesystem::path &filename, bool binary) {
 }
 
 
+template<typename T>
+std::vector<T> read_local(const std::filesystem::path &filename, bool binary) {
+	return fs::read_file<T>(std::filesystem::current_path().append(filename.string()), binary);
+}
 
 template<typename T>
 std::vector<T> read_asset(const std::filesystem::path &filename, bool binary) {
-	return fs::read_file<T>(std::filesystem::current_path().append("assets/").append(filename.string()), binary);
+	return fs::read_local<T>(std::filesystem::path("assets/").append(filename.string()), binary);
 }
 
 }
