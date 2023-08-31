@@ -2,6 +2,8 @@
 
 #include <vk_mem_alloc.h>
 
+#include "primitives.h"
+
 namespace render {
 
 class VulkanRenderer {
@@ -22,14 +24,17 @@ private:
     bool create_queues();
     bool create_render_pass();
     bool create_pipeline_cache();
+    bool create_descriptor_layout();
     bool create_pipelines();
     bool create_framebuffers();
+    bool create_vma_allocator();
+    bool create_descriptor_pool();
+    bool create_uniform_buffers();
+    bool create_descriptor_sets();
     bool create_command_pool();
     bool create_sync_objects();
-    bool create_descriptor_pool();
-    bool create_vma_allocator();
 
-    bool setup_imgui();
+    bool create_imgui();
 
     bool rebuild_swapchain();
 private:
@@ -51,6 +56,27 @@ private:
 
     std::vector<VkFramebuffer> framebuffers;
 
+    VkDescriptorSetLayout descriptor_set_layout;
+
+    // funny pipelining
+    PipelinePair build_triangle_pipeline();
+    PipelinePair build_vertex_pipeline();
+    PipelinePair build_imgui_pipeline();
+
+    VkPipelineCache pipeline_cache;
+    std::map<std::string, PipelinePair> pipelines;
+
+    VmaAllocator allocator;
+    
+    struct UniformBufferAllocation {
+        EBuffer memory;
+        VmaAllocationInfo info;
+    };
+
+    VkDescriptorPool descriptor_pool;
+    std::vector<UniformBufferAllocation> uniform_buffers;
+    std::vector<VkDescriptorSet> descriptor_sets;
+
     VkCommandPool command_pool;
     std::vector<VkCommandBuffer> command_buffers;
 
@@ -62,54 +88,7 @@ private:
 
     size_t current_frame = 0;
 
-private: // oopsie my pipeline stalled >.<
-    PipelinePair build_triangle_pipeline();
-    PipelinePair build_vertex_pipeline();
-    PipelinePair build_imgui_pipeline();
-
-    VkPipelineCache pipeline_cache;
-    std::map<std::string, PipelinePair> pipelines;
-private:
-/*
-    struct {
-        VkBuffer buffer;
-        VmaAllocation allocation;
-    } VertexBuffer;
-
-    struct {
-        VkBuffer buffer;
-        VmaAllocation allocation;
-        uint32_t count;
-    } IndexBuffer;
-
-    struct {
-        glm::vec2 pos;
-        glm::vec3 color;
-
-        static VkVertexInputBindingDescription get_binding_description() {
-            VkVertexInputBindingDescription binding_description = {};
-
-            binding_description.binding = 0;
-            binding_description.stride = sizeof(Vertex);
-            binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-            return binding_description;
-        }
-
-        static std::array<VkVertexInputAttributeDescription, 2> get_attribute_descriptions() {
-            std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions = {};
-
-            attribute_descriptions[0].binding = 0;
-            attribute_descriptions[0].location = 0;
-            attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-            attribute_descriptions[0].offset = offsetof(Vertex, pos);
-
-            return attribute_descriptions;
-        }
-    } Vertex;
-*/
-    VmaAllocator allocator;
-    VkDescriptorPool descriptor_pool;
+    std::vector<std::function<void()>> deletion_queue;
 };
 
 }

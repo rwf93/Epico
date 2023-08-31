@@ -20,7 +20,6 @@ std::vector<T> read_file(const std::filesystem::path &filename, bool binary) {
 	return buffer;
 }
 
-
 template<typename T>
 std::vector<T> read_local(const std::filesystem::path &filename, bool binary) {
 	return fs::read_file<T>(std::filesystem::current_path().append(filename.string()), binary);

@@ -21,15 +21,11 @@ static EMesh triangle_mesh;
 VulkanRenderer::~VulkanRenderer() {
 	vkQueueWaitIdle(present_queue);
 
+	triangle_mesh.destroy(allocator);
+
 	ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
-
-	triangle_mesh.destroy(allocator);
-
-	vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
-
-	vmaDestroyAllocator(allocator);
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, finished_semaphores[i], nullptr);
@@ -37,18 +33,27 @@ VulkanRenderer::~VulkanRenderer() {
 		vkDestroyFence(device, in_flight_fences[i], nullptr);
 	}
 
+	// destroy descriptor sets
+
+	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vmaDestroyBuffer(allocator, uniform_buffers[i].memory.buffer, uniform_buffers[i].memory.allocation);
+	}
+
 	vkDestroyCommandPool(device, command_pool, nullptr);
+
+	vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+
+	vmaDestroyAllocator(allocator);
 
 	for(auto framebuffer: framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
-
-	//vkDestroyPipeline(device, triangle_pipeline, nullptr);
-	//vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
 
 	for(auto &map: pipelines) {
 		vkDestroyPipeline(device, map.second, nullptr);
 		vkDestroyPipelineLayout(device, map.second, nullptr);
 	}
+
+	vkDestroyDescriptorSetLayout(device, descriptor_set_layout, nullptr);
 
 	vkDestroyPipelineCache(device, pipeline_cache, nullptr);
 
@@ -70,14 +75,17 @@ bool VulkanRenderer::setup() {
 	if(!create_queues())			return false;
 	if(!create_render_pass())		return false;
 	if(!create_pipeline_cache())	return false;
-	if(!create_pipelines())			return false; // remove l8r
+	if(!create_descriptor_layout()) return false;
+	if(!create_pipelines())			return false;
 	if(!create_framebuffers())		return false;
+	if(!create_vma_allocator())		return false;
+	if(!create_descriptor_pool())	return false;
+	if(!create_uniform_buffers())	return false;
+	if(!create_descriptor_sets())	return false;
 	if(!create_command_pool())		return false;
 	if(!create_sync_objects())		return false;
-	if(!create_descriptor_pool())	return false;
-	if(!create_vma_allocator())		return false;
 
-	if(!setup_imgui())				return false;
+	if(!create_imgui())				return false;
 
 	triangle_mesh.verticies = {
  		{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
@@ -91,6 +99,7 @@ bool VulkanRenderer::setup() {
 	};
 
 	triangle_mesh.allocate(allocator);
+
 
 	return true;
 }
@@ -180,9 +189,9 @@ bool VulkanRenderer::draw() {
 			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
 
 			// draw triangle
-			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
-			vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
-			
+			//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
+			//vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
+
 			// draw imgui
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
@@ -398,12 +407,28 @@ bool VulkanRenderer::create_pipeline_cache() {
 	return true;
 }
 
+
+bool VulkanRenderer::create_descriptor_layout() {
+	VkDescriptorSetLayoutBinding ubo_layout_binding = {};
+
+	ubo_layout_binding.binding = 0;
+	ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	ubo_layout_binding.descriptorCount = 1;
+	ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo layout_info = {};
+	layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layout_info.bindingCount = 1;
+	layout_info.pBindings = &ubo_layout_binding;
+
+	VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &descriptor_set_layout));
+
+	return true;
+}
+
 PipelinePair VulkanRenderer::build_triangle_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
-
-	pipeline_constructor.pipeline_layout_info.setLayoutCount = 0;
-	pipeline_constructor.pipeline_layout_info.pushConstantRangeCount = 0;
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -474,6 +499,9 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 PipelinePair VulkanRenderer::build_vertex_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+
+	pipeline_constructor.pipeline_layout_info.setLayoutCount = 1;
+	pipeline_constructor.pipeline_layout_info.pSetLayouts = &descriptor_set_layout;
 
 	pipeline_constructor.pipeline_layout_info.setLayoutCount = 0;
 	pipeline_constructor.pipeline_layout_info.pushConstantRangeCount = 0;
@@ -608,6 +636,89 @@ bool VulkanRenderer::create_framebuffers() {
 	return true;
 }
 
+bool VulkanRenderer::create_vma_allocator() {
+	VmaAllocatorCreateInfo allocator_info = {};
+    allocator_info.physicalDevice = device.physical_device;
+    allocator_info.device = device;
+    allocator_info.instance = instance;
+
+	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
+
+	return true;
+}
+
+
+bool VulkanRenderer::create_descriptor_pool() {
+	VkDescriptorPoolSize pool_size = {};
+	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_size.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.poolSizeCount = 1;
+	pool_info.pPoolSizes = &pool_size;
+	pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+	VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
+
+	return true;
+}
+
+bool VulkanRenderer::create_uniform_buffers() {
+	uniform_buffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkBufferCreateInfo buffer_info = {};
+        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_info.size = sizeof(EUniformBufferObject);
+        buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+		VmaAllocationCreateInfo allocate_info = {};
+        allocate_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		allocate_info.preferredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		allocate_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+		VmaAllocationInfo alloc_info = {};
+
+		vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &uniform_buffers[i].memory.buffer, &uniform_buffers[i].memory.allocation, &uniform_buffers[i].info);
+	}
+
+	return true;
+}
+
+bool VulkanRenderer::create_descriptor_sets() {
+	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptor_set_layout);
+
+	VkDescriptorSetAllocateInfo descriptor_set_info = {};
+	descriptor_set_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptor_set_info.descriptorPool = descriptor_pool;
+	descriptor_set_info.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	descriptor_set_info.pSetLayouts = layouts.data();
+
+	descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
+	VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &descriptor_set_info, descriptor_sets.data()));
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkDescriptorBufferInfo buffer_info = {};
+		buffer_info.buffer = uniform_buffers[i].memory.buffer;
+		buffer_info.offset = 0;
+		buffer_info.range = sizeof(EUniformBufferObject);
+
+		VkWriteDescriptorSet descriptor_write = {};
+		descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptor_write.dstSet = descriptor_sets[i];
+		descriptor_write.dstBinding = 0;
+		descriptor_write.dstArrayElement = 0;
+		descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptor_write.descriptorCount = 1;
+		descriptor_write.pBufferInfo = &buffer_info;
+
+		vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, nullptr);
+	}
+
+	return true;
+}
+
 bool VulkanRenderer::create_command_pool() {
 	command_buffers.resize(framebuffers.size());
 
@@ -626,53 +737,6 @@ bool VulkanRenderer::create_command_pool() {
 	command_allocate_info.commandBufferCount = (uint32_t)command_buffers.size();
 
 	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
-
-	/* unused code, was originally the demo where you'd record command buffers. Useless considering it doesn't allow for dynamic rendering...
-	// begin recording the command buffer
-	for(size_t i = 0; i < command_buffers.size(); i++) {
-		spdlog::debug("Recording to command buffer @ {}", i);
-
-		VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
-		VkRenderPassBeginInfo render_pass_info = {};
-		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass = render_pass;
-		render_pass_info.framebuffer = framebuffers[i];
-		render_pass_info.renderArea.offset = { 0, 0 };
-		render_pass_info.renderArea.extent = swapchain.extent;
-		render_pass_info.clearValueCount = 1;
-		render_pass_info.pClearValues = &clearColor;
-
-		VkViewport viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)swapchain.extent.width;
-		viewport.height = (float)swapchain.extent.height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		VkRect2D scissor = {};
-		scissor.offset = { 0, 0 };
-		scissor.extent = swapchain.extent;
-
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-		VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[i], &begin_info));
-
-		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
-		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
-
-		vkCmdBeginRenderPass(command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, triangle_pipeline.pipeline);
-
-		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
-
-		vkCmdEndRenderPass(command_buffers[i]);
-
-		VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[i]));
-	}
-	*/
 
 	return true;
 }
@@ -697,34 +761,7 @@ bool VulkanRenderer::create_sync_objects() {
 	return true;
 }
 
-bool VulkanRenderer::create_descriptor_pool() {
-	VkDescriptorPoolSize pool_size = {};
-	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_size.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-	VkDescriptorPoolCreateInfo pool_info = {};
-	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	pool_info.poolSizeCount = 1;
-	pool_info.pPoolSizes = &pool_size;
-	pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-	VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
-
-	return true;
-}
-
-bool VulkanRenderer::create_vma_allocator() {
-	VmaAllocatorCreateInfo allocator_info = {};
-    allocator_info.physicalDevice = device.physical_device;
-    allocator_info.device = device;
-    allocator_info.instance = instance;
-
-	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
-
-	return true;
-}
-
-bool VulkanRenderer::setup_imgui() {
+bool VulkanRenderer::create_imgui() {
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
