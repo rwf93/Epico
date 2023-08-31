@@ -15,7 +15,15 @@ struct EBuffer {
     VmaAllocation allocation;
 
     operator VkBuffer() { return buffer; };
-    operator VmaAllocation() { return allocation; };
+};
+
+struct EImage {
+    VkImage image;
+    VkImageView view;
+    VmaAllocation allocation;
+
+    operator VkImage() { return image; };
+    operator VkImageView() { return view; };
 };
 
 struct EMesh {
@@ -28,6 +36,7 @@ struct EMesh {
     EBuffer vertex_buffer = {};
     EBuffer index_buffer = {};
 };
+// uniforms
 
 struct ECameraData {
     glm::mat4 model;

@@ -26,6 +26,8 @@ public:
 
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
+    VkPipelineDepthStencilStateCreateInfo depth_stencil;
+
     VkPipelineLayoutCreateInfo pipeline_layout_info;
     VkGraphicsPipelineCreateInfo pipeline_info;
 private:

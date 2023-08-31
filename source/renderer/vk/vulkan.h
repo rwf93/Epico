@@ -26,8 +26,9 @@ private:
     bool create_pipeline_cache();
     bool create_descriptor_layout();
     bool create_pipelines();
-    bool create_framebuffers();
     bool create_vma_allocator();
+    bool create_depth_image();
+    bool create_framebuffers();
     bool create_descriptor_pool();
     bool create_uniform_buffers();
     bool create_descriptor_sets();
@@ -37,6 +38,9 @@ private:
     bool create_imgui();
 
     bool rebuild_swapchain();
+
+    VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+    VkFormat find_depth_format();
 private:
     GameGlobals *game;
 
@@ -57,6 +61,7 @@ private:
     std::vector<VkFramebuffer> framebuffers;
 
     VkDescriptorSetLayout descriptor_set_layout;
+    VkDescriptorSetLayout descriptor_set_layout_dynamic;
 
     // funny pipelining
     PipelinePair build_triangle_pipeline();
@@ -68,6 +73,8 @@ private:
 
     VmaAllocator allocator;
 
+    EImage depth_image;
+
     struct UniformBufferAllocation {
         EBuffer memory;
         VmaAllocationInfo info;
@@ -76,7 +83,9 @@ private:
     VkDescriptorPool descriptor_pool;
     VkDescriptorPool imgui_descriptor_pool;
 
-    std::vector<UniformBufferAllocation> uniform_buffers;
+    const uint32_t MAX_OBJECTS = 10000;
+
+    std::vector<UniformBufferAllocation> camera_data_buffers;
     std::vector<VkDescriptorSet> descriptor_sets;
 
     VkCommandPool command_pool;

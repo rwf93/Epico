@@ -59,7 +59,7 @@ void EMesh::allocate(VmaAllocator allocator) {
         allocate_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
         vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &index_buffer.buffer, &index_buffer.allocation, &alloc_info);
-        memcpy(alloc_info.pMappedData, indicies.data(), indicies.size() * sizeof(indicies));
+        memcpy(alloc_info.pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
     }
 }
 

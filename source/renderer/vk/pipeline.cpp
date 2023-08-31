@@ -14,7 +14,8 @@ RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPa
     this->color_blending 		= {};
     this->dynamic_states 		= {};
     this->shader_stages 		= {};
-    this->pipeline_layout_info 	= {};
+    this->depth_stencil			= {};
+	this->pipeline_layout_info 	= {};
     this->pipeline_info 		= {};
 
 	// set sTypes for all types... actual bruh
@@ -24,6 +25,7 @@ RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPa
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
@@ -66,6 +68,7 @@ void RenderPipelineConstructor::build(VkPipeline *pipeline, VkPipelineLayout *pi
 	pipeline_info.pRasterizationState = &rasterizer;
 	pipeline_info.pMultisampleState = &multisampling;
 	pipeline_info.pColorBlendState = &color_blending;
+	pipeline_info.pDepthStencilState = &depth_stencil;
 	pipeline_info.pDynamicState = &dynamic_info;
 	pipeline_info.layout = *pipeline_layout;
 	pipeline_info.renderPass = pass;
