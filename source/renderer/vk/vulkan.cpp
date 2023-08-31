@@ -23,48 +23,11 @@ VulkanRenderer::~VulkanRenderer() {
 
 	triangle_mesh.destroy(allocator);
 
-	ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-	ImGui::DestroyContext();
-
-	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vkDestroySemaphore(device, finished_semaphores[i], nullptr);
-		vkDestroySemaphore(device, available_semaphores[i], nullptr);
-		vkDestroyFence(device, in_flight_fences[i], nullptr);
+	for(auto it = deletion_queue.rbegin(); it != deletion_queue.rend(); it++) {
+		(*it)();
 	}
+	deletion_queue.clear();
 
-	// destroy descriptor sets
-
-	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vmaDestroyBuffer(allocator, uniform_buffers[i].memory.buffer, uniform_buffers[i].memory.allocation);
-	}
-
-	vkDestroyCommandPool(device, command_pool, nullptr);
-
-	vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
-
-	vmaDestroyAllocator(allocator);
-
-	for(auto framebuffer: framebuffers)
-		vkDestroyFramebuffer(device, framebuffer, nullptr);
-
-	for(auto &map: pipelines) {
-		vkDestroyPipeline(device, map.second, nullptr);
-		vkDestroyPipelineLayout(device, map.second, nullptr);
-	}
-
-	vkDestroyDescriptorSetLayout(device, descriptor_set_layout, nullptr);
-
-	vkDestroyPipelineCache(device, pipeline_cache, nullptr);
-
-	vkDestroyRenderPass(device, render_pass, nullptr);
-
-	swapchain.destroy_image_views(swapchain_image_views);
-
-	vkb::destroy_swapchain(swapchain);
-	vkb::destroy_device(device);
-	vkb::destroy_surface(instance, surface);
-	vkb::destroy_instance(instance);
 }
 
 bool VulkanRenderer::setup() {
@@ -111,12 +74,14 @@ bool VulkanRenderer::draw() {
 
 	ImGui::ShowDemoWindow();
 
-	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!\n");
+	ImGuiIO& io = ImGui::GetIO();
+
+	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!");
+	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,14), ImColor(255,255,255), fmt::format("Rendering at {:.2f}ms ({:.0f} fps)", 1000 / io.Framerate, io.Framerate).c_str());
 
 	ImGui::Render();
 
 	VK_CHECK_BOOL(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
-	VK_CHECK_BOOL(vkResetFences(device, 1, &in_flight_fences[current_frame]));
 
 	uint32_t image_index = 0;
 	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
@@ -262,9 +227,8 @@ bool VulkanRenderer::create_vk_instance() {
 	auto instance_builder_ret = instance_builder
 									.set_app_name("Epico")
 									.set_engine_name("Epico Engine")
-									.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
 									.require_api_version(1,0,0)
-									.request_validation_layers()
+									//.request_validation_layers()
 									.set_debug_callback(vk_debug_callback)
 									.build();
 
@@ -275,6 +239,10 @@ bool VulkanRenderer::create_vk_instance() {
 
 	instance = instance_builder_ret.value();
 
+	deletion_queue.push_back([=]() {
+		vkb::destroy_instance(instance);
+	});
+
 	return true;
 }
 
@@ -283,6 +251,10 @@ bool VulkanRenderer::create_surface() {
 		spdlog::error("Failed to create SDL Surface {}", SDL_GetError());
 		return false;
 	}
+
+	deletion_queue.push_back([=]() {
+		vkb::destroy_surface(instance, surface);
+	});
 
 	return true;
 }
@@ -310,6 +282,10 @@ bool VulkanRenderer::create_device() {
 
 	spdlog::info("Found capable render device: {}", device.physical_device.name);
 
+	deletion_queue.push_back([=]() {
+		vkb::destroy_device(device);
+	});
+
 	return true;
 }
 
@@ -325,6 +301,11 @@ bool VulkanRenderer::create_swapchain() {
 	swapchain = swapchain_builder_ret.value();
 	swapchain_image_views = swapchain.get_image_views().value();
 	swapchain_images = swapchain.get_images().value();
+
+	deletion_queue.push_back([=]() {
+		swapchain.destroy_image_views(swapchain_image_views);
+		vkb::destroy_swapchain(swapchain);
+	});
 
 	return true;
 }
@@ -395,6 +376,10 @@ bool VulkanRenderer::create_render_pass() {
 
 	VK_CHECK_BOOL(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
 
+	deletion_queue.push_back([=]() {
+		vkDestroyRenderPass(device, render_pass, nullptr);
+	});
+
 	return true;
 }
 
@@ -403,6 +388,10 @@ bool VulkanRenderer::create_pipeline_cache() {
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
 	VK_CHECK_BOOL(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
+
+	deletion_queue.push_back([=]() {
+		vkDestroyPipelineCache(device, pipeline_cache, nullptr);
+	});
 
 	return true;
 }
@@ -422,6 +411,10 @@ bool VulkanRenderer::create_descriptor_layout() {
 	layout_info.pBindings = &ubo_layout_binding;
 
 	VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &descriptor_set_layout));
+
+	deletion_queue.push_back([=]() {
+		vkDestroyDescriptorSetLayout(device, descriptor_set_layout, nullptr);
+	});
 
 	return true;
 }
@@ -500,8 +493,8 @@ PipelinePair VulkanRenderer::build_vertex_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
 
-	pipeline_constructor.pipeline_layout_info.setLayoutCount = 1;
-	pipeline_constructor.pipeline_layout_info.pSetLayouts = &descriptor_set_layout;
+	//pipeline_constructor.pipeline_layout_info.setLayoutCount = 1;
+	//pipeline_constructor.pipeline_layout_info.pSetLayouts = &descriptor_set_layout;
 
 	pipeline_constructor.pipeline_layout_info.setLayoutCount = 0;
 	pipeline_constructor.pipeline_layout_info.pushConstantRangeCount = 0;
@@ -611,6 +604,13 @@ bool VulkanRenderer::create_pipelines() {
 		file.close();
 	}
 
+	deletion_queue.push_back([=] {
+		for(auto &map: pipelines) {
+			vkDestroyPipeline(device, map.second, nullptr);
+			vkDestroyPipelineLayout(device, map.second, nullptr);
+		}
+	});
+
 	return true;
 }
 
@@ -633,6 +633,11 @@ bool VulkanRenderer::create_framebuffers() {
 		spdlog::debug("New Framebuffer @ {}", (void*)framebuffers[i]);
 	}
 
+	deletion_queue.push_back([=]() {
+		for(auto framebuffer: framebuffers)
+			vkDestroyFramebuffer(device, framebuffer, nullptr);
+	});
+
 	return true;
 }
 
@@ -643,6 +648,10 @@ bool VulkanRenderer::create_vma_allocator() {
     allocator_info.instance = instance;
 
 	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
+
+	deletion_queue.push_back([=]() {
+		vmaDestroyAllocator(allocator);
+	});
 
 	return true;
 }
@@ -660,6 +669,10 @@ bool VulkanRenderer::create_descriptor_pool() {
 	pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
 	VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
+
+	deletion_queue.push_back([=]() {
+		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+	});
 
 	return true;
 }
@@ -683,10 +696,16 @@ bool VulkanRenderer::create_uniform_buffers() {
 		vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &uniform_buffers[i].memory.buffer, &uniform_buffers[i].memory.allocation, &uniform_buffers[i].info);
 	}
 
+	deletion_queue.push_back([=]() {
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+			vmaDestroyBuffer(allocator, uniform_buffers[i].memory.buffer, uniform_buffers[i].memory.allocation);
+	});
+
 	return true;
 }
 
 bool VulkanRenderer::create_descriptor_sets() {
+
 	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptor_set_layout);
 
 	VkDescriptorSetAllocateInfo descriptor_set_info = {};
@@ -696,7 +715,7 @@ bool VulkanRenderer::create_descriptor_sets() {
 	descriptor_set_info.pSetLayouts = layouts.data();
 
 	descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-	VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &descriptor_set_info, descriptor_sets.data()));
+	//VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &descriptor_set_info, descriptor_sets.data()));
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo buffer_info = {};
@@ -713,7 +732,7 @@ bool VulkanRenderer::create_descriptor_sets() {
 		descriptor_write.descriptorCount = 1;
 		descriptor_write.pBufferInfo = &buffer_info;
 
-		vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, nullptr);
+		//vkUpdateDescriptorSets(device, 1, &descriptor_write, 0, nullptr);
 	}
 
 	return true;
@@ -738,6 +757,10 @@ bool VulkanRenderer::create_command_pool() {
 
 	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
+	deletion_queue.push_back([=]() {
+		vkDestroyCommandPool(device, command_pool, nullptr);
+	});
+
 	return true;
 }
 bool VulkanRenderer::create_sync_objects() {
@@ -757,6 +780,14 @@ bool VulkanRenderer::create_sync_objects() {
 		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]));
 		VK_CHECK_BOOL(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
 	}
+
+	deletion_queue.push_back([=]() {
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vkDestroySemaphore(device, finished_semaphores[i], nullptr);
+			vkDestroySemaphore(device, available_semaphores[i], nullptr);
+			vkDestroyFence(device, in_flight_fences[i], nullptr);
+		}
+	});
 
 	return true;
 }
@@ -811,15 +842,27 @@ bool VulkanRenderer::create_imgui() {
 
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 
+	deletion_queue.push_back([=]() {
+		ImGui_ImplVulkan_Shutdown();
+    	ImGui_ImplSDL2_Shutdown();
+		ImGui::DestroyContext();
+	});
+
 	return true;
 }
 
 bool VulkanRenderer::rebuild_swapchain() {
 	spdlog::debug("Rebuilding swapchain");
 
+	int width = 0, height = 0;
+	SDL_GetWindowSize(game->window, &width, &height);
+
+
+	spdlog::info("{}, {}", width, height);
+
 	vkDeviceWaitIdle(device);
 
-	vkDestroySwapchainKHR(device, swapchain, nullptr);
+	vkb::destroy_swapchain(swapchain);
 
 	vkDestroyCommandPool(device, command_pool, nullptr);
 
@@ -831,6 +874,10 @@ bool VulkanRenderer::rebuild_swapchain() {
 	if(!create_swapchain()) 		return false;
 	if(!create_framebuffers()) 		return false;
 	if(!create_command_pool()) 		return false;
+
+	// HACK: above create commands push a deleter onto the queue, we need to pop them so they don't double free
+	for(size_t i = 0; i <= 2; i++)
+		deletion_queue.pop_back();
 
 	return true;
 }

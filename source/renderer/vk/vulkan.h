@@ -67,7 +67,7 @@ private:
     std::map<std::string, PipelinePair> pipelines;
 
     VmaAllocator allocator;
-    
+
     struct UniformBufferAllocation {
         EBuffer memory;
         VmaAllocationInfo info;
@@ -88,7 +88,7 @@ private:
 
     size_t current_frame = 0;
 
-    std::vector<std::function<void()>> deletion_queue;
+    std::deque<std::function<void()>> deletion_queue;
 };
 
 }
