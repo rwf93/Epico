@@ -25,6 +25,8 @@ int main(int argc, char *args[]) {
 	if(!renderer.setup()) return 0;
 
 	static bool quit = false;
+	game.quit = &quit; // make quitting accessable anywhere.
+
 	while(!quit) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {

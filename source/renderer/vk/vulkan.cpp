@@ -163,29 +163,31 @@ bool VulkanRenderer::draw() {
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
+	{
+		vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
+		vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
 
-	vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
-	vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
+		vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+		{
+			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
 
-	vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+			VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
+			VkDeviceSize offsets[] = { 0 };
 
+			// draw vertex buffer
+			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT16);
+			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
 
-	vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
-
-	VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
-	VkDeviceSize offsets[] = { 0 };
-
-	vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
-	vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT16);
-	vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
-
-	// draw triangle
-	//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
-	//vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
-
-	vkCmdEndRenderPass(command_buffers[image_index]);
-
+			// draw triangle
+			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
+			vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
+			
+			// draw imgui
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
+		}
+		vkCmdEndRenderPass(command_buffers[image_index]);
+	}
 	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[image_index]));
 	/* End recording our command buffer, intended on sending it to the GPU */
 
