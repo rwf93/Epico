@@ -15,6 +15,8 @@
 
 #include <magic_enum.hpp>
 
+#include <tiny_obj_loader.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 

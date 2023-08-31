@@ -51,7 +51,7 @@ void EMesh::allocate(VmaAllocator allocator) {
     {
         VkBufferCreateInfo buffer_info = {};
         buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_info.size = indicies.size() * sizeof(uint16_t);
+        buffer_info.size = indicies.size() * sizeof(uint32_t);
         buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
         VmaAllocationCreateInfo allocate_info = {};

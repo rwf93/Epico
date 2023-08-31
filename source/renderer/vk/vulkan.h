@@ -74,6 +74,8 @@ private:
     };
 
     VkDescriptorPool descriptor_pool;
+    VkDescriptorPool imgui_descriptor_pool;
+
     std::vector<UniformBufferAllocation> uniform_buffers;
     std::vector<VkDescriptorSet> descriptor_sets;
 

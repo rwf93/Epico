@@ -23,13 +23,13 @@ struct EMesh {
     void destroy(VmaAllocator allocator);
 
     std::vector<EVertex> verticies = {};
-    std::vector<uint16_t> indicies = {};
+    std::vector<uint32_t> indicies = {};
 
     EBuffer vertex_buffer = {};
     EBuffer index_buffer = {};
 };
 
-struct EUniformBufferObject {
+struct ECameraData {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 projection;

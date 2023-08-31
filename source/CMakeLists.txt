@@ -38,8 +38,8 @@ target_link_libraries(${PROJECT} PRIVATE unofficial::shaderc::shaderc)
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
 
-find_package(assimp CONFIG REQUIRED)
-target_link_libraries(${PROJECT} PRIVATE assimp::assimp)
+find_package(tinyobjloader CONFIG REQUIRED)
+target_link_libraries(${PROJECT} PRIVATE tinyobjloader::tinyobjloader)
 
 find_package(imgui CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE imgui::imgui)

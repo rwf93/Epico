@@ -10,7 +10,7 @@
         "vulkan-memory-allocator",
         "shaderc",
         "glm",
-        "assimp",
+        "tinyobjloader",
         {
             "name": "imgui",
             "features": ["sdl2-binding", "vulkan-binding"]
