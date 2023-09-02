@@ -59,7 +59,7 @@ bool VulkanRenderer::setup() {
 	std::string warn;
 	std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/dog.obj", nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/sponza.obj", nullptr);
 
 	for(const auto& shape: shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -87,17 +87,6 @@ bool VulkanRenderer::setup() {
 	return true;
 }
 
-glm::mat4 VulkanRenderer::calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
-	glm::quat quaternion(rotation);
-
-	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
-	glm::mat4 rotation_matrix = glm::toMat4(quaternion);
-	glm::mat4 scale_matrix = glm::scale(glm::mat4(1.0f), scale);
-
-
-	return translation_matrix * rotation_matrix * scale_matrix;
-}
-
 bool VulkanRenderer::draw() {
 	ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame();
@@ -110,10 +99,13 @@ bool VulkanRenderer::draw() {
 	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!");
 	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,14), ImColor(255,255,255), fmt::format("Rendering at {:.2f}ms ({:.0f} fps)", 1000 / io.Framerate, io.Framerate).c_str());
 
+	static float position_floats[3] = {};
 	static float rotation_floats[3] = {};
+
 
 	ImGui::Begin("Balls");
 
+	ImGui::SliderFloat3("Position", position_floats, -1024, 1024);
 	ImGui::SliderFloat3("Rotation", rotation_floats, 0, 360);
 
 	ImGui::End();
@@ -147,6 +139,7 @@ bool VulkanRenderer::draw() {
 	submit_info.pSignalSemaphores = signal_semaphores;
 
 	/* Begin recording our command buffer, intended on sending it to the GPU */
+
 	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[image_index], 0));
 
 	VkCommandBufferBeginInfo begin_info = {};
@@ -198,28 +191,73 @@ bool VulkanRenderer::draw() {
 
 			UNUSED(time);
 
+			// REMINDER: -3.0f is old...
 
-			ubo.model = glm::mat4(1.0f);
+			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
+			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
+			static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+			static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
 
-			glm::vec3 camera_translation(0, 0, -3.0f);
-			glm::vec3 camera_rotation(0, 0, 0);
+			int mx = 0, my = 0;
 
-			glm::quat camera_quaternion(camera_rotation);
+			SDL_PumpEvents();
+			const Uint32 mouse_state =SDL_GetMouseState(&mx, &my);
+			const Uint8* key_state = SDL_GetKeyboardState(NULL);
 
-			glm::mat4 camera_translation_matrix = glm::translate(glm::mat4(1.0f), camera_translation);
-			glm::mat4 camera_rotation_matrix = glm::toMat4(camera_quaternion);
+			static float pitch = 0.0f;
+			static float yaw = -90.0f;
+			const float sensitivity = 0.1f;
 
-        	ubo.view = camera_translation_matrix * camera_rotation_matrix;
+			static float last_mx = 400.0f, last_my = 300.0f;
 
-        	ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.1f, 10.0f);
+			float offset_mx = (float)mx - last_mx;
+			float offset_my = last_my - (float)my;
+
+			last_mx = (float)mx;
+			last_my = (float)my;
+
+			if(mouse_state & SDL_BUTTON(3)) {
+				offset_mx *= sensitivity;
+				offset_my *= sensitivity;
+
+				yaw += offset_mx;
+				pitch += offset_my;
+			}
+
+			static glm::vec3 camera_direction;
+
+			camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+			camera_direction.y = sin(glm::radians(pitch));
+			camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+			camera_front = glm::normalize(camera_direction);
+			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
+
+			static const float camera_speed = 0.005f;
+
+			if(key_state[SDL_SCANCODE_W])
+				camera_position += camera_front * camera_speed;
+
+			if(key_state[SDL_SCANCODE_S])
+				camera_position -= camera_front * camera_speed;
+
+			if(key_state[SDL_SCANCODE_D])
+				camera_position += camera_right * camera_speed;
+
+			if(key_state[SDL_SCANCODE_A])
+				camera_position -= camera_right * camera_speed;
+
+			ubo.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+
+        	ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.1f, 100.0f);
         	ubo.projection[1][1] *= -1;
 
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(ECameraData));
 
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, time * glm::radians(90.0f), 0), glm::vec3(1, 1, 1));
-			ssbo[1].model = calculate_object_matrix(glm::vec3(0, sin(time), 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0.0f, 0), glm::vec3(0.01, 0.01, 0.01));
+			//ssbo[1].model = calculate_object_matrix(glm::vec3(0, sin(time), 0), glm::vec3(0, 0, 0), glm::vec3(0.2, 0.2, 0.2));
 
 			// draw vertex buffer
 			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
@@ -230,15 +268,8 @@ bool VulkanRenderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
 			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
+			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 1, 0, 1);
 
-			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 1);
-
-
-			// draw triangle
-			//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
-			//vkCmdDraw(command_buffers[image_index], 3, 1, 0, 0);
-
-			// draw imgui
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
 		vkCmdEndRenderPass(command_buffers[image_index]);
@@ -352,8 +383,12 @@ bool VulkanRenderer::create_device() {
 		return false;
 	}
 
+	VkPhysicalDeviceShaderDrawParametersFeatures draw_features = {};
+	draw_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+	draw_features.shaderDrawParameters = VK_TRUE;
+
 	vkb::DeviceBuilder device_builder { device_selector_ret.value() };
-	auto device_builder_ret = device_builder.build();
+	auto device_builder_ret = device_builder.add_pNext(&draw_features).build();
 
 	if(!device_builder_ret) {
 		spdlog::error("Failed to create Vulkan Device {}", device_builder_ret.error().message());
@@ -541,181 +576,6 @@ bool VulkanRenderer::create_descriptor_layout() {
 	});
 
 	return true;
-}
-
-PipelinePair VulkanRenderer::build_triangle_pipeline() {
-	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
-
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.extent.width;
-	viewport.height = (float)swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.extent;
-
-	VkShaderModule triangle_vert = create_shader(fs::read_asset<uint32_t>("shaders/triangle.vert.spv", true));
-	VkShaderModule triangle_frag = create_shader(fs::read_asset<uint32_t>("shaders/triangle.frag.spv", true));
-
-	pipeline_constructor.input_info.vertexBindingDescriptionCount = 0;
-	pipeline_constructor.input_info.vertexAttributeDescriptionCount = 0;
-
-	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
-
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, triangle_vert);
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, triangle_frag);
-
-	pipeline_constructor.viewport_state.viewportCount = 1;
-	pipeline_constructor.viewport_state.pViewports = &viewport;
-	pipeline_constructor.viewport_state.scissorCount = 1;
-	pipeline_constructor.viewport_state.pScissors = &scissor;
-
-	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	pipeline_constructor.rasterizer.lineWidth = 1.0f;
-	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.depthBiasConstantFactor = 0.0f;
-	pipeline_constructor.rasterizer.depthBiasSlopeFactor = 0.0f;
-
-	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
-	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	color_blend_attachment.blendEnable = VK_FALSE;
-
-	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
-
-	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
-	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
-
-	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
-
-	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
-
-	pipeline_constructor.build(&pair.pipeline, &pair.layout);
-
-	vkDestroyShaderModule(device, triangle_vert, nullptr);
-	vkDestroyShaderModule(device, triangle_frag, nullptr);
-
-	return pair;
-}
-
-PipelinePair VulkanRenderer::build_vertex_pipeline() {
-	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
-
-	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
-		global_descriptor_layout,
-		object_descriptor_layout
-	};
-
-	pipeline_constructor.pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
-	pipeline_constructor.pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
-
-	auto binding_description = EVertex::get_binding_description();
-	auto attribute_descriptions = EVertex::get_attribute_descriptions();
-
-	pipeline_constructor.input_info.vertexBindingDescriptionCount = 1;
-	pipeline_constructor.input_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
-
-	pipeline_constructor.input_info.pVertexBindingDescriptions = &binding_description;
-	pipeline_constructor.input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
-
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.extent.width;
-	viewport.height = (float)swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.extent;
-
-	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
-	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
-
-	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
-
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, vertex_vert);
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, vertex_frag);
-
-	pipeline_constructor.viewport_state.viewportCount = 1;
-	pipeline_constructor.viewport_state.pViewports = &viewport;
-	pipeline_constructor.viewport_state.scissorCount = 1;
-	pipeline_constructor.viewport_state.pScissors = &scissor;
-
-	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	pipeline_constructor.rasterizer.lineWidth = 1.0f;
-	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
-
-	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
-	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	color_blend_attachment.blendEnable = VK_FALSE;
-
-	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
-
-	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
-	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
-
-	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
-
-	pipeline_constructor.depth_stencil.depthTestEnable = VK_TRUE;
-	pipeline_constructor.depth_stencil.depthWriteEnable = VK_TRUE;
-	pipeline_constructor.depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
-	pipeline_constructor.depth_stencil.depthBoundsTestEnable = VK_FALSE;
-	pipeline_constructor.depth_stencil.stencilTestEnable = VK_FALSE;
-
-	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
-
-	pipeline_constructor.build(&pair.pipeline, &pair.layout);
-
-	vkDestroyShaderModule(device, vertex_vert, nullptr);
-	vkDestroyShaderModule(device, vertex_frag, nullptr);
-
-	return pair;
-}
-
-PipelinePair VulkanRenderer::build_imgui_pipeline() {
-	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
-
-	VkShaderModule ui_vert = create_shader(fs::read_asset<uint32_t>("shaders/ui.vert.spv", true));
-	VkShaderModule ui_frag = create_shader(fs::read_asset<uint32_t>("shaders/ui.frag.spv", true));
-
-	vkDestroyShaderModule(device, ui_vert, nullptr);
-	vkDestroyShaderModule(device, ui_frag, nullptr);
-
-	return pair;
 }
 
 bool VulkanRenderer::create_pipelines() {
@@ -934,45 +794,40 @@ bool VulkanRenderer::create_descriptor_sets() {
 	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		std::vector<VkWriteDescriptorSet> descriptor_writes = {};
 		// write global sets
-		{
-			VkDescriptorBufferInfo buffer_info = {};
-			buffer_info.buffer = camera_data_buffers[i].memory.buffer;
-			buffer_info.offset = 0;
-			buffer_info.range = sizeof(ECameraData);
+		VkDescriptorBufferInfo buffer_info = {};
+		buffer_info.buffer = camera_data_buffers[i].memory.buffer;
+		buffer_info.offset = 0;
+		buffer_info.range = sizeof(ECameraData);
 
-			VkWriteDescriptorSet camera_descriptor_write = {};
-			camera_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			camera_descriptor_write.dstSet = global_descriptor_sets[i];
-			camera_descriptor_write.dstBinding = 0;
-			camera_descriptor_write.dstArrayElement = 0;
-			camera_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			camera_descriptor_write.descriptorCount = 1;
-			camera_descriptor_write.pBufferInfo = &buffer_info;
+		VkWriteDescriptorSet camera_descriptor_write = {};
+		camera_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		camera_descriptor_write.dstSet = global_descriptor_sets[i];
+		camera_descriptor_write.dstBinding = 0;
+		camera_descriptor_write.dstArrayElement = 0;
+		camera_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		camera_descriptor_write.descriptorCount = 1;
+		camera_descriptor_write.pBufferInfo = &buffer_info;
 
-			descriptor_writes.push_back(camera_descriptor_write);
-		}
+
 		// write object sets
-		{
-			VkDescriptorBufferInfo buffer_info = {};
-			buffer_info.buffer = object_data_buffers[i].memory.buffer;
-			buffer_info.offset = 0;
-			buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
+		VkDescriptorBufferInfo object_buffer_info = {};
+		object_buffer_info.buffer = object_data_buffers[i].memory.buffer;
+		object_buffer_info.offset = 0;
+		object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
 
-			VkWriteDescriptorSet object_descriptor_write = {};
-			object_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			object_descriptor_write.dstSet = object_descriptor_sets[i];
-			object_descriptor_write.dstBinding = 0;
-			object_descriptor_write.dstArrayElement = 0;
-			object_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			object_descriptor_write.descriptorCount = 1;
-			object_descriptor_write.pBufferInfo = &buffer_info;
+		VkWriteDescriptorSet object_descriptor_write = {};
+		object_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		object_descriptor_write.dstSet = object_descriptor_sets[i];
+		object_descriptor_write.dstBinding = 0;
+		object_descriptor_write.dstArrayElement = 0;
+		object_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		object_descriptor_write.descriptorCount = 1;
+		object_descriptor_write.pBufferInfo = &object_buffer_info;
 
-			descriptor_writes.push_back(object_descriptor_write);
-		}
+		VkWriteDescriptorSet descriptor_writes[] = { camera_descriptor_write, object_descriptor_write };
 
-		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptor_writes.size()), descriptor_writes.data(), 0, nullptr);
+		vkUpdateDescriptorSets(device, 2, descriptor_writes, 0, nullptr);
 	}
 
 	return true;
@@ -1049,24 +904,9 @@ bool VulkanRenderer::create_imgui() {
 
 	ImGui_ImplVulkan_Init(&init_info, render_pass);
 
-	/* Upload IMGUI fonts and textures to the GPU */
-	VK_CHECK_BOOL(vkResetCommandPool(device, command_pool, 0));
-
-	VkCommandBufferBeginInfo begin_info = {};
-	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
-
-	ImGui_ImplVulkan_CreateFontsTexture(command_buffers[current_frame]);
-
-	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[current_frame]));
-
-	VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buffers[current_frame];
-
-	VK_CHECK_BOOL(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+	submit_command([=](VkCommandBuffer command) {
+		ImGui_ImplVulkan_CreateFontsTexture(command);
+	});
 
 	vkDeviceWaitIdle(device);
 
@@ -1130,4 +970,211 @@ VkFormat VulkanRenderer::find_depth_format() {
 	return find_supported_format({
 		VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT
 	}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+glm::mat4 VulkanRenderer::calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+	glm::quat quaternion(rotation);
+
+	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
+	glm::mat4 rotation_matrix = glm::toMat4(quaternion);
+	glm::mat4 scale_matrix = glm::scale(glm::mat4(1.0f), scale);
+
+
+	return translation_matrix * rotation_matrix * scale_matrix;
+}
+
+void VulkanRenderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {
+	VK_CHECK_VOID(vkResetCommandBuffer(command_buffers[current_frame], 0));
+
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	VK_CHECK_VOID(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
+
+	function(command_buffers[current_frame]);
+
+	VK_CHECK_VOID(vkEndCommandBuffer(command_buffers[current_frame]));
+
+	VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffers[current_frame];
+
+	VK_CHECK_VOID(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+}
+
+
+PipelinePair VulkanRenderer::build_triangle_pipeline() {
+	PipelinePair pair = {};
+	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchain.extent.width;
+	viewport.height = (float)swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchain.extent;
+
+	VkShaderModule triangle_vert = create_shader(fs::read_asset<uint32_t>("shaders/triangle.vert.spv", true));
+	VkShaderModule triangle_frag = create_shader(fs::read_asset<uint32_t>("shaders/triangle.frag.spv", true));
+
+	pipeline_constructor.input_info.vertexBindingDescriptionCount = 0;
+	pipeline_constructor.input_info.vertexAttributeDescriptionCount = 0;
+
+	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
+
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, triangle_vert);
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, triangle_frag);
+
+	pipeline_constructor.viewport_state.viewportCount = 1;
+	pipeline_constructor.viewport_state.pViewports = &viewport;
+	pipeline_constructor.viewport_state.scissorCount = 1;
+	pipeline_constructor.viewport_state.pScissors = &scissor;
+
+	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	pipeline_constructor.rasterizer.lineWidth = 1.0f;
+	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.depthBiasConstantFactor = 0.0f;
+	pipeline_constructor.rasterizer.depthBiasSlopeFactor = 0.0f;
+
+	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
+	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	color_blend_attachment.blendEnable = VK_FALSE;
+
+	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
+
+	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
+	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
+
+	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
+
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+
+	pipeline_constructor.build(&pair.pipeline, &pair.layout);
+
+	vkDestroyShaderModule(device, triangle_vert, nullptr);
+	vkDestroyShaderModule(device, triangle_frag, nullptr);
+
+	return pair;
+}
+
+PipelinePair VulkanRenderer::build_vertex_pipeline() {
+	PipelinePair pair = {};
+	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+
+	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
+		global_descriptor_layout,
+		object_descriptor_layout
+	};
+
+	pipeline_constructor.pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
+	pipeline_constructor.pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
+
+	auto binding_description = EVertex::get_binding_description();
+	auto attribute_descriptions = EVertex::get_attribute_descriptions();
+
+	pipeline_constructor.input_info.vertexBindingDescriptionCount = 1;
+	pipeline_constructor.input_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
+
+	pipeline_constructor.input_info.pVertexBindingDescriptions = &binding_description;
+	pipeline_constructor.input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)swapchain.extent.width;
+	viewport.height = (float)swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = swapchain.extent;
+
+	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
+	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
+
+	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
+
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, vertex_vert);
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, vertex_frag);
+
+	pipeline_constructor.viewport_state.viewportCount = 1;
+	pipeline_constructor.viewport_state.pViewports = &viewport;
+	pipeline_constructor.viewport_state.scissorCount = 1;
+	pipeline_constructor.viewport_state.pScissors = &scissor;
+
+	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	pipeline_constructor.rasterizer.lineWidth = 1.0f;
+	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
+
+	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
+	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	color_blend_attachment.blendEnable = VK_FALSE;
+
+	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
+
+	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
+	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
+
+	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
+	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
+
+	pipeline_constructor.depth_stencil.depthTestEnable = VK_TRUE;
+	pipeline_constructor.depth_stencil.depthWriteEnable = VK_TRUE;
+	pipeline_constructor.depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
+	pipeline_constructor.depth_stencil.depthBoundsTestEnable = VK_FALSE;
+	pipeline_constructor.depth_stencil.stencilTestEnable = VK_FALSE;
+
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
+
+	pipeline_constructor.build(&pair.pipeline, &pair.layout);
+
+	vkDestroyShaderModule(device, vertex_vert, nullptr);
+	vkDestroyShaderModule(device, vertex_frag, nullptr);
+
+	return pair;
+}
+
+PipelinePair VulkanRenderer::build_imgui_pipeline() {
+	PipelinePair pair = {};
+	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+
+	VkShaderModule ui_vert = create_shader(fs::read_asset<uint32_t>("shaders/ui.vert.spv", true));
+	VkShaderModule ui_frag = create_shader(fs::read_asset<uint32_t>("shaders/ui.frag.spv", true));
+
+	vkDestroyShaderModule(device, ui_vert, nullptr);
+	vkDestroyShaderModule(device, ui_frag, nullptr);
+
+	return pair;
 }

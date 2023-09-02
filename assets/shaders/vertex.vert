@@ -1,7 +1,6 @@
 #version 460
 
 layout(binding = 0) uniform ECameraData {
-    mat4 model;
     mat4 view;
     mat4 proj;
 } camera;
@@ -20,7 +19,7 @@ layout(location = 1) in vec3 in_color;
 layout(location = 0) out vec3 out_color;
 
 void main() {
-    mat4 model_matrix = object_buffer.objects[gl_InstanceIndex].model;
+    mat4 model_matrix = object_buffer.objects[gl_BaseInstance].model;
 
     gl_Position = camera.proj * camera.view * model_matrix * vec4(in_position, 1.0);
     out_color = in_color;

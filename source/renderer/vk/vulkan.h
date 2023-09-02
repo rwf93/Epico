@@ -14,8 +14,6 @@ public:
     bool setup();
     bool draw();
 
-    VkShaderModule create_shader(const std::vector<uint32_t> &code);
-
 private:
     bool create_vk_instance();
     bool create_surface();
@@ -43,6 +41,15 @@ private:
     VkFormat find_depth_format();
 
     glm::mat4 calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
+
+    void submit_command(std::function<void(VkCommandBuffer command)> &&function);
+
+    VkShaderModule create_shader(const std::vector<uint32_t> &code);
+
+    PipelinePair build_triangle_pipeline();
+    PipelinePair build_vertex_pipeline();
+    PipelinePair build_imgui_pipeline();
+
 private:
     GameGlobals *game;
 
@@ -64,11 +71,6 @@ private:
 
     VkDescriptorSetLayout global_descriptor_layout;
     VkDescriptorSetLayout object_descriptor_layout;
-
-    // funny pipelining
-    PipelinePair build_triangle_pipeline();
-    PipelinePair build_vertex_pipeline();
-    PipelinePair build_imgui_pipeline();
 
     VkPipelineCache pipeline_cache;
     std::map<std::string, PipelinePair> pipelines;

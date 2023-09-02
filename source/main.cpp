@@ -30,8 +30,10 @@ int main(int argc, char *args[]) {
 	while(!quit) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {
-			if(e.type == SDL_QUIT)
-				quit = true;
+			switch(e.type) {
+				case SDL_QUIT: quit = true; break;
+				default: break;
+			}
 
 			ImGui_ImplSDL2_ProcessEvent(&e);
 		}
