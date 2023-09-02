@@ -33,9 +33,6 @@ target_link_libraries(${PROJECT} PRIVATE vk-bootstrap::vk-bootstrap)
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
 
-find_package(unofficial-shaderc CONFIG REQUIRED)
-target_link_libraries(${PROJECT} PRIVATE unofficial::shaderc::shaderc)
-
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
 

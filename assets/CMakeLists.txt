@@ -4,6 +4,8 @@ file(GLOB_RECURSE SHADER_FILES
     shaders/*.glsl
 )
 
+message(${Vulkan_GLSLC_EXECUTABLE})
+
 foreach(SHADER ${SHADER_FILES})
     get_filename_component(FILENAME ${SHADER} NAME)
 

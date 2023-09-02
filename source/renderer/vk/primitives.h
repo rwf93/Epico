@@ -44,4 +44,8 @@ struct ECameraData {
     glm::mat4 projection;
 };
 
+struct EObjectData {
+    glm::mat4 model;
+};
+
 }

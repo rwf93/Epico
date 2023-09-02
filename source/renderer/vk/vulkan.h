@@ -41,6 +41,8 @@ private:
 
     VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     VkFormat find_depth_format();
+
+    glm::mat4 calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
 private:
     GameGlobals *game;
 
@@ -60,8 +62,8 @@ private:
 
     std::vector<VkFramebuffer> framebuffers;
 
-    VkDescriptorSetLayout descriptor_set_layout;
-    VkDescriptorSetLayout descriptor_set_layout_dynamic;
+    VkDescriptorSetLayout global_descriptor_layout;
+    VkDescriptorSetLayout object_descriptor_layout;
 
     // funny pipelining
     PipelinePair build_triangle_pipeline();
@@ -80,11 +82,16 @@ private:
         VmaAllocationInfo info;
     };
 
+    const uint32_t MAX_OBJECTS = 1024;
+
     VkDescriptorPool descriptor_pool;
     VkDescriptorPool imgui_descriptor_pool;
 
     std::vector<UniformBufferAllocation> camera_data_buffers;
-    std::vector<VkDescriptorSet> descriptor_sets;
+    std::vector<UniformBufferAllocation> object_data_buffers;
+
+    std::vector<VkDescriptorSet> global_descriptor_sets;
+    std::vector<VkDescriptorSet> object_descriptor_sets;
 
     VkCommandPool command_pool;
     std::vector<VkCommandBuffer> command_buffers;
