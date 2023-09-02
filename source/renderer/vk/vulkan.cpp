@@ -4,6 +4,7 @@
 #include <vk_mem_alloc.h> // haunting cpp file...
 
 #include "tools.h"
+#include "info.h"
 #include "pipeline.h"
 #include "primitives.h"
 #include "vulkan.h"
@@ -58,7 +59,7 @@ bool VulkanRenderer::setup() {
 	std::string warn;
 	std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/torus.obj", nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/cock.obj", nullptr);
 
 	for(const auto& shape: shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -97,6 +98,14 @@ bool VulkanRenderer::draw() {
 
 	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!");
 	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,14), ImColor(255,255,255), fmt::format("Rendering at {:.2f}ms ({:.0f} fps)", 1000 / io.Framerate, io.Framerate).c_str());
+
+	static float rotation_floats[3] = {};
+
+	ImGui::Begin("Balls");
+
+	ImGui::SliderFloat3("Rotation", rotation_floats, 0, 360);
+
+	ImGui::End();
 
 	ImGui::Render();
 
@@ -149,7 +158,6 @@ bool VulkanRenderer::draw() {
 
 		vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 		{
-
 			VkViewport viewport = {};
 			viewport.x = 0.0f;
 			viewport.y = 0.0f;
@@ -177,12 +185,31 @@ bool VulkanRenderer::draw() {
         	auto current_time = std::chrono::high_resolution_clock::now();
         	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-			ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			ubo.model = glm::rotate(ubo.model, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			UNUSED(time);
 
-        	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        	ubo.projection = glm::perspective(glm::radians(90.0f), swapchain.extent.width / (float) swapchain.extent.height, 0.1f, 10.0f);
+			glm::vec3 model_translation(0, 0, 0);
+			glm::vec3 model_rotation(0, time * glm::radians(90.0f), 0);
+			glm::vec3 model_scale(1,1,1);
+
+			glm::quat model_quaternion(model_rotation);
+
+			glm::mat4 model_translation_matrix = glm::translate(glm::mat4(1.0f), model_translation);
+			glm::mat4 model_rotation_matrix = glm::toMat4(model_quaternion);
+			glm::mat4 model_scale_matrix = glm::scale(glm::mat4(1.0f), model_scale);
+
+			ubo.model = model_translation_matrix * model_rotation_matrix * model_scale_matrix;
+
+			glm::vec3 camera_translation(0, sin(time), -3.0f);
+			glm::vec3 camera_rotation(0, 0, 0);
+
+			glm::quat camera_quaternion(camera_rotation);
+
+			glm::mat4 camera_translation_matrix = glm::translate(glm::mat4(1.0f), camera_translation);
+			glm::mat4 camera_rotation_matrix = glm::toMat4(camera_quaternion);
+
+        	ubo.view = camera_translation_matrix * camera_rotation_matrix;
+
+        	ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.1f, 10.0f);
         	ubo.projection[1][1] *= -1;
 
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(ECameraData));
@@ -193,8 +220,6 @@ bool VulkanRenderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 0, 1, &descriptor_sets[current_frame], 0, nullptr);
 
 			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
-			
-			//vkCmdDraw(command_buffers[image_index], (uint32_t)triangle_mesh.verticies.size(), 1, 0, 0);
 
 			// draw triangle
 			//vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["triangle"]);
@@ -339,9 +364,9 @@ bool VulkanRenderer::create_swapchain() {
 
 	vkb::SwapchainBuilder swapchain_builder { device };
 	auto swapchain_builder_ret = swapchain_builder
-													.set_old_swapchain(swapchain)
-													.set_desired_format(image_format)
-													.build();
+									.set_old_swapchain(swapchain)
+									.set_desired_format(image_format)
+									.build();
 
 	if(!swapchain_builder_ret) {
 		spdlog::error("Failed to create Vulkan Swapchain {}", swapchain_builder_ret.error().message());
@@ -471,17 +496,14 @@ bool VulkanRenderer::create_pipeline_cache() {
 
 
 bool VulkanRenderer::create_descriptor_layout() {
-	VkDescriptorSetLayoutBinding ubo_layout_binding = {};
-
-	ubo_layout_binding.binding = 0;
-	ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	ubo_layout_binding.descriptorCount = 1;
-	ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	std::vector<VkDescriptorSetLayoutBinding> bindings = {
+		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
+	};
 
 	VkDescriptorSetLayoutCreateInfo layout_info = {};
 	layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layout_info.bindingCount = 1;
-	layout_info.pBindings = &ubo_layout_binding;
+	layout_info.bindingCount = static_cast<uint32_t>(bindings.size());
+	layout_info.pBindings = bindings.data();
 
 	VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &descriptor_set_layout));
 
@@ -532,6 +554,8 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
+	pipeline_constructor.rasterizer.depthBiasConstantFactor = 0.0f;
+	pipeline_constructor.rasterizer.depthBiasSlopeFactor = 0.0f;
 
 	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
 	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -723,10 +747,7 @@ bool VulkanRenderer::create_depth_image() {
 	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	VmaAllocationCreateInfo allocate_info = {};
-	allocate_info.usage = VMA_MEMORY_USAGE_AUTO;
-	allocate_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	allocate_info.priority = 1.0f;
+	auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 
 	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_image.image, &depth_image.allocation, nullptr));
 
@@ -786,14 +807,14 @@ bool VulkanRenderer::create_framebuffers() {
 
 bool VulkanRenderer::create_descriptor_pool() {
 	{
-		VkDescriptorPoolSize pool_size = {};
-		pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_size.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+		std::vector<VkDescriptorPoolSize> pool_sizes = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+		};
 
 		VkDescriptorPoolCreateInfo pool_info = {};
 		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.poolSizeCount = 1;
-		pool_info.pPoolSizes = &pool_size;
+		pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+		pool_info.pPoolSizes = pool_sizes.data();
 		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
 		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
@@ -826,15 +847,9 @@ bool VulkanRenderer::create_uniform_buffers() {
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		{
-			VkBufferCreateInfo buffer_info = {};
-        	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        	buffer_info.size = sizeof(ECameraData);
-        	buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-			VmaAllocationCreateInfo allocate_info = {};
-        	allocate_info.usage = VMA_MEMORY_USAGE_AUTO;
-			allocate_info.preferredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-			allocate_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			auto buffer_info = info::buffer_create_info(sizeof(ECameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 			VK_CHECK_BOOL(vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &camera_data_buffers[i].memory.buffer, &camera_data_buffers[i].memory.allocation, &camera_data_buffers[i].info));
 		}
@@ -885,20 +900,10 @@ bool VulkanRenderer::create_descriptor_sets() {
 bool VulkanRenderer::create_command_pool() {
 	command_buffers.resize(framebuffers.size());
 
-	VkCommandPoolCreateInfo command_pool_info = {};
-	command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	command_pool_info.pNext = nullptr;
-	command_pool_info.queueFamilyIndex = graphics_queue_index;
-	command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
+	auto command_pool_info = info::command_pool_create_info(graphics_queue_index, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	VK_CHECK_BOOL(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
 
-	VkCommandBufferAllocateInfo command_allocate_info = {};
-	command_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	command_allocate_info.commandPool = command_pool;
-	command_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	command_allocate_info.commandBufferCount = (uint32_t)command_buffers.size();
-
+	auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
 	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
 	deletion_queue.push_back([=]() {

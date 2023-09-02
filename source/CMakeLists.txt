@@ -2,6 +2,7 @@ add_executable(${PROJECT}
 	  main.cpp
     fs.cpp
 
+    renderer/vk/info.cpp
     renderer/vk/pipeline.cpp
     renderer/vk/primitives.cpp
     renderer/vk/vulkan.cpp

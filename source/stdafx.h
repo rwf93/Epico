@@ -20,6 +20,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 
+#include <vulkan/vulkan_core.h>
+
 #include <VkBootstrap.h>
 
 #include <shaderc/shaderc.hpp>
@@ -30,3 +32,4 @@
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+#include <glm/gtx/quaternion.hpp>

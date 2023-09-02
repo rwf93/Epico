@@ -83,8 +83,6 @@ private:
     VkDescriptorPool descriptor_pool;
     VkDescriptorPool imgui_descriptor_pool;
 
-    const uint32_t MAX_OBJECTS = 10000;
-
     std::vector<UniformBufferAllocation> camera_data_buffers;
     std::vector<VkDescriptorSet> descriptor_sets;
 
