@@ -22,8 +22,6 @@ static EMesh triangle_mesh;
 VulkanRenderer::~VulkanRenderer() {
 	vkQueueWaitIdle(present_queue);
 
-	triangle_mesh.destroy(allocator);
-
 	for(auto it = deletion_queue.rbegin(); it != deletion_queue.rend(); it++) {
 		(*it)();
 	}
@@ -59,7 +57,7 @@ bool VulkanRenderer::setup() {
 	std::string warn;
 	std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/sponza.obj", nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/teapot.obj", nullptr);
 
 	for(const auto& shape: shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -83,6 +81,17 @@ bool VulkanRenderer::setup() {
 	}
 
 	triangle_mesh.allocate(allocator);
+
+	submit_command([=](VkCommandBuffer command) {
+		triangle_mesh.send_to_gpu(allocator, command);
+	});
+
+	triangle_mesh.cleanup_after_send(allocator);
+
+	deletion_queue.push_back([=]() {
+		triangle_mesh.destroy(allocator);
+	});
+
 
 	return true;
 }
@@ -182,6 +191,9 @@ bool VulkanRenderer::draw() {
 			VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
 			VkDeviceSize offsets[] = { 0 };
 
+			UNUSED(vertex_buffer);
+			UNUSED(offsets);
+
 			ECameraData ubo = {};
 
 			static auto start_time = std::chrono::high_resolution_clock::now();
@@ -256,8 +268,8 @@ bool VulkanRenderer::draw() {
 
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0.0f, 0), glm::vec3(0.01, 0.01, 0.01));
-			//ssbo[1].model = calculate_object_matrix(glm::vec3(0, sin(time), 0), glm::vec3(0, 0, 0), glm::vec3(0.2, 0.2, 0.2));
+			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0.0f, 0), glm::vec3(1, 1, 1));
+			ssbo[1].model = calculate_object_matrix(glm::vec3(0, sin(time), 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 
 			// draw vertex buffer
 			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
@@ -268,7 +280,7 @@ bool VulkanRenderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
 			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
-			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 1, 0, 1);
+			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 1);
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
@@ -984,23 +996,30 @@ glm::mat4 VulkanRenderer::calculate_object_matrix(glm::vec3 translation, glm::ve
 }
 
 void VulkanRenderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {
-	VK_CHECK_VOID(vkResetCommandBuffer(command_buffers[current_frame], 0));
+	VkCommandBuffer command = {};
+
+	auto command_buffer_info = info::command_buffer_allocate_info(command_pool);
+	VK_CHECK_VOID(vkAllocateCommandBuffers(device, &command_buffer_info, &command));
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VK_CHECK_VOID(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
+	VK_CHECK_VOID(vkBeginCommandBuffer(command, &begin_info));
 
-	function(command_buffers[current_frame]);
+	function(command);
 
-	VK_CHECK_VOID(vkEndCommandBuffer(command_buffers[current_frame]));
+	VK_CHECK_VOID(vkEndCommandBuffer(command));
 
 	VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buffers[current_frame];
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command;
 
 	VK_CHECK_VOID(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+	VK_CHECK_VOID(vkQueueWaitIdle(graphics_queue));
+
+	vkFreeCommandBuffers(device, command_pool, 1, &command);
 }
 
 
