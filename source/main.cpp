@@ -41,6 +41,7 @@ int main(int argc, char *args[]) {
 		if(!renderer.draw()) {
 			return false;
 		}
+
 	}
 
 	SDL_DestroyWindow(game.window);

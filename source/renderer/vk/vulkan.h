@@ -77,7 +77,7 @@ private:
 
 	VmaAllocator allocator;
 
-	EImage depth_image;
+	ETexture depth_texture;
 
 	struct UniformBufferAllocation {
 		EBuffer memory;

@@ -74,19 +74,19 @@ void EMesh::send_to_gpu(VmaAllocator allocator, VkCommandBuffer command) {
 	index_copy.srcOffset = 0;
 	index_copy.size = indicies.size() * sizeof(uint32_t);
 
-	vmaFlushAllocation(allocator, staging_vertex_buffer.allocation, 0, VK_WHOLE_SIZE);
-	vmaFlushAllocation(allocator, staging_index_buffer.allocation, 0, VK_WHOLE_SIZE);
+	vmaFlushAllocation(allocator, staging_vertex_buffer, 0, VK_WHOLE_SIZE);
+	vmaFlushAllocation(allocator, staging_index_buffer, 0, VK_WHOLE_SIZE);
 
-	vkCmdCopyBuffer(command, staging_vertex_buffer.buffer, vertex_buffer.buffer, 1, &vertex_copy);
-	vkCmdCopyBuffer(command, staging_index_buffer.buffer, index_buffer.buffer, 1, &index_copy);
+	vkCmdCopyBuffer(command, staging_vertex_buffer, vertex_buffer, 1, &vertex_copy);
+	vkCmdCopyBuffer(command, staging_index_buffer, index_buffer, 1, &index_copy);
 }
 
 void EMesh::cleanup_after_send(VmaAllocator allocator) {
-	vmaDestroyBuffer(allocator, staging_vertex_buffer.buffer, staging_vertex_buffer.allocation);
-	vmaDestroyBuffer(allocator, staging_index_buffer.buffer, staging_index_buffer.allocation);
+	vmaDestroyBuffer(allocator, staging_vertex_buffer, staging_vertex_buffer);
+	vmaDestroyBuffer(allocator, staging_index_buffer, staging_index_buffer);
 }
 
 void EMesh::destroy(VmaAllocator allocator) {
-	vmaDestroyBuffer(allocator, index_buffer.buffer, index_buffer.allocation);
-	vmaDestroyBuffer(allocator, vertex_buffer.buffer, vertex_buffer.allocation);
+	vmaDestroyBuffer(allocator, index_buffer, index_buffer);
+	vmaDestroyBuffer(allocator, vertex_buffer, vertex_buffer);
 }

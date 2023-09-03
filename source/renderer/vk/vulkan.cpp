@@ -22,11 +22,9 @@ static EMesh triangle_mesh;
 VulkanRenderer::~VulkanRenderer() {
 	vkQueueWaitIdle(present_queue);
 
-	for(auto it = deletion_queue.rbegin(); it != deletion_queue.rend(); it++) {
-		(*it)();
-	}
+	// evil abuse of functional programming
+	std::for_each(deletion_queue.rbegin(), deletion_queue.rend(), [=](std::function<void()> &func) { func(); });
 	deletion_queue.clear();
-
 }
 
 bool VulkanRenderer::setup() {
@@ -57,7 +55,7 @@ bool VulkanRenderer::setup() {
 	std::string warn;
 	std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/poptart.obj", nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/teapot.obj", nullptr);
 
 	for(const auto& shape: shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -196,13 +194,6 @@ bool VulkanRenderer::draw() {
 
 			ECameraData ubo = {};
 
-			static auto start_time = std::chrono::high_resolution_clock::now();
-
-			auto current_time = std::chrono::high_resolution_clock::now();
-			float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
-
-			UNUSED(time);
-
 			// REMINDER: -3.0f is old...
 
 			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -284,9 +275,8 @@ bool VulkanRenderer::draw() {
 
 			static std::normal_distribution<float> distribution(-1.0, 1.0);
 
-			for(uint32_t i = 0; i < 1; i++) {
-				ssbo[i].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-
+			for(uint32_t i = 0; i < MAX_OBJECTS; i++) {
+				ssbo[i].model = calculate_object_matrix(glm::vec3(0, i, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 				vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, i);
 			}
 
@@ -663,11 +653,11 @@ bool VulkanRenderer::create_depth_image() {
 
 	auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT);
 
-	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_image.image, &depth_image.allocation, nullptr));
+	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_texture.image.image, &depth_texture.image.allocation, nullptr));
 
 	VkImageViewCreateInfo view_info = {};
 	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	view_info.image = depth_image;
+	view_info.image = depth_texture;
 	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	view_info.format = depth_format;
 	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -676,11 +666,11 @@ bool VulkanRenderer::create_depth_image() {
 	view_info.subresourceRange.baseArrayLayer = 0;
 	view_info.subresourceRange.layerCount = 1;
 
-	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_image.view));
+	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_texture.view));
 
 	deletion_queue.push_back([=]() {
-		vkDestroyImageView(device, depth_image.view, nullptr);
-		vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
+		vkDestroyImageView(device, depth_texture.view, nullptr);
+		vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
 	});
 
 	return true;
@@ -700,7 +690,7 @@ bool VulkanRenderer::create_framebuffers() {
 	 for(size_t i = 0; i < swapchain_image_count; i++) {
 		std::array<VkImageView, 2> attachments = {
 			swapchain_image_views[i],
-			depth_image
+			depth_texture
 		};
 
 		framebuffer_info.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -951,8 +941,8 @@ bool VulkanRenderer::rebuild_swapchain() {
 	for(auto framebuffer: framebuffers)
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 
-	vkDestroyImageView(device, depth_image.view, nullptr);
-	vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
+	vkDestroyImageView(device, depth_texture.view, nullptr);
+	vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
 
 	swapchain.destroy_image_views(swapchain_image_views);
 

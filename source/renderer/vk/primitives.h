@@ -14,14 +14,23 @@ struct EBuffer {
 	VkBuffer buffer;
 	VmaAllocation allocation;
 
+	operator VmaAllocation() { return allocation; }
 	operator VkBuffer() { return buffer; };
 };
 
 struct EImage {
 	VkImage image;
-	VkImageView view;
 	VmaAllocation allocation;
 
+	operator VmaAllocation() { return allocation; }
+	operator VkImage() { return image; };
+};
+
+struct ETexture {
+	EImage image;
+	VkImageView view;
+
+	operator VmaAllocation() { return image; }
 	operator VkImage() { return image; };
 	operator VkImageView() { return view; };
 };

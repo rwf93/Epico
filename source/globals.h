@@ -6,6 +6,7 @@
 struct GameGlobals {
 	SDL_Window *window;
 	bool *quit;
+	float time_delta;
 };
 
 bool create_window(GameGlobals *game);
