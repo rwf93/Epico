@@ -57,7 +57,7 @@ bool VulkanRenderer::setup() {
 	std::string warn;
 	std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/teapot.obj", nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/poptart.obj", nullptr);
 
 	for(const auto& shape: shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -268,9 +268,6 @@ bool VulkanRenderer::draw() {
 
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0.0f, 0), glm::vec3(1, 1, 1));
-			ssbo[1].model = calculate_object_matrix(glm::vec3(0, sin(time), 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-
 			// draw vertex buffer
 			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -279,8 +276,19 @@ bool VulkanRenderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
-			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 1);
+			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
+			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 1);
+
+			static std::random_device random_device;
+			static std::mt19937 random_generator(random_device());
+
+			static std::normal_distribution<float> distribution(-1.0, 1.0);
+
+			for(uint32_t i = 0; i < 1; i++) {
+				ssbo[i].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+
+				vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, i);
+			}
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}

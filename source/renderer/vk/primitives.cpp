@@ -72,7 +72,7 @@ void EMesh::send_to_gpu(VmaAllocator allocator, VkCommandBuffer command) {
     VkBufferCopy index_copy;
     index_copy.dstOffset = 0;
 	index_copy.srcOffset = 0;
-    index_copy.size = verticies.size() * sizeof(uint32_t);
+    index_copy.size = indicies.size() * sizeof(uint32_t);
 
     vmaFlushAllocation(allocator, staging_vertex_buffer.allocation, 0, VK_WHOLE_SIZE);
     vmaFlushAllocation(allocator, staging_index_buffer.allocation, 0, VK_WHOLE_SIZE);

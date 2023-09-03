@@ -7,6 +7,7 @@
 #include <string>
 #include <filesystem>
 #include <deque>
+#include <random>
 
 #include <fmt/core.h>
 #include <fmt/format.h>
