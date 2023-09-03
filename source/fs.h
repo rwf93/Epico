@@ -4,7 +4,7 @@ namespace fs {
 
 template<typename T>
 std::vector<T> read_file(const std::filesystem::path &filename, bool binary) {
-    // onelining was a mistake
+	// onelining was a mistake
 	std::ifstream file(filename, binary ? std::ios::ate | std::ios::binary : std::ios::ate);
 
 	if(!file.is_open())

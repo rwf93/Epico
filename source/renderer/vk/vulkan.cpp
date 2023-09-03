@@ -65,14 +65,14 @@ bool VulkanRenderer::setup() {
 
 			vertex.pos = {
 				attrib.vertices[3 * index.vertex_index + 0],
-    			attrib.vertices[3 * index.vertex_index + 1],
-    			attrib.vertices[3 * index.vertex_index + 2]
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
 			};
 
 			vertex.color = {
 				attrib.normals[3 * index.normal_index + 0],
-    			attrib.normals[3 * index.normal_index + 1],
-    			attrib.normals[3 * index.normal_index + 2]
+				attrib.normals[3 * index.normal_index + 1],
+				attrib.normals[3 * index.normal_index + 2]
 			};
 
 			triangle_mesh.verticies.push_back(vertex);
@@ -98,8 +98,8 @@ bool VulkanRenderer::setup() {
 
 bool VulkanRenderer::draw() {
 	ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
+	ImGui_ImplSDL2_NewFrame();
+	ImGui::NewFrame();
 
 	ImGui::ShowDemoWindow();
 
@@ -198,8 +198,8 @@ bool VulkanRenderer::draw() {
 
 			static auto start_time = std::chrono::high_resolution_clock::now();
 
-        	auto current_time = std::chrono::high_resolution_clock::now();
-        	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+			auto current_time = std::chrono::high_resolution_clock::now();
+			float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
 			UNUSED(time);
 
@@ -261,8 +261,8 @@ bool VulkanRenderer::draw() {
 
 			ubo.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
-        	ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.1f, 100.0f);
-        	ubo.projection[1][1] *= -1;
+			ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.1f, 100.0f);
+			ubo.projection[1][1] *= -1;
 
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(ECameraData));
 
@@ -630,9 +630,9 @@ bool VulkanRenderer::create_pipelines() {
 
 bool VulkanRenderer::create_vma_allocator() {
 	VmaAllocatorCreateInfo allocator_info = {};
-    allocator_info.physicalDevice = device.physical_device;
-    allocator_info.device = device;
-    allocator_info.instance = instance;
+	allocator_info.physicalDevice = device.physical_device;
+	allocator_info.device = device;
+	allocator_info.instance = instance;
 
 	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
 
@@ -697,7 +697,7 @@ bool VulkanRenderer::create_framebuffers() {
 	size_t swapchain_image_count = swapchain_images.size();
 	framebuffers.resize(swapchain_images.size());
 
- 	for(size_t i = 0; i < swapchain_image_count; i++) {
+	 for(size_t i = 0; i < swapchain_image_count; i++) {
 		std::array<VkImageView, 2> attachments = {
 			swapchain_image_views[i],
 			depth_image
@@ -878,7 +878,7 @@ bool VulkanRenderer::create_sync_objects() {
 
 	VkFenceCreateInfo fence_info = {};
 	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]));
@@ -900,15 +900,15 @@ bool VulkanRenderer::create_sync_objects() {
 bool VulkanRenderer::create_imgui() {
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
 	ImGui::StyleColorsDark();
 
 	ImGui_ImplSDL2_InitForVulkan(game->window);
 
 	ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = instance;
+	init_info.Instance = instance;
 	init_info.PhysicalDevice = device.physical_device;
 	init_info.Device = device;
 	init_info.QueueFamily = graphics_queue_index;
@@ -934,7 +934,7 @@ bool VulkanRenderer::create_imgui() {
 
 	deletion_queue.push_back([=]() {
 		ImGui_ImplVulkan_Shutdown();
-    	ImGui_ImplSDL2_Shutdown();
+		ImGui_ImplSDL2_Shutdown();
 		ImGui::DestroyContext();
 	});
 
@@ -1079,7 +1079,7 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+											  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	color_blend_attachment.blendEnable = VK_FALSE;
 
 	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
@@ -1163,7 +1163,7 @@ PipelinePair VulkanRenderer::build_vertex_pipeline() {
 
 	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+											  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	color_blend_attachment.blendEnable = VK_FALSE;
 
 	pipeline_constructor.color_attachments.push_back(color_blend_attachment);

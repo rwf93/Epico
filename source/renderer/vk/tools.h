@@ -3,10 +3,10 @@
 template<>
 struct fmt::formatter<VkResult> : fmt::formatter<std::string>
 {
-    auto format(VkResult my, format_context &ctx) const -> decltype(ctx.out())
-    {
-        return fmt::format_to(ctx.out(), "{}", magic_enum::enum_name(my));
-    }
+	auto format(VkResult my, format_context &ctx) const -> decltype(ctx.out())
+	{
+		return fmt::format_to(ctx.out(), "{}", magic_enum::enum_name(my));
+	}
 };
 
 #define VK_CHECK_RET(f, ret)																			\

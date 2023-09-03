@@ -6,17 +6,17 @@ using namespace render;
 
 RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPass render_pass, VkPipelineCache pipeline_cache) {
 	this->input_info 			= {};
-    this->input_assembly 		= {};
-    this->viewport_state 		= {};
-    this->rasterizer 			= {};
-    this->multisampling 		= {};
-    this->color_attachments 	= {};
-    this->color_blending 		= {};
-    this->dynamic_states 		= {};
-    this->shader_stages 		= {};
-    this->depth_stencil			= {};
+	this->input_assembly 		= {};
+	this->viewport_state 		= {};
+	this->rasterizer 			= {};
+	this->multisampling 		= {};
+	this->color_attachments 	= {};
+	this->color_blending 		= {};
+	this->dynamic_states 		= {};
+	this->shader_stages 		= {};
+	this->depth_stencil			= {};
 	this->pipeline_layout_info 	= {};
-    this->pipeline_info 		= {};
+	this->pipeline_info 		= {};
 
 	// set sTypes for all types... actual bruh
 	input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -52,7 +52,7 @@ void RenderPipelineConstructor::build(VkPipeline *pipeline, VkPipelineLayout *pi
 	color_blending.attachmentCount = static_cast<uint32_t>(color_attachments.size());
 	color_blending.pAttachments = color_attachments.data();
 
-    VkPipelineDynamicStateCreateInfo dynamic_info = {};
+	VkPipelineDynamicStateCreateInfo dynamic_info = {};
 	dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
 	dynamic_info.pDynamicStates = dynamic_states.data();
