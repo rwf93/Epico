@@ -2,10 +2,10 @@ add_executable(${PROJECT}
 	  main.cpp
     fs.cpp
 
-    renderer/vk/info.cpp
-    renderer/vk/pipeline.cpp
-    renderer/vk/primitives.cpp
-    renderer/vk/vulkan.cpp
+    renderer/info.cpp
+    renderer/pipeline.cpp
+    renderer/primitives.cpp
+    renderer/vulkan.cpp
 )
 
 set_property(TARGET ${PROJECT} PROPERTY CXX_STANDARD 23)

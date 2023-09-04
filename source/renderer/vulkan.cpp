@@ -13,13 +13,14 @@
 
 using namespace render;
 
-VulkanRenderer::VulkanRenderer(GameGlobals *game) {
+Renderer::Renderer(GameGlobals *game) {
 	this->game = game;
 }
 
 static EMesh triangle_mesh;
+static EMesh other_mesh;
 
-VulkanRenderer::~VulkanRenderer() {
+Renderer::~Renderer() {
 	vkQueueWaitIdle(present_queue);
 
 	// evil abuse of functional programming
@@ -27,7 +28,7 @@ VulkanRenderer::~VulkanRenderer() {
 	deletion_queue.clear();
 }
 
-bool VulkanRenderer::setup() {
+bool Renderer::setup() {
 	if(!create_vk_instance()) 		return false;
 	if(!create_surface()) 			return false;
 	if(!create_device()) 			return false;
@@ -48,53 +49,98 @@ bool VulkanRenderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
+	{
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes;
+		std::vector<tinyobj::material_t> materials;
 
-	std::string warn;
-	std::string err;
+		std::string warn;
+		std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/teapot.obj", nullptr);
+		tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/teapot.obj", nullptr);
 
-	for(const auto& shape: shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			EVertex vertex = {};
+		for(const auto& shape: shapes) {
+			for (const auto& index : shape.mesh.indices) {
+				EVertex vertex = {};
 
-			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			};
+				vertex.pos = {
+					attrib.vertices[3 * index.vertex_index + 0],
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2]
+				};
 
-			vertex.color = {
-				attrib.normals[3 * index.normal_index + 0],
-				attrib.normals[3 * index.normal_index + 1],
-				attrib.normals[3 * index.normal_index + 2]
-			};
+				vertex.color = {
+					attrib.normals[3 * index.normal_index + 0],
+					attrib.normals[3 * index.normal_index + 1],
+					attrib.normals[3 * index.normal_index + 2]
+				};
 
-			triangle_mesh.verticies.push_back(vertex);
-			triangle_mesh.indicies.push_back((uint32_t)triangle_mesh.indicies.size());
+				triangle_mesh.verticies.push_back(vertex);
+				triangle_mesh.indicies.push_back((uint32_t)triangle_mesh.indicies.size());
+			}
 		}
+
+		triangle_mesh.allocate(allocator);
+
+		submit_command([=](VkCommandBuffer command) {
+			triangle_mesh.send_to_gpu(allocator, command);
+		});
+
+		triangle_mesh.cleanup_after_send(allocator);
+
+		deletion_queue.push_back([=]() {
+			triangle_mesh.destroy(allocator);
+		});
 	}
 
-	triangle_mesh.allocate(allocator);
+	{
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes;
+		std::vector<tinyobj::material_t> materials;
 
-	submit_command([=](VkCommandBuffer command) {
-		triangle_mesh.send_to_gpu(allocator, command);
-	});
+		std::string warn;
+		std::string err;
 
-	triangle_mesh.cleanup_after_send(allocator);
+		tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/dog.obj", nullptr);
 
-	deletion_queue.push_back([=]() {
-		triangle_mesh.destroy(allocator);
-	});
+		for(const auto& shape: shapes) {
+			for (const auto& index : shape.mesh.indices) {
+				EVertex vertex = {};
 
+				vertex.pos = {
+					attrib.vertices[3 * index.vertex_index + 0],
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2]
+				};
+
+				vertex.color = {
+					attrib.normals[3 * index.normal_index + 0],
+					attrib.normals[3 * index.normal_index + 1],
+					attrib.normals[3 * index.normal_index + 2]
+				};
+
+				other_mesh.verticies.push_back(vertex);
+				other_mesh.indicies.push_back((uint32_t)other_mesh.indicies.size());
+			}
+		}
+
+		other_mesh.allocate(allocator);
+
+		submit_command([=](VkCommandBuffer command) {
+			other_mesh.send_to_gpu(allocator, command);
+		});
+
+		other_mesh.cleanup_after_send(allocator);
+
+		deletion_queue.push_back([=]() {
+			other_mesh.destroy(allocator);
+		});
+	}
 
 	return true;
 }
 
-bool VulkanRenderer::draw() {
+bool Renderer::draw() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
@@ -186,12 +232,6 @@ bool VulkanRenderer::draw() {
 
 			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
 
-			VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
-			VkDeviceSize offsets[] = { 0 };
-
-			UNUSED(vertex_buffer);
-			UNUSED(offsets);
-
 			ECameraData ubo = {};
 
 			// REMINDER: -3.0f is old...
@@ -259,7 +299,11 @@ bool VulkanRenderer::draw() {
 
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			// draw vertex buffer
+
+			VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
+			VkDeviceSize offsets[] = { 0 };
+
+			// bind current mesh
 			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -267,18 +311,23 @@ bool VulkanRenderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
-			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 1);
-
 			static std::random_device random_device;
 			static std::mt19937 random_generator(random_device());
 
 			static std::normal_distribution<float> distribution(-1.0, 1.0);
 
-			for(uint32_t i = 0; i < MAX_OBJECTS; i++) {
-				ssbo[i].model = calculate_object_matrix(glm::vec3(0, i, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-				vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, i);
-			}
+			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ssbo[1].model = calculate_object_matrix(glm::vec3(0, 15, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+
+			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
+
+			VkBuffer vertex_buffer_two[] = { other_mesh.vertex_buffer };
+			VkDeviceSize offsets_two[] = { 0 };
+
+			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer_two, offsets_two);
+			vkCmdBindIndexBuffer(command_buffers[image_index], other_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(other_mesh.indicies.size()), 1, 0, 0, 1);
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
@@ -309,7 +358,7 @@ bool VulkanRenderer::draw() {
 	return true;
 }
 
-VkShaderModule VulkanRenderer::create_shader(const std::vector<uint32_t> &code) {
+VkShaderModule Renderer::create_shader(const std::vector<uint32_t> &code) {
 	VkShaderModuleCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	create_info.codeSize = code.size();
@@ -344,7 +393,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 	return VK_FALSE;
 }
 
-bool VulkanRenderer::create_vk_instance() {
+bool Renderer::create_vk_instance() {
 	vkb::InstanceBuilder instance_builder;
 	auto instance_builder_ret = instance_builder
 									.set_app_name("Epico")
@@ -368,7 +417,7 @@ bool VulkanRenderer::create_vk_instance() {
 	return true;
 }
 
-bool VulkanRenderer::create_surface() {
+bool Renderer::create_surface() {
 	if (!SDL_Vulkan_CreateSurface(game->window, instance.instance, &surface)) {
 		spdlog::error("Failed to create SDL Surface {}", SDL_GetError());
 		return false;
@@ -381,7 +430,7 @@ bool VulkanRenderer::create_surface() {
 	return true;
 }
 
-bool VulkanRenderer::create_device() {
+bool Renderer::create_device() {
 	vkb::PhysicalDeviceSelector device_selector(instance);
 	auto device_selector_ret = device_selector
 								.set_minimum_version(1, 1)
@@ -416,7 +465,7 @@ bool VulkanRenderer::create_device() {
 	return true;
 }
 
-bool VulkanRenderer::create_swapchain() {
+bool Renderer::create_swapchain() {
 	VkSurfaceFormatKHR image_format = {};
 	image_format.format = VK_FORMAT_R8G8B8A8_SRGB;
 	image_format.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
@@ -447,7 +496,7 @@ bool VulkanRenderer::create_swapchain() {
 	return true;
 }
 
-bool VulkanRenderer::create_queues() {
+bool Renderer::create_queues() {
 	auto gq = device.get_queue(vkb::QueueType::graphics);
 	auto pq = device.get_queue(vkb::QueueType::present);
 	auto gqi = device.get_queue_index(vkb::QueueType::graphics);
@@ -474,7 +523,7 @@ bool VulkanRenderer::create_queues() {
 	return true;
 }
 
-bool VulkanRenderer::create_render_pass() {
+bool Renderer::create_render_pass() {
 	VkAttachmentDescription color_attachment = {};
 	color_attachment.format = swapchain.image_format;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -540,7 +589,7 @@ bool VulkanRenderer::create_render_pass() {
 	return true;
 }
 
-bool VulkanRenderer::create_pipeline_cache() {
+bool Renderer::create_pipeline_cache() {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
@@ -554,7 +603,7 @@ bool VulkanRenderer::create_pipeline_cache() {
 }
 
 
-bool VulkanRenderer::create_descriptor_layout() {
+bool Renderer::create_descriptor_layout() {
 	{
 		std::vector<VkDescriptorSetLayoutBinding> bindings = {
 			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
@@ -588,7 +637,7 @@ bool VulkanRenderer::create_descriptor_layout() {
 	return true;
 }
 
-bool VulkanRenderer::create_pipelines() {
+bool Renderer::create_pipelines() {
 	pipelines["triangle"] 	= { build_triangle_pipeline() };
 	pipelines["vertex"] 	= { build_vertex_pipeline() };
 	pipelines["imgui"] 		= { build_imgui_pipeline() };
@@ -618,7 +667,7 @@ bool VulkanRenderer::create_pipelines() {
 	return true;
 }
 
-bool VulkanRenderer::create_vma_allocator() {
+bool Renderer::create_vma_allocator() {
 	VmaAllocatorCreateInfo allocator_info = {};
 	allocator_info.physicalDevice = device.physical_device;
 	allocator_info.device = device;
@@ -633,7 +682,7 @@ bool VulkanRenderer::create_vma_allocator() {
 	return true;
 }
 
-bool VulkanRenderer::create_depth_image() {
+bool Renderer::create_depth_image() {
 	VkFormat depth_format = find_depth_format();
 
 	VkImageCreateInfo image_create_info = {};
@@ -676,7 +725,7 @@ bool VulkanRenderer::create_depth_image() {
 	return true;
 }
 
-bool VulkanRenderer::create_framebuffers() {
+bool Renderer::create_framebuffers() {
 	VkFramebufferCreateInfo framebuffer_info = {};
 	framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	framebuffer_info.renderPass = render_pass;
@@ -709,7 +758,7 @@ bool VulkanRenderer::create_framebuffers() {
 	return true;
 }
 
-bool VulkanRenderer::create_descriptor_pool() {
+bool Renderer::create_descriptor_pool() {
 	{
 		std::vector<VkDescriptorPoolSize> pool_sizes = {
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
@@ -747,7 +796,7 @@ bool VulkanRenderer::create_descriptor_pool() {
 	return true;
 }
 
-bool VulkanRenderer::create_uniform_buffers() {
+bool Renderer::create_uniform_buffers() {
 	camera_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
 	object_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -777,7 +826,7 @@ bool VulkanRenderer::create_uniform_buffers() {
 	return true;
 }
 
-bool VulkanRenderer::create_descriptor_sets() {
+bool Renderer::create_descriptor_sets() {
 	global_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
 	object_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -843,7 +892,7 @@ bool VulkanRenderer::create_descriptor_sets() {
 	return true;
 }
 
-bool VulkanRenderer::create_command_pool() {
+bool Renderer::create_command_pool() {
 	command_buffers.resize(framebuffers.size());
 
 	auto command_pool_info = info::command_pool_create_info(graphics_queue_index, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -858,7 +907,7 @@ bool VulkanRenderer::create_command_pool() {
 
 	return true;
 }
-bool VulkanRenderer::create_sync_objects() {
+bool Renderer::create_sync_objects() {
 	available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -887,7 +936,7 @@ bool VulkanRenderer::create_sync_objects() {
 	return true;
 }
 
-bool VulkanRenderer::create_imgui() {
+bool Renderer::create_imgui() {
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -931,7 +980,7 @@ bool VulkanRenderer::create_imgui() {
 	return true;
 }
 
-bool VulkanRenderer::rebuild_swapchain() {
+bool Renderer::rebuild_swapchain() {
 	spdlog::debug("Rebuilding swapchain");
 
 	vkDeviceWaitIdle(device);
@@ -959,7 +1008,7 @@ bool VulkanRenderer::rebuild_swapchain() {
 	return true;
 }
 
-VkFormat VulkanRenderer::find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
+VkFormat Renderer::find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
 	for(VkFormat format: candidates) {
 		VkFormatProperties properties = {};
 		vkGetPhysicalDeviceFormatProperties(device.physical_device, format, &properties);
@@ -976,13 +1025,13 @@ VkFormat VulkanRenderer::find_supported_format(const std::vector<VkFormat>& cand
 	throw std::runtime_error("Couldn't find a supported format");
 }
 
-VkFormat VulkanRenderer::find_depth_format() {
+VkFormat Renderer::find_depth_format() {
 	return find_supported_format({
 		VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT
 	}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-glm::mat4 VulkanRenderer::calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+glm::mat4 Renderer::calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
 	glm::quat quaternion(rotation);
 
 	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
@@ -993,7 +1042,7 @@ glm::mat4 VulkanRenderer::calculate_object_matrix(glm::vec3 translation, glm::ve
 	return translation_matrix * rotation_matrix * scale_matrix;
 }
 
-void VulkanRenderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {
+void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {
 	VkCommandBuffer command = {};
 
 	auto command_buffer_info = info::command_buffer_allocate_info(command_pool);
@@ -1021,7 +1070,7 @@ void VulkanRenderer::submit_command(std::function<void(VkCommandBuffer command)>
 }
 
 
-PipelinePair VulkanRenderer::build_triangle_pipeline() {
+PipelinePair Renderer::build_triangle_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
 
@@ -1093,7 +1142,7 @@ PipelinePair VulkanRenderer::build_triangle_pipeline() {
 	return pair;
 }
 
-PipelinePair VulkanRenderer::build_vertex_pipeline() {
+PipelinePair Renderer::build_vertex_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
 
@@ -1183,7 +1232,7 @@ PipelinePair VulkanRenderer::build_vertex_pipeline() {
 	return pair;
 }
 
-PipelinePair VulkanRenderer::build_imgui_pipeline() {
+PipelinePair Renderer::build_imgui_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
 

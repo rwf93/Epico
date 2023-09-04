@@ -1,14 +1,15 @@
 #include "globals.h"
 
-#include "renderer/vk/pipeline.h"
-#include "renderer/vk/vulkan.h"
+#include "renderer/vulkan.h"
 
 int main(int argc, char *args[]) {
 	UNUSED(argc);
 	UNUSED(args);
 
 	GameGlobals game = {};
-	render::VulkanRenderer renderer(&game);
+	render::Renderer renderer(&game);
+
+
 
 #if !defined(NDEBUG)
 	spdlog::set_level(spdlog::level::debug);

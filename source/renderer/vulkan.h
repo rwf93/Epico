@@ -2,14 +2,15 @@
 
 #include <vk_mem_alloc.h>
 
+#include "pipeline.h"
 #include "primitives.h"
 
 namespace render {
 
-class VulkanRenderer {
+class Renderer {
 public:
-	VulkanRenderer(GameGlobals *game);
-	~VulkanRenderer();
+	Renderer(GameGlobals *game);
+	~Renderer();
 
 	bool setup();
 	bool draw();
