@@ -5,18 +5,18 @@
 using namespace render;
 
 RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPass render_pass, VkPipelineCache pipeline_cache) {
-	this->input_info 			= {};
-	this->input_assembly 		= {};
-	this->viewport_state 		= {};
-	this->rasterizer 			= {};
-	this->multisampling 		= {};
-	this->color_attachments 	= {};
-	this->color_blending 		= {};
-	this->dynamic_states 		= {};
-	this->shader_stages 		= {};
+	this->input_info			= {};
+	this->input_assembly		= {};
+	this->viewport_state		= {};
+	this->rasterizer			= {};
+	this->multisampling			= {};
+	this->color_attachments		= {};
+	this->color_blending		= {};
+	this->dynamic_states		= {};
+	this->shader_stages			= {};
 	this->depth_stencil			= {};
-	this->pipeline_layout_info 	= {};
-	this->pipeline_info 		= {};
+	this->pipeline_layout_info	= {};
+	this->pipeline_info			= {};
 
 	// set sTypes for all types... actual bruh
 	input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
