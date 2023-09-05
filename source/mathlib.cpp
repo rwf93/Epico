@@ -1,6 +1,6 @@
-#include "math.h"
+#include "mathlib.h"
 
-glm::mat4 math::calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+glm::mat4 mathlib::calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
     glm::quat quaternion(rotation);
 
 	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);

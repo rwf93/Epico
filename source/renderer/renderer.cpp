@@ -4,7 +4,7 @@
 #include <vk_mem_alloc.h> // haunting cpp file...
 
 #include "fs.h"
-#include "math.h"
+#include "mathlib.h"
 
 #include "tools.h"
 #include "info.h"
@@ -315,8 +315,8 @@ bool Renderer::draw() {
 
 			static std::normal_distribution<float> distribution(-1.0, 1.0);
 
-			ssbo[0].model = math::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-			ssbo[1].model = math::calculate_model_matrix(glm::vec3(0, 15, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 15, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 
 			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
 

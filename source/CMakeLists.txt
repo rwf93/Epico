@@ -1,7 +1,7 @@
 add_executable(${PROJECT}
 	  main.cpp
     fs.cpp
-    math.cpp
+    mathlib.cpp
 
     renderer/info.cpp
     renderer/pipeline.cpp
