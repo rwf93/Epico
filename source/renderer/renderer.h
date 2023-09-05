@@ -41,8 +41,6 @@ private:
 	VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat find_depth_format();
 
-	glm::mat4 calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale);
-
 	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
 
 	VkShaderModule create_shader(const std::vector<uint32_t> &code);

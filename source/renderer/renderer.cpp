@@ -3,13 +3,14 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h> // haunting cpp file...
 
+#include "fs.h"
+#include "math.h"
+
 #include "tools.h"
 #include "info.h"
 #include "pipeline.h"
 #include "primitives.h"
-#include "vulkan.h"
-
-#include "fs.h"
+#include "renderer.h"
 
 using namespace render;
 
@@ -155,7 +156,6 @@ bool Renderer::draw() {
 	static float position_floats[3] = {};
 	static float rotation_floats[3] = {};
 
-
 	ImGui::Begin("Balls");
 
 	ImGui::SliderFloat3("Position", position_floats, -1024, 1024);
@@ -299,7 +299,6 @@ bool Renderer::draw() {
 
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-
 			VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
 			VkDeviceSize offsets[] = { 0 };
 
@@ -316,8 +315,8 @@ bool Renderer::draw() {
 
 			static std::normal_distribution<float> distribution(-1.0, 1.0);
 
-			ssbo[0].model = calculate_object_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-			ssbo[1].model = calculate_object_matrix(glm::vec3(0, 15, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ssbo[0].model = math::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ssbo[1].model = math::calculate_model_matrix(glm::vec3(0, 15, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 
 			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
 
@@ -1029,17 +1028,6 @@ VkFormat Renderer::find_depth_format() {
 	return find_supported_format({
 		VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT
 	}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
-
-glm::mat4 Renderer::calculate_object_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
-	glm::quat quaternion(rotation);
-
-	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
-	glm::mat4 rotation_matrix = glm::toMat4(quaternion);
-	glm::mat4 scale_matrix = glm::scale(glm::mat4(1.0f), scale);
-
-
-	return translation_matrix * rotation_matrix * scale_matrix;
 }
 
 void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {

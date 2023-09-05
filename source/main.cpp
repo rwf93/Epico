@@ -1,6 +1,5 @@
 #include "globals.h"
-
-#include "renderer/vulkan.h"
+#include "renderer/renderer.h"
 
 int main(int argc, char *args[]) {
 	UNUSED(argc);
@@ -8,8 +7,6 @@ int main(int argc, char *args[]) {
 
 	GameGlobals game = {};
 	render::Renderer renderer(&game);
-
-
 
 #if !defined(NDEBUG)
 	spdlog::set_level(spdlog::level::debug);
