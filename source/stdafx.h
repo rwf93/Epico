@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <deque>
 #include <random>
+#include <chrono>
 
 #include <fmt/core.h>
 #include <fmt/format.h>

@@ -10,6 +10,7 @@
 #include "info.h"
 #include "pipeline.h"
 #include "primitives.h"
+#include "voxel.h"
 #include "renderer.h"
 
 using namespace render;
@@ -18,8 +19,8 @@ Renderer::Renderer(GameGlobals *game) {
 	this->game = game;
 }
 
-static EMesh triangle_mesh;
-static EMesh other_mesh;
+static EMesh block_mesh;
+static std::vector<Voxel> blocks;
 
 Renderer::~Renderer() {
 	vkQueueWaitIdle(present_queue);
@@ -50,91 +51,39 @@ bool Renderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	{
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
+	Voxel::load_model();
 
-		std::string warn;
-		std::string err;
-
-		tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/teapot.obj", nullptr);
-
-		for(const auto& shape: shapes) {
-			for (const auto& index : shape.mesh.indices) {
-				EVertex vertex = {};
-
-				vertex.pos = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
-
-				vertex.color = {
-					attrib.normals[3 * index.normal_index + 0],
-					attrib.normals[3 * index.normal_index + 1],
-					attrib.normals[3 * index.normal_index + 2]
-				};
-
-				triangle_mesh.verticies.push_back(vertex);
-				triangle_mesh.indicies.push_back((uint32_t)triangle_mesh.indicies.size());
+	for(int cx = 0; cx < 2; cx++) {
+		for(int cy = 0; cy < 2; cy++) {
+			Chunk chunk_test(cx, cy);
+			for(size_t y = 0; y < Chunk::MAX_HEIGHT; y++) {
+				for(size_t x = 0; x < Chunk::MAX_WIDTH; x++) {
+					for(size_t z = 0; z < Chunk::MAX_WIDTH; z++) {
+						chunk_test.voxels[y][x][z].active = true;
+					}
+				}
 			}
+			chunks.push_back(chunk_test);
+
+			//submit_command([&](VkCommandBuffer command) {
+			//	chunk_test.build_mesh(allocator, command);
+			//});
+
+			//chunk_test.chunk_mesh.cleanup_after_send(allocator);
 		}
-
-		triangle_mesh.allocate(allocator);
-
-		submit_command([=](VkCommandBuffer command) {
-			triangle_mesh.send_to_gpu(allocator, command);
-		});
-
-		triangle_mesh.cleanup_after_send(allocator);
-
-		deletion_queue.push_back([=]() {
-			triangle_mesh.destroy(allocator);
-		});
 	}
 
-	{
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
+	for (auto& chunk : chunks) {
+		chunk.build_mesh(nullptr, nullptr);
 
-		std::string warn;
-		std::string err;
-
-		tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/dog.obj", nullptr);
-
-		for(const auto& shape: shapes) {
-			for (const auto& index : shape.mesh.indices) {
-				EVertex vertex = {};
-
-				vertex.pos = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
-
-				vertex.color = {
-					attrib.normals[3 * index.normal_index + 0],
-					attrib.normals[3 * index.normal_index + 1],
-					attrib.normals[3 * index.normal_index + 2]
-				};
-
-				other_mesh.verticies.push_back(vertex);
-				other_mesh.indicies.push_back((uint32_t)other_mesh.indicies.size());
-			}
-		}
-
-		other_mesh.allocate(allocator);
-
-		submit_command([=](VkCommandBuffer command) {
-			other_mesh.send_to_gpu(allocator, command);
+		chunk.chunk_mesh.allocate(allocator);
+		submit_command([&](VkCommandBuffer command) {
+			chunk.chunk_mesh.send_to_gpu(allocator, command);
 		});
+		chunk.chunk_mesh.cleanup_after_send(allocator);
 
-		other_mesh.cleanup_after_send(allocator);
-
-		deletion_queue.push_back([=]() {
-			other_mesh.destroy(allocator);
+		deletion_queue.push_back([&]() {
+			chunk.chunk_mesh.destroy(allocator);
 		});
 	}
 
@@ -142,29 +91,6 @@ bool Renderer::setup() {
 }
 
 bool Renderer::draw() {
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplSDL2_NewFrame();
-	ImGui::NewFrame();
-
-	ImGui::ShowDemoWindow();
-
-	ImGuiIO& io = ImGui::GetIO();
-
-	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!");
-	ImGui::GetForegroundDrawList()->AddText(ImVec2(0,14), ImColor(255,255,255), fmt::format("Rendering at {:.2f}ms ({:.0f} fps)", 1000 / io.Framerate, io.Framerate).c_str());
-
-	static float position_floats[3] = {};
-	static float rotation_floats[3] = {};
-
-	ImGui::Begin("Balls");
-
-	ImGui::SliderFloat3("Position", position_floats, -1024, 1024);
-	ImGui::SliderFloat3("Rotation", rotation_floats, 0, 360);
-
-	ImGui::End();
-
-	ImGui::Render();
-
 	VK_CHECK_BOOL(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
 
 	uint32_t image_index = 0;
@@ -234,8 +160,6 @@ bool Renderer::draw() {
 
 			ECameraData ubo = {};
 
-			// REMINDER: -3.0f is old...
-
 			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
 			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
 			static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -244,7 +168,7 @@ bool Renderer::draw() {
 			int mx = 0, my = 0;
 
 			SDL_PumpEvents();
-			const Uint32 mouse_state =SDL_GetMouseState(&mx, &my);
+			const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
 			const Uint8* key_state = SDL_GetKeyboardState(NULL);
 
 			static float pitch = 0.0f;
@@ -276,19 +200,22 @@ bool Renderer::draw() {
 			camera_front = glm::normalize(camera_direction);
 			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
 
-			static const float camera_speed = 0.005f;
+			static float camera_speed = 1.5f;
+
+			if(key_state[SDL_SCANCODE_LSHIFT])
+				camera_speed = 6.0f;
 
 			if(key_state[SDL_SCANCODE_W])
-				camera_position += camera_front * camera_speed;
+				camera_position += camera_front * (game->time_delta * camera_speed);
 
 			if(key_state[SDL_SCANCODE_S])
-				camera_position -= camera_front * camera_speed;
+				camera_position -= camera_front * (game->time_delta * camera_speed);
 
 			if(key_state[SDL_SCANCODE_D])
-				camera_position += camera_right * camera_speed;
+				camera_position += camera_right * (game->time_delta * camera_speed);
 
 			if(key_state[SDL_SCANCODE_A])
-				camera_position -= camera_right * camera_speed;
+				camera_position -= camera_right * (game->time_delta * camera_speed);
 
 			ubo.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
@@ -296,37 +223,70 @@ bool Renderer::draw() {
 			ubo.projection[1][1] *= -1;
 
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(ECameraData));
-
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			VkBuffer vertex_buffer[] = { triangle_mesh.vertex_buffer };
-			VkDeviceSize offsets[] = { 0 };
-
-			// bind current mesh
-			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
-
-			// write global, object sets
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			static std::random_device random_device;
-			static std::mt19937 random_generator(random_device());
+			//vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offset);
+			//vkCmdBindIndexBuffer(command_buffers[image_index], block_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			static std::normal_distribution<float> distribution(-1.0, 1.0);
+			ImGui_ImplVulkan_NewFrame();
+			ImGui_ImplSDL2_NewFrame();
+			ImGui::NewFrame();
 
-			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-			ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 15, 0), glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+			ImGuiIO& io = ImGui::GetIO();
 
-			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(triangle_mesh.indicies.size()), 1, 0, 0, 0);
+			ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!");
+			ImGui::GetForegroundDrawList()->AddText(ImVec2(0,14), ImColor(255,255,255), fmt::format("Rendering at {:.2f}ms ({:.0f} fps)", 1000 / io.Framerate, io.Framerate).c_str());
 
-			VkBuffer vertex_buffer_two[] = { other_mesh.vertex_buffer };
-			VkDeviceSize offsets_two[] = { 0 };
+			for(int i = 0; i < chunks.size(); i++) {
+				Chunk &chunk = chunks[i];
+				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
 
-			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer_two, offsets_two);
-			vkCmdBindIndexBuffer(command_buffers[image_index], other_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
+				glm::vec2 billboard = mathlib::calculate_billboard(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), ubo.projection, ubo.view, swapchain.extent.width, swapchain.extent.height);
+				ImGui::GetForegroundDrawList()->AddText(ImVec2(billboard.x,billboard.y), ImColor(0,0,0), fmt::format("({}, {})", chunk.chunk_x, chunk.chunk_y).c_str());
 
-			vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(other_mesh.indicies.size()), 1, 0, 0, 1);
+				VkDeviceSize offset[] = { 0 };
+
+				vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &chunk.chunk_mesh.vertex_buffer.buffer, offset);
+				//vkCmdBindIndexBuffer(command_buffers[image_index], chunk.chunk_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+				vkCmdDraw(command_buffers[image_index], chunk.chunk_mesh.vertex_count, 1, 0, i);
+
+				//vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
+			}
+
+			/*
+			for(size_t i = 0; i < blocks.size(); i++) {
+				//mathlib::calculate_model_matrix(transform, glm::vec3(0, 0, 0), glm::vec3(0.5, 0.5, 0.5))
+				glm::vec3 transform = blocks[i].position;
+
+				glm::vec4 screen_space = ubo.projection * ubo.view * glm::vec4(transform.x, transform.y, transform.z,1.0f);
+				screen_space /= screen_space.w;
+
+				float wx = (screen_space.x + 1.0f) * 0.5f * swapchain.extent.width;
+				float wy = (screen_space.y + 1.0f) * 0.5f * swapchain.extent.height;
+
+				UNUSED(wx);
+				UNUSED(wy);
+
+				ImGui::GetForegroundDrawList()->AddText(ImVec2(wx, wy), ImColor(255, 255, 255), fmt::format("{}", i).c_str());
+
+				if(blocks[i].active) {
+					ssbo[i].model = mathlib::calculate_model_matrix(transform, glm::vec3(0, 0, 0), glm::vec3(0.5, 0.5, 0.5));
+					//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(block_mesh.indicies.size()), 1, 0, 0, i);
+				}
+			}
+			*/
+
+			ImGui::Render();
+
+			//ssbo[0].model = block_matricies[0];
+			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(block_mesh.indicies.size()), 1, 0, 0, 0);
+
+			//ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0,0,0), glm::vec3(1, 1, 1));
+			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(block_mesh.indicies.size()), 1, 0, 0, 0);
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
@@ -466,7 +426,7 @@ bool Renderer::create_device() {
 
 bool Renderer::create_swapchain() {
 	VkSurfaceFormatKHR image_format = {};
-	image_format.format = VK_FORMAT_R8G8B8A8_SRGB;
+	image_format.format = VK_FORMAT_R8G8B8A8_UNORM;
 	image_format.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 
 	vkb::SwapchainBuilder swapchain_builder { device };

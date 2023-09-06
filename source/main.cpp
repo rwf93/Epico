@@ -25,7 +25,13 @@ int main(int argc, char *args[]) {
 	static bool quit = false;
 	game.quit = &quit; // make quitting accessable anywhere.
 
+
+	clock_t start_time = std::clock();
+
 	while(!quit) {
+		clock_t time = std::clock();
+		game.time_delta = static_cast<float>(time - start_time) / CLOCKS_PER_SEC;
+
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {
 			switch(e.type) {
@@ -40,6 +46,7 @@ int main(int argc, char *args[]) {
 			return false;
 		}
 
+		start_time = time;
 	}
 
 	SDL_DestroyWindow(game.window);

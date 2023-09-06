@@ -84,6 +84,12 @@ void EMesh::send_to_gpu(VmaAllocator allocator, VkCommandBuffer command) {
 void EMesh::cleanup_after_send(VmaAllocator allocator) {
 	vmaDestroyBuffer(allocator, staging_vertex_buffer, staging_vertex_buffer);
 	vmaDestroyBuffer(allocator, staging_index_buffer, staging_index_buffer);
+
+	// clears useless vertex data
+	vertex_count = static_cast<uint32_t>(verticies.size());
+	index_count = static_cast<uint32_t>(indicies.size());
+	verticies.clear();
+	indicies.clear();
 }
 
 void EMesh::destroy(VmaAllocator allocator) {

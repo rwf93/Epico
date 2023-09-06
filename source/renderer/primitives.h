@@ -11,24 +11,24 @@ struct EVertex {
 };
 
 struct EBuffer {
-	VkBuffer buffer;
-	VmaAllocation allocation;
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	operator VmaAllocation() { return allocation; }
 	operator VkBuffer() { return buffer; };
 };
 
 struct EImage {
-	VkImage image;
-	VmaAllocation allocation;
+	VkImage image = VK_NULL_HANDLE;
+	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	operator VmaAllocation() { return allocation; }
 	operator VkImage() { return image; };
 };
 
 struct ETexture {
-	EImage image;
-	VkImageView view;
+	EImage image = {};
+	VkImageView view = VK_NULL_HANDLE;
 
 	operator VmaAllocation() { return image; }
 	operator VkImage() { return image; };
@@ -39,12 +39,14 @@ struct EMesh {
 	void allocate(VmaAllocator allocator);
 	void destroy(VmaAllocator allocator);
 
-	void send_to_gpu(VmaAllocator allocation, VkCommandBuffer command);
-
-	void cleanup_after_send(VmaAllocator allocator);
+	void send_to_gpu(VmaAllocator allocator, VkCommandBuffer command);
+	void cleanup_after_send(VmaAllocator allocator); // used to free after transfers
 
 	std::vector<EVertex> verticies = {};
 	std::vector<uint32_t> indicies = {};
+
+	uint32_t vertex_count = 0;
+	uint32_t index_count = 0;
 
 	EBuffer staging_vertex_buffer = {};
 	EBuffer staging_index_buffer = {};
@@ -55,12 +57,12 @@ struct EMesh {
 // uniforms
 
 struct ECameraData {
-	glm::mat4 view;
-	glm::mat4 projection;
+	glm::mat4 view = {};
+	glm::mat4 projection = {};
 };
 
 struct EObjectData {
-	glm::mat4 model;
+	glm::mat4 model = {};
 };
 
 }

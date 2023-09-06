@@ -4,6 +4,7 @@
 
 #include "pipeline.h"
 #include "primitives.h"
+#include "voxel.h"
 
 namespace render {
 
@@ -15,6 +16,7 @@ public:
 	bool setup();
 	bool draw();
 
+	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
 private:
 	bool create_vk_instance();
 	bool create_surface();
@@ -41,8 +43,6 @@ private:
 	VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat find_depth_format();
 
-	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
-
 	VkShaderModule create_shader(const std::vector<uint32_t> &code);
 
 	PipelinePair build_triangle_pipeline();
@@ -50,62 +50,64 @@ private:
 	PipelinePair build_imgui_pipeline();
 
 private:
-	GameGlobals *game;
+	GameGlobals *game = nullptr;
 
-	vkb::Instance instance;
-	VkSurfaceKHR surface;
-	vkb::Device device;
+	vkb::Instance instance = {};
+	VkSurfaceKHR surface = VK_NULL_HANDLE;
+	vkb::Device device = {};
 
-	vkb::Swapchain swapchain;
-	std::vector<VkImage> swapchain_images;
-	std::vector<VkImageView> swapchain_image_views;
+	vkb::Swapchain swapchain = {};
+	std::vector<VkImage> swapchain_images = {};
+	std::vector<VkImageView> swapchain_image_views = {};
 
-	VkQueue graphics_queue;
-	VkQueue present_queue;
-	uint32_t graphics_queue_index;
+	VkQueue graphics_queue = VK_NULL_HANDLE;
+	VkQueue present_queue = VK_NULL_HANDLE;
+	uint32_t graphics_queue_index = UINT32_MAX;
 
-	VkRenderPass render_pass;
+	VkRenderPass render_pass = {};
 
-	std::vector<VkFramebuffer> framebuffers;
+	std::vector<VkFramebuffer> framebuffers = {};
 
-	VkDescriptorSetLayout global_descriptor_layout;
-	VkDescriptorSetLayout object_descriptor_layout;
+	VkDescriptorSetLayout global_descriptor_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;
 
-	VkPipelineCache pipeline_cache;
-	std::map<std::string, PipelinePair> pipelines;
+	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
+	std::map<std::string, PipelinePair> pipelines = {};
 
-	VmaAllocator allocator;
+	VmaAllocator allocator = VK_NULL_HANDLE;
 
-	ETexture depth_texture;
+	ETexture depth_texture = {};
 
 	struct UniformBufferAllocation {
 		EBuffer memory;
 		VmaAllocationInfo info;
 	};
 
-	const uint32_t MAX_OBJECTS = 1024;
+	const uint32_t MAX_OBJECTS = 1024*1024;
 
-	VkDescriptorPool descriptor_pool;
-	VkDescriptorPool imgui_descriptor_pool;
+	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+	VkDescriptorPool imgui_descriptor_pool = VK_NULL_HANDLE;
 
-	std::vector<UniformBufferAllocation> camera_data_buffers;
-	std::vector<UniformBufferAllocation> object_data_buffers;
+	std::vector<UniformBufferAllocation> camera_data_buffers = {};
+	std::vector<UniformBufferAllocation> object_data_buffers = {};
 
-	std::vector<VkDescriptorSet> global_descriptor_sets;
-	std::vector<VkDescriptorSet> object_descriptor_sets;
+	std::vector<VkDescriptorSet> global_descriptor_sets = {};
+	std::vector<VkDescriptorSet> object_descriptor_sets = {};
 
-	VkCommandPool command_pool;
-	std::vector<VkCommandBuffer> command_buffers;
+	VkCommandPool command_pool = VK_NULL_HANDLE;
+	std::vector<VkCommandBuffer> command_buffers = {};
 
 	const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
-	std::vector<VkSemaphore> available_semaphores;
-	std::vector<VkSemaphore> finished_semaphores;
-	std::vector<VkFence> in_flight_fences;
+	std::vector<VkSemaphore> available_semaphores = {};
+	std::vector<VkSemaphore> finished_semaphores = {};
+	std::vector<VkFence> in_flight_fences = {};
 
 	size_t current_frame = 0;
 
-	std::deque<std::function<void()>> deletion_queue;
+	std::deque<std::function<void()>> deletion_queue = {};
+
+	std::vector<Chunk> chunks = {};
 };
 
 }

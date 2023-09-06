@@ -6,6 +6,7 @@ add_executable(${PROJECT}
     renderer/info.cpp
     renderer/pipeline.cpp
     renderer/primitives.cpp
+    renderer/voxel.cpp
     renderer/renderer.cpp
 )
 
