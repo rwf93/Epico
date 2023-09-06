@@ -13,7 +13,7 @@ glm::mat4 mathlib::calculate_model_matrix(glm::vec3 translation, glm::vec3 rotat
 
 glm::vec2 mathlib::calculate_billboard(glm::vec3 translation, glm::mat4 projection, glm::mat4 view, int w, int h) {
 	glm::vec2 xy;
-	
+
 	glm::vec4 world_space = glm::vec4(translation, 1.0f);
 	glm::vec4 screen_space = projection * view * world_space;
 

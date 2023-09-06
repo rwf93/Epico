@@ -47,35 +47,28 @@ void Chunk::build_mesh(VmaAllocator allocator, VkCommandBuffer command) {
 	UNUSED(allocator);
 	UNUSED(command);
 
-	int idx = 0;
 	std::vector<glm::vec3> FRONT_FACE = {
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos,
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos
+		{ -0.5f, -0.5f, -0.5f }, {  0.5f, -0.5f, -0.5f }, {  0.5f,  0.5f, -0.5f }, { -0.5f,  0.5f, -0.5f }
 	};
 
 	std::vector<glm::vec3> LEFT_FACE = {
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos,
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos
+		{ -0.5f, -0.5f,  0.5f }, { -0.5f, -0.5f, -0.5f }, { -0.5f,  0.5f, -0.5f }, { -0.5f,  0.5f,  0.5f }
 	};
 
 	std::vector<glm::vec3> RIGHT_FACE = {
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos,
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos
+		{  0.5f, -0.5f, -0.5f }, {  0.5f, -0.5f,  0.5f }, { 0.5f, 0.5f, 0.5f }, { 0.5f, 0.5f, -0.5f }
 	};
 
 	std::vector<glm::vec3> BACK_FACE = {
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos,
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos
+		{  0.5f, -0.5f,  0.5f }, { -0.5f, -0.5f,  0.5f }, { -0.5f,  0.5f,  0.5f }, {  0.5f,  0.5f,  0.5f }
 	};
 
 	std::vector<glm::vec3> TOP_FACE = {
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos,
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos
+		{ -0.5f,  0.5f, -0.5f }, {  0.5f,  0.5f, -0.5f }, {  0.5f,  0.5f,  0.5f }, { -0.5f,  0.5f,  0.5f }
 	};
 
 	std::vector<glm::vec3> BOTTOM_FACE = {
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos,
-		Voxel::block_model[idx++].pos, Voxel::block_model[idx++].pos
+		{ -0.5f, -0.5f,  0.5f }, {  0.5f, -0.5f,  0.5f }, {  0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, -0.5f }
 	};
 
     for(uint32_t y = 0; y < MAX_HEIGHT; y++) {
@@ -84,40 +77,36 @@ void Chunk::build_mesh(VmaAllocator allocator, VkCommandBuffer command) {
                 Voxel &voxel = voxels[y][x][z];
 				if(!voxel.active) continue;
 
-				glm::vec3 translation(x + Voxel::MODEL_OFFSET, y + Voxel::MODEL_OFFSET, z + Voxel::MODEL_OFFSET);
+				glm::vec3 translation(x, y, z);
 
-				chunk_mesh.verticies.push_back({ FRONT_FACE[0] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ FRONT_FACE[1] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ FRONT_FACE[2] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ FRONT_FACE[3] + translation, glm::vec3(1, 1, 1) });
+				static std::map<VoxelType, glm::vec3> type_colors = {
+					{VOXEL_AIR, glm::vec3(1, 1, 0)},
+					{VOXEL_DIRT, glm::vec3(0, 1, 1)},
+					{VOXEL_STONE, glm::vec3(1, 0, 1)},
+					{VOXEL_MAXTYPE, glm::vec3(1, 1, 1)},
+				};
 
-				chunk_mesh.verticies.push_back({ LEFT_FACE[0] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ LEFT_FACE[1] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ LEFT_FACE[2] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ LEFT_FACE[3] + translation, glm::vec3(1, 1, 1) });
-
-				chunk_mesh.verticies.push_back({ RIGHT_FACE[0] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ RIGHT_FACE[1] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ RIGHT_FACE[2] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ RIGHT_FACE[3] + translation, glm::vec3(1, 1, 1) });
-
-				chunk_mesh.verticies.push_back({ BACK_FACE[0] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ BACK_FACE[1] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ BACK_FACE[2] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ BACK_FACE[3] + translation, glm::vec3(1, 1, 1) });
-
-				chunk_mesh.verticies.push_back({ TOP_FACE[0] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ TOP_FACE[1] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ TOP_FACE[2] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ TOP_FACE[3] + translation, glm::vec3(1, 1, 1) });
-
-				chunk_mesh.verticies.push_back({ BOTTOM_FACE[0] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ BOTTOM_FACE[1] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ BOTTOM_FACE[2] + translation, glm::vec3(1, 1, 1) });
-				chunk_mesh.verticies.push_back({ BOTTOM_FACE[3] + translation, glm::vec3(1, 1, 1) });
-
-				chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.indicies.size());
+				add_plane(translation, FRONT_FACE, type_colors[voxel.type]);
+				add_plane(translation, LEFT_FACE, type_colors[voxel.type]);
+				add_plane(translation, RIGHT_FACE, type_colors[voxel.type]);
+				add_plane(translation, BACK_FACE, type_colors[voxel.type]);
+				add_plane(translation, TOP_FACE, type_colors[voxel.type]);
+				add_plane(translation, BOTTOM_FACE, type_colors[voxel.type]);
             }
         }
     }
+}
+
+void Chunk::add_plane(glm::vec3 translation, std::vector<glm::vec3> &face, glm::vec3 color) {
+		chunk_mesh.verticies.push_back({ face[0] + translation, color });
+		chunk_mesh.verticies.push_back({ face[1] + translation, color });
+		chunk_mesh.verticies.push_back({ face[2] + translation, color });
+		chunk_mesh.verticies.push_back({ face[3] + translation, color });
+
+		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size());
+		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 1);
+		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 2);
+		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 2);
+		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 3);
+		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size());
 }

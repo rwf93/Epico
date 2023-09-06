@@ -60,6 +60,7 @@ bool Renderer::setup() {
 				for(size_t x = 0; x < Chunk::MAX_WIDTH; x++) {
 					for(size_t z = 0; z < Chunk::MAX_WIDTH; z++) {
 						chunk_test.voxels[y][x][z].active = true;
+						chunk_test.voxels[y][x][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);
 					}
 				}
 			}
@@ -72,6 +73,12 @@ bool Renderer::setup() {
 			//chunk_test.chunk_mesh.cleanup_after_send(allocator);
 		}
 	}
+
+	chunks[0].voxels[0][1][0].active = false;
+	chunks[0].voxels[0][2][0].active = false;
+	chunks[0].voxels[0][3][0].active = false;
+	chunks[0].voxels[0][1][4].active = false;
+
 
 	for (auto& chunk : chunks) {
 		chunk.build_mesh(nullptr, nullptr);
@@ -250,11 +257,11 @@ bool Renderer::draw() {
 				VkDeviceSize offset[] = { 0 };
 
 				vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &chunk.chunk_mesh.vertex_buffer.buffer, offset);
-				//vkCmdBindIndexBuffer(command_buffers[image_index], chunk.chunk_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindIndexBuffer(command_buffers[image_index], chunk.chunk_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-				vkCmdDraw(command_buffers[image_index], chunk.chunk_mesh.vertex_count, 1, 0, i);
+				//vkCmdDraw(command_buffers[image_index], chunk.chunk_mesh.vertex_count, 1, 0, i);
 
-				//vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
+				vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
 			}
 
 			/*

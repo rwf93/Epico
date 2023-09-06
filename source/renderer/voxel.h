@@ -39,6 +39,9 @@ public:
     EMesh chunk_mesh = {};
 
     int chunk_x = 0; int chunk_y = 0;
+
+private:
+    void add_plane(glm::vec3 translation, std::vector<glm::vec3> &face, glm::vec3 color);
 };
 
 }
