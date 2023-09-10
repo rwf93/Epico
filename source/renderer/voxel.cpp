@@ -41,72 +41,134 @@ void Voxel::load_model() {
 Chunk::Chunk(int x, int y) {
 	this->chunk_x = x;
 	this->chunk_y = y;
+
+	for(int vx = 0; vx < MAX_WIDTH; vx++) {
+		for(int vy = 0; vy < MAX_HEIGHT; vy++) {
+			for(int vz = 0; vz < MAX_WIDTH; vz++) {
+				voxels[vx][vy][vz].active = true;
+				voxels[vx][vy][vz].type = VOXEL_AIR;
+			}
+		}
+	}
 }
 
-void Chunk::build_mesh(VmaAllocator allocator, VkCommandBuffer command) {
-	UNUSED(allocator);
-	UNUSED(command);
+void Chunk::build_mesh() {
+	uint32_t vertex_count = 0;
 
-	std::vector<glm::vec3> FRONT_FACE = {
-		{ -0.5f, -0.5f, -0.5f }, {  0.5f, -0.5f, -0.5f }, {  0.5f,  0.5f, -0.5f }, { -0.5f,  0.5f, -0.5f }
-	};
+	for(int d = 0; d < 3; d++) {
+		int i = 0, j = 0, k = 0;
+		int l = 0, w = 0, h = 0;
 
-	std::vector<glm::vec3> LEFT_FACE = {
-		{ -0.5f, -0.5f,  0.5f }, { -0.5f, -0.5f, -0.5f }, { -0.5f,  0.5f, -0.5f }, { -0.5f,  0.5f,  0.5f }
-	};
+		int u = (d+1) % 3;
+		int v = (d+2) % 3;
 
-	std::vector<glm::vec3> RIGHT_FACE = {
-		{  0.5f, -0.5f, -0.5f }, {  0.5f, -0.5f,  0.5f }, { 0.5f, 0.5f, 0.5f }, { 0.5f, 0.5f, -0.5f }
-	};
+		int x[3] = { 0, 0, 0 };
+		int q[3] = { 0, 0, 0 };
 
-	std::vector<glm::vec3> BACK_FACE = {
-		{  0.5f, -0.5f,  0.5f }, { -0.5f, -0.5f,  0.5f }, { -0.5f,  0.5f,  0.5f }, {  0.5f,  0.5f,  0.5f }
-	};
+		BMask mask[MAX_WIDTH * MAX_HEIGHT] = {};
+		q[d] = 1;
 
-	std::vector<glm::vec3> TOP_FACE = {
-		{ -0.5f,  0.5f, -0.5f }, {  0.5f,  0.5f, -0.5f }, {  0.5f,  0.5f,  0.5f }, { -0.5f,  0.5f,  0.5f }
-	};
+		// computes the mask.
+		for(x[d] = -1; x[d] < MAX_WIDTH;) {
+			int n = 0;
+			for(x[v] = 0; x[v] < MAX_HEIGHT; x[v]++) {
+				for(x[u] = 0; x[u] < MAX_WIDTH; x[u]++) {
+					VoxelType current = get_type(x[0], x[1], x[2]);
+					VoxelType compare = get_type(x[0] + q[0], x[1] + q[1], x[2] + q[2]);
 
-	std::vector<glm::vec3> BOTTOM_FACE = {
-		{ -0.5f, -0.5f,  0.5f }, {  0.5f, -0.5f,  0.5f }, {  0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, -0.5f }
-	};
+					bool current_opaque = current != VoxelType::VOXEL_AIR;
+					bool compare_opaque = compare != VoxelType::VOXEL_AIR;
 
-    for(uint32_t y = 0; y < MAX_HEIGHT; y++) {
-        for(uint32_t x = 0; x < MAX_WIDTH; x++) {
-            for(uint32_t z = 0; z < MAX_WIDTH; z++) {
-                Voxel &voxel = voxels[y][x][z];
-				if(!voxel.active) continue;
+					if(current_opaque == compare_opaque) {
+						mask[n++] = { VoxelType::VOXEL_NULL, 0 };
+					} else if(current_opaque) {
+						mask[n++] = { current, 1 };
+					} else {
+						mask[n++] = { compare, -1 };
+					}
+					//mask[n++] = { current_opaque == compare_opaque ? compare : current, current_opaque != compare_opaque };
+				}
+			}
 
-				glm::vec3 translation(x, y, z);
+			x[d]++;
+			n = 0;
 
-				static std::map<VoxelType, glm::vec3> type_colors = {
-					{VOXEL_AIR, glm::vec3(1, 1, 0)},
-					{VOXEL_DIRT, glm::vec3(0, 1, 1)},
-					{VOXEL_STONE, glm::vec3(1, 0, 1)},
-					{VOXEL_MAXTYPE, glm::vec3(1, 1, 1)},
-				};
+			for(j = 0; j < MAX_HEIGHT; j++) {
+				for(i = 0; i < MAX_WIDTH;) {
+					if(mask[n].index != 0) {
+						BMask current_mask = mask[n];
+						for(w = 0; i + w < MAX_WIDTH && compare_mask(mask[n + w], current_mask); w++) {}
 
-				add_plane(translation, FRONT_FACE, type_colors[voxel.type]);
-				add_plane(translation, LEFT_FACE, type_colors[voxel.type]);
-				add_plane(translation, RIGHT_FACE, type_colors[voxel.type]);
-				add_plane(translation, BACK_FACE, type_colors[voxel.type]);
-				add_plane(translation, TOP_FACE, type_colors[voxel.type]);
-				add_plane(translation, BOTTOM_FACE, type_colors[voxel.type]);
-            }
-        }
-    }
+						bool done = false;
+						for(h = 1; j + h < MAX_HEIGHT; h++) {
+							for(k = 0; k < w; k++) {
+								if(!compare_mask(mask[n + k + h * MAX_WIDTH], current_mask)) {
+									done = true;
+									break;
+								}
+							}
+
+							if(done) break;
+						}
+
+						x[u] = i;
+						x[v] = j;
+
+						int du[3] = { 0, 0, 0 };
+						du[u] = w;
+
+						int dv[3] = { 0, 0, 0 };
+						dv[v] = h;
+
+						chunk_mesh.verticies.push_back( { { x[0], x[1], x[2] }, glm::vec3(1, 0, 0) } );
+						chunk_mesh.verticies.push_back( { { x[0]+du[0], x[1]+du[1], x[2]+du[2] }, glm::vec3(0, 1, 0) } );
+						chunk_mesh.verticies.push_back( { { x[0]+du[0]+dv[0], x[1]+du[1]+dv[1], x[2]+du[2]+dv[2] }, glm::vec3(0, 0, 1) } );
+						chunk_mesh.verticies.push_back( { { x[0]+dv[0], x[1]+dv[1], x[2]+dv[2] }, glm::vec3(1, 1, 1) } );
+
+						chunk_mesh.indicies.push_back(vertex_count);
+						chunk_mesh.indicies.push_back(vertex_count + 1);
+						chunk_mesh.indicies.push_back(vertex_count + 2);
+						chunk_mesh.indicies.push_back(vertex_count + 2);
+						chunk_mesh.indicies.push_back(vertex_count + 3);
+						chunk_mesh.indicies.push_back(vertex_count);
+
+						vertex_count += 4;
+
+						for(l = 0; l < h; l++)
+							for(k = 0; k < w; k++)
+								mask[n + k + l * MAX_WIDTH] = { VoxelType::VOXEL_NULL, 0 };
+
+						i += w;
+						n += w;
+					} else {
+						i++;
+						n++;
+					}
+				}
+			}
+		}
+	}
 }
 
-void Chunk::add_plane(glm::vec3 translation, std::vector<glm::vec3> &face, glm::vec3 color) {
-		chunk_mesh.verticies.push_back({ face[0] + translation, color });
-		chunk_mesh.verticies.push_back({ face[1] + translation, color });
-		chunk_mesh.verticies.push_back({ face[2] + translation, color });
-		chunk_mesh.verticies.push_back({ face[3] + translation, color });
+bool Chunk::is_active(int x, int y, int z) {
+	if(x >= MAX_WIDTH  || x < 0) return false;
+	if(y >= MAX_HEIGHT || y < 0) return false;
+	if(z >= MAX_WIDTH  || z < 0) return false;
 
-		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size());
-		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 1);
-		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 2);
-		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 2);
-		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size() + 3);
-		chunk_mesh.indicies.push_back((uint32_t)chunk_mesh.verticies.size());
+	return voxels.at(x).at(y).at(z).active;
+}
+
+VoxelType Chunk::get_type(int x, int y, int z) {
+	if(x >= MAX_WIDTH  || x < 0) return VoxelType::VOXEL_AIR;
+	if(y >= MAX_HEIGHT || y < 0) return VoxelType::VOXEL_AIR;
+	if(z >= MAX_WIDTH  || z < 0) return VoxelType::VOXEL_AIR;
+
+	return voxels.at(x).at(y).at(z).type;
+}
+
+void Chunk::add_quad(std::vector<glm::vec3> &face, glm::vec3 color) {
+		chunk_mesh.verticies.push_back({ face[0], color });
+		chunk_mesh.verticies.push_back({ face[1], color });
+		chunk_mesh.verticies.push_back({ face[2], color });
+		chunk_mesh.verticies.push_back({ face[3], color });
 }

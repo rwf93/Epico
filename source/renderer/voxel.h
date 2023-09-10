@@ -5,7 +5,8 @@
 namespace render {
 
 enum VoxelType {
-    VOXEL_AIR = 0,
+    VOXEL_NULL = 0,
+    VOXEL_AIR,
     VOXEL_DIRT,
     VOXEL_STONE,
 
@@ -26,22 +27,30 @@ public:
 class Chunk {
 public:
     Chunk(int x, int y);
-    void build_mesh(VmaAllocator allocator, VkCommandBuffer command);
+    void build_mesh();
+    bool is_active(int x, int y, int z);
+    VoxelType get_type(int x, int y, int z);
 
 public:
-    static const uint32_t MAX_HEIGHT = 128;
-    static const uint32_t MAX_WIDTH = 16;
+    static const int MAX_HEIGHT = 128;
+    static const int MAX_WIDTH = 16;
 
     template <unsigned I, unsigned J, unsigned K>
     using VoxelArray = std::array<std::array<std::array<Voxel, K>, J>, I>;
-    VoxelArray<MAX_HEIGHT, MAX_WIDTH, MAX_WIDTH> voxels = {};
+    VoxelArray<MAX_WIDTH, MAX_HEIGHT, MAX_WIDTH> voxels = {};
 
     EMesh chunk_mesh = {};
 
     int chunk_x = 0; int chunk_y = 0;
 
+    struct BMask {
+        VoxelType type;
+        int index;
+    };
+
 private:
-    void add_plane(glm::vec3 translation, std::vector<glm::vec3> &face, glm::vec3 color);
+    void add_quad(std::vector<glm::vec3> &face, glm::vec3 color);
+    bool compare_mask(BMask m1, BMask m2) { return m1.type == m2.type && m1.index == m2.index; }
 };
 
 }

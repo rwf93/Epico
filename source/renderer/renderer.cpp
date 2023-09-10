@@ -53,35 +53,64 @@ bool Renderer::setup() {
 
 	Voxel::load_model();
 
+	/*
 	for(int cx = 0; cx < 2; cx++) {
 		for(int cy = 0; cy < 2; cy++) {
-			Chunk chunk_test(cx, cy);
+			Chunk chunk(cx, cy);
 			for(size_t y = 0; y < Chunk::MAX_HEIGHT; y++) {
 				for(size_t x = 0; x < Chunk::MAX_WIDTH; x++) {
 					for(size_t z = 0; z < Chunk::MAX_WIDTH; z++) {
-						chunk_test.voxels[y][x][z].active = true;
-						chunk_test.voxels[y][x][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);
+						chunk.voxels[y][x][z].active = true;
+						chunk.voxels[y][x][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);
 					}
 				}
 			}
-			chunks.push_back(chunk_test);
-
-			//submit_command([&](VkCommandBuffer command) {
-			//	chunk_test.build_mesh(allocator, command);
-			//});
-
-			//chunk_test.chunk_mesh.cleanup_after_send(allocator);
+			chunks.push_back(chunk);
 		}
 	}
+	*/
 
-	chunks[0].voxels[0][1][0].active = false;
-	chunks[0].voxels[0][2][0].active = false;
-	chunks[0].voxels[0][3][0].active = false;
-	chunks[0].voxels[0][1][4].active = false;
+	/*
+	const int GEN_CHUNKS = 2;
+	for(int cx = 0; cx < GEN_CHUNKS; cx++) {
+		for(int cy = 0; cy < GEN_CHUNKS; cy++) {
+			Chunk chunk(cx, cy);
+			for(int x = 0; x < Chunk::MAX_WIDTH; x++) {
+				for(int y = 0; y < Chunk::MAX_HEIGHT; y++) {
+					for(int z = 0; z < Chunk::MAX_WIDTH; z++) {
+						chunk.voxels[x][y][z].active = true;
+						chunk.voxels[x][y][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);;
+					}
+				}
+			}
+			chunks.push_back(chunk);
+		}
+	}
+	*/
 
+	Chunk stupid(0, 0);
+	stupid.voxels[0][0][0].active = true;
+	stupid.voxels[0][0][0].type = VoxelType::VOXEL_DIRT;
+
+	stupid.voxels[0][4][0].active = true;
+	stupid.voxels[0][4][0].type = VoxelType::VOXEL_DIRT;
+
+	stupid.voxels[0][8][0].active = true;
+	stupid.voxels[0][8][0].type = VoxelType::VOXEL_AIR;
+
+	stupid.voxels[1][0][0].active = true;
+	stupid.voxels[1][0][0].type = VoxelType::VOXEL_DIRT;
+
+	stupid.voxels[1][4][0].active = true;
+	stupid.voxels[1][4][0].type = VoxelType::VOXEL_DIRT;
+
+	stupid.voxels[1][8][0].active = true;
+	stupid.voxels[1][8][0].type = VoxelType::VOXEL_DIRT;
+
+	chunks.push_back(stupid);
 
 	for (auto& chunk : chunks) {
-		chunk.build_mesh(nullptr, nullptr);
+		chunk.build_mesh();
 
 		chunk.chunk_mesh.allocate(allocator);
 		submit_command([&](VkCommandBuffer command) {
@@ -207,7 +236,7 @@ bool Renderer::draw() {
 			camera_front = glm::normalize(camera_direction);
 			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
 
-			static float camera_speed = 1.5f;
+			float camera_speed = 0.3f;
 
 			if(key_state[SDL_SCANCODE_LSHIFT])
 				camera_speed = 6.0f;
@@ -249,7 +278,7 @@ bool Renderer::draw() {
 
 			for(int i = 0; i < chunks.size(); i++) {
 				Chunk &chunk = chunks[i];
-				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
+				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.1, 0.1, 0.1));
 
 				glm::vec2 billboard = mathlib::calculate_billboard(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), ubo.projection, ubo.view, swapchain.extent.width, swapchain.extent.height);
 				ImGui::GetForegroundDrawList()->AddText(ImVec2(billboard.x,billboard.y), ImColor(0,0,0), fmt::format("({}, {})", chunk.chunk_x, chunk.chunk_y).c_str());
@@ -397,8 +426,13 @@ bool Renderer::create_surface() {
 }
 
 bool Renderer::create_device() {
+	const VkPhysicalDeviceFeatures device_features = {
+		.fillModeNonSolid = true
+	};
+
 	vkb::PhysicalDeviceSelector device_selector(instance);
 	auto device_selector_ret = device_selector
+								.set_required_features(device_features)
 								.set_minimum_version(1, 1)
 								.set_surface(surface)
 								.select();
@@ -532,10 +566,10 @@ bool Renderer::create_render_pass() {
 	VkSubpassDependency dependency = {};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	VkRenderPassCreateInfo render_pass_info = {};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
