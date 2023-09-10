@@ -136,7 +136,7 @@ void Chunk::build_mesh() {
 						chunk_mesh.indicies.push_back(count + 2);
 						chunk_mesh.indicies.push_back(count + 2);
 						chunk_mesh.indicies.push_back(count + 3);
-						chunk_mesh.indicies.push_back(count + current_mask.index);
+						chunk_mesh.indicies.push_back(count);
 
 						for(l = 0; l < h; l++)
 							for(k = 0; k < w; k++)
