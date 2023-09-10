@@ -51,10 +51,8 @@ Chunk::Chunk(int x, int y) {
 		}
 	}
 }
-// this code fucking sucks, run if you can.
+// this code sucks, you genuinely cannot blame me.
 void Chunk::build_mesh() {
-	uint32_t vertex_count = 0;
-
 	for(int d = 0; d < 3; d++) {
 		int i = 0, j = 0, k = 0;
 		int l = 0, w = 0, h = 0;
@@ -62,8 +60,8 @@ void Chunk::build_mesh() {
 		int u = (d+1) % 3;
 		int v = (d+2) % 3;
 
-		int x[3] = { 0, 0, 0 };
-		int q[3] = { 0, 0, 0 };
+		int x[3] = { 0, 0, 0 }; // chunk/block mask
+		int q[3] = { 0, 0, 0 }; // axis mask
 
 		BMask mask[MAX_WIDTH * MAX_HEIGHT] = {};
 		q[d] = 1;
@@ -76,8 +74,13 @@ void Chunk::build_mesh() {
 					VoxelType current = get_type(x[0], x[1], x[2]);
 					VoxelType compare = get_type(x[0] + q[0], x[1] + q[1], x[2] + q[2]);
 
-					bool current_opaque = current != VoxelType::VOXEL_AIR;
-					bool compare_opaque = compare != VoxelType::VOXEL_AIR;
+					// if a Voxel is active. If a voxel isn't rendered (destroyed), then it is inactive
+					// Voxel data won't be stored in the Voxel class, it's too much to handle for any given system.
+					bool current_active = is_active(x[0], x[1], x[2]);
+					bool compare_active = is_active(x[0] + q[0], x[1] + q[1], x[2] + q[2]);
+					// TODO: handle other opaque blocks such as water and glass; once we get vulkan to render the alpha channel.
+					bool current_opaque = (current != VoxelType::VOXEL_AIR) && current_active;
+					bool compare_opaque = (compare != VoxelType::VOXEL_AIR) && compare_active;
 
 					if(current_opaque == compare_opaque) {
 						mask[n++] = { VoxelType::VOXEL_NULL, 0 };
@@ -86,13 +89,12 @@ void Chunk::build_mesh() {
 					} else {
 						mask[n++] = { compare, -1 };
 					}
-					//mask[n++] = { current_opaque == compare_opaque ? compare : current, current_opaque != compare_opaque };
 				}
 			}
 
 			x[d]++;
 			n = 0;
-
+			// does some black magic wizardy with the mask.
 			for(j = 0; j < MAX_HEIGHT; j++) {
 				for(i = 0; i < MAX_WIDTH;) {
 					if(mask[n].index != 0) {
@@ -120,19 +122,21 @@ void Chunk::build_mesh() {
 						int dv[3] = { 0, 0, 0 };
 						dv[v] = h;
 
+						uint32_t count = static_cast<uint32_t>(chunk_mesh.verticies.size());
+
+						spdlog::info("Processing Current Mask: {}", current_mask);
+						// black magic wizardy insues
 						chunk_mesh.verticies.push_back( { { x[0], x[1], x[2] }, glm::vec3(1, 0, 0) } );
 						chunk_mesh.verticies.push_back( { { x[0]+du[0], x[1]+du[1], x[2]+du[2] }, glm::vec3(0, 1, 0) } );
 						chunk_mesh.verticies.push_back( { { x[0]+du[0]+dv[0], x[1]+du[1]+dv[1], x[2]+du[2]+dv[2] }, glm::vec3(0, 0, 1) } );
 						chunk_mesh.verticies.push_back( { { x[0]+dv[0], x[1]+dv[1], x[2]+dv[2] }, glm::vec3(1, 1, 1) } );
 
-						chunk_mesh.indicies.push_back(vertex_count);
-						chunk_mesh.indicies.push_back(vertex_count + 1);
-						chunk_mesh.indicies.push_back(vertex_count + 2);
-						chunk_mesh.indicies.push_back(vertex_count + 2);
-						chunk_mesh.indicies.push_back(vertex_count + 3);
-						chunk_mesh.indicies.push_back(vertex_count);
-
-						vertex_count += 4;
+						chunk_mesh.indicies.push_back(count);
+						chunk_mesh.indicies.push_back(count + 1);
+						chunk_mesh.indicies.push_back(count + 2);
+						chunk_mesh.indicies.push_back(count + 2);
+						chunk_mesh.indicies.push_back(count + 3);
+						chunk_mesh.indicies.push_back(count + current_mask.index);
 
 						for(l = 0; l < h; l++)
 							for(k = 0; k < w; k++)

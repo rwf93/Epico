@@ -96,7 +96,7 @@ bool Renderer::setup() {
 	stupid.voxels[0][4][0].type = VoxelType::VOXEL_DIRT;
 
 	stupid.voxels[0][8][0].active = true;
-	stupid.voxels[0][8][0].type = VoxelType::VOXEL_AIR;
+	stupid.voxels[0][8][0].type = VoxelType::VOXEL_STONE;
 
 	stupid.voxels[1][0][0].active = true;
 	stupid.voxels[1][0][0].type = VoxelType::VOXEL_DIRT;
@@ -239,7 +239,7 @@ bool Renderer::draw() {
 			float camera_speed = 0.3f;
 
 			if(key_state[SDL_SCANCODE_LSHIFT])
-				camera_speed = 6.0f;
+				camera_speed *= 2.0f;
 
 			if(key_state[SDL_SCANCODE_W])
 				camera_position += camera_front * (game->time_delta * camera_speed);

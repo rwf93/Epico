@@ -54,3 +54,21 @@ private:
 };
 
 }
+
+template<>
+struct fmt::formatter<render::VoxelType> : fmt::formatter<std::string>
+{
+	auto format(render::VoxelType my, format_context &ctx) const -> decltype(ctx.out())
+	{
+		return fmt::format_to(ctx.out(), "{}", magic_enum::enum_name(my));
+	}
+};
+
+template<>
+struct fmt::formatter<render::Chunk::BMask> : fmt::formatter<std::string>
+{
+	auto format(render::Chunk::BMask my, format_context &ctx) const -> decltype(ctx.out())
+	{
+		return fmt::format_to(ctx.out(), "{{ {}, {} }}", my.type, my.index);
+	}
+};
