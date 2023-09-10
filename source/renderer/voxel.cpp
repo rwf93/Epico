@@ -51,7 +51,7 @@ Chunk::Chunk(int x, int y) {
 		}
 	}
 }
-
+// this code fucking sucks, run if you can.
 void Chunk::build_mesh() {
 	uint32_t vertex_count = 0;
 
