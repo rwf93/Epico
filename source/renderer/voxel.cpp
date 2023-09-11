@@ -98,7 +98,7 @@ void Chunk::build_mesh() {
 			for(j = 0; j < MAX_HEIGHT; j++) {
 				for(i = 0; i < MAX_WIDTH;) {
 					if(mask[n].index != 0) {
-						BMask current_mask = mask[n];
+						BMask &current_mask = mask[n];
 						for(w = 0; i + w < MAX_WIDTH && compare_mask(mask[n + w], current_mask); w++) {}
 
 						bool done = false;

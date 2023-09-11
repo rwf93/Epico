@@ -52,7 +52,6 @@ bool Renderer::setup() {
 	if(!create_imgui())				return false;
 
 	Voxel::load_model();
-
 	/*
 	for(int cx = 0; cx < 2; cx++) {
 		for(int cy = 0; cy < 2; cy++) {
@@ -70,7 +69,6 @@ bool Renderer::setup() {
 	}
 	*/
 
-	/*
 	const int GEN_CHUNKS = 2;
 	for(int cx = 0; cx < GEN_CHUNKS; cx++) {
 		for(int cy = 0; cy < GEN_CHUNKS; cy++) {
@@ -79,15 +77,15 @@ bool Renderer::setup() {
 				for(int y = 0; y < Chunk::MAX_HEIGHT; y++) {
 					for(int z = 0; z < Chunk::MAX_WIDTH; z++) {
 						chunk.voxels[x][y][z].active = true;
-						chunk.voxels[x][y][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);;
+						chunk.voxels[x][y][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);
 					}
 				}
 			}
 			chunks.push_back(chunk);
 		}
 	}
-	*/
 
+	/*
 	Chunk stupid(0, 0);
 	stupid.voxels[0][0][0].active = true;
 	stupid.voxels[0][0][0].type = VoxelType::VOXEL_DIRT;
@@ -108,6 +106,7 @@ bool Renderer::setup() {
 	stupid.voxels[1][8][0].type = VoxelType::VOXEL_DIRT;
 
 	chunks.push_back(stupid);
+	*/
 
 	for (auto& chunk : chunks) {
 		chunk.build_mesh();
@@ -1182,7 +1181,7 @@ PipelinePair Renderer::build_vertex_pipeline() {
 	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	pipeline_constructor.rasterizer.lineWidth = 1.0f;
-	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_NONE;
 	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
 

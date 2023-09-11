@@ -25,7 +25,6 @@ int main(int argc, char *args[]) {
 	static bool quit = false;
 	game.quit = &quit; // make quitting accessable anywhere.
 
-
 	clock_t start_time = std::clock();
 
 	while(!quit) {
