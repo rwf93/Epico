@@ -36,7 +36,7 @@ public:
     static const int MAX_WIDTH = 16;
 
     template <unsigned I, unsigned J, unsigned K>
-    using VoxelArray = std::array<std::array<std::array<Voxel, K>, J>, I>;
+    using VoxelArray = std::array<std::array<std::array<Voxel, I>, J>, K>;
     VoxelArray<MAX_WIDTH, MAX_HEIGHT, MAX_WIDTH> voxels = {};
 
     EMesh chunk_mesh = {};

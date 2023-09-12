@@ -45,7 +45,6 @@ private:
 
 	VkShaderModule create_shader(const std::vector<uint32_t> &code);
 
-	PipelinePair build_triangle_pipeline();
 	PipelinePair build_vertex_pipeline();
 	PipelinePair build_imgui_pipeline();
 
@@ -78,15 +77,14 @@ private:
 
 	ETexture depth_texture = {};
 
+	const uint32_t MAX_OBJECTS = 1024*1024;
+
 	struct UniformBufferAllocation {
 		EBuffer memory;
 		VmaAllocationInfo info;
 	};
 
-	const uint32_t MAX_OBJECTS = 1024*1024;
-
 	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-	VkDescriptorPool imgui_descriptor_pool = VK_NULL_HANDLE;
 
 	std::vector<UniformBufferAllocation> camera_data_buffers = {};
 	std::vector<UniformBufferAllocation> object_data_buffers = {};

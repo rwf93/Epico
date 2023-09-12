@@ -54,8 +54,8 @@ struct EMesh {
 	EBuffer vertex_buffer = {};
 	EBuffer index_buffer = {};
 };
-// uniforms
 
+// uniforms
 struct ECameraData {
 	glm::mat4 view = {};
 	glm::mat4 projection = {};

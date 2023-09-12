@@ -52,22 +52,6 @@ bool Renderer::setup() {
 	if(!create_imgui())				return false;
 
 	Voxel::load_model();
-	/*
-	for(int cx = 0; cx < 2; cx++) {
-		for(int cy = 0; cy < 2; cy++) {
-			Chunk chunk(cx, cy);
-			for(size_t y = 0; y < Chunk::MAX_HEIGHT; y++) {
-				for(size_t x = 0; x < Chunk::MAX_WIDTH; x++) {
-					for(size_t z = 0; z < Chunk::MAX_WIDTH; z++) {
-						chunk.voxels[y][x][z].active = true;
-						chunk.voxels[y][x][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);
-					}
-				}
-			}
-			chunks.push_back(chunk);
-		}
-	}
-	*/
 
 	const int GEN_CHUNKS = 2;
 	for(int cx = 0; cx < GEN_CHUNKS; cx++) {
@@ -84,29 +68,6 @@ bool Renderer::setup() {
 			chunks.push_back(chunk);
 		}
 	}
-
-	/*
-	Chunk stupid(0, 0);
-	stupid.voxels[0][0][0].active = true;
-	stupid.voxels[0][0][0].type = VoxelType::VOXEL_DIRT;
-
-	stupid.voxels[0][4][0].active = true;
-	stupid.voxels[0][4][0].type = VoxelType::VOXEL_DIRT;
-
-	stupid.voxels[0][8][0].active = true;
-	stupid.voxels[0][8][0].type = VoxelType::VOXEL_STONE;
-
-	stupid.voxels[1][0][0].active = true;
-	stupid.voxels[1][0][0].type = VoxelType::VOXEL_DIRT;
-
-	stupid.voxels[1][4][0].active = true;
-	stupid.voxels[1][4][0].type = VoxelType::VOXEL_DIRT;
-
-	stupid.voxels[1][8][0].active = true;
-	stupid.voxels[1][8][0].type = VoxelType::VOXEL_DIRT;
-
-	chunks.push_back(stupid);
-	*/
 
 	for (auto& chunk : chunks) {
 		chunk.build_mesh();
@@ -263,9 +224,6 @@ bool Renderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			//vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, vertex_buffer, offset);
-			//vkCmdBindIndexBuffer(command_buffers[image_index], block_mesh.index_buffer, 0, VK_INDEX_TYPE_UINT32);
-
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
@@ -287,41 +245,10 @@ bool Renderer::draw() {
 				vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &chunk.chunk_mesh.vertex_buffer.buffer, offset);
 				vkCmdBindIndexBuffer(command_buffers[image_index], chunk.chunk_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-				//vkCmdDraw(command_buffers[image_index], chunk.chunk_mesh.vertex_count, 1, 0, i);
-
 				vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
 			}
 
-			/*
-			for(size_t i = 0; i < blocks.size(); i++) {
-				//mathlib::calculate_model_matrix(transform, glm::vec3(0, 0, 0), glm::vec3(0.5, 0.5, 0.5))
-				glm::vec3 transform = blocks[i].position;
-
-				glm::vec4 screen_space = ubo.projection * ubo.view * glm::vec4(transform.x, transform.y, transform.z,1.0f);
-				screen_space /= screen_space.w;
-
-				float wx = (screen_space.x + 1.0f) * 0.5f * swapchain.extent.width;
-				float wy = (screen_space.y + 1.0f) * 0.5f * swapchain.extent.height;
-
-				UNUSED(wx);
-				UNUSED(wy);
-
-				ImGui::GetForegroundDrawList()->AddText(ImVec2(wx, wy), ImColor(255, 255, 255), fmt::format("{}", i).c_str());
-
-				if(blocks[i].active) {
-					ssbo[i].model = mathlib::calculate_model_matrix(transform, glm::vec3(0, 0, 0), glm::vec3(0.5, 0.5, 0.5));
-					//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(block_mesh.indicies.size()), 1, 0, 0, i);
-				}
-			}
-			*/
-
 			ImGui::Render();
-
-			//ssbo[0].model = block_matricies[0];
-			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(block_mesh.indicies.size()), 1, 0, 0, 0);
-
-			//ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0,0,0), glm::vec3(1, 1, 1));
-			//vkCmdDrawIndexed(command_buffers[image_index], static_cast<uint32_t>(block_mesh.indicies.size()), 1, 0, 0, 0);
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
@@ -637,7 +564,6 @@ bool Renderer::create_descriptor_layout() {
 }
 
 bool Renderer::create_pipelines() {
-	pipelines["triangle"] 	= { build_triangle_pipeline() };
 	pipelines["vertex"] 	= { build_vertex_pipeline() };
 	pipelines["imgui"] 		= { build_imgui_pipeline() };
 
@@ -762,34 +688,20 @@ bool Renderer::create_descriptor_pool() {
 		std::vector<VkDescriptorPoolSize> pool_sizes = {
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1 }
 		};
 
 		VkDescriptorPoolCreateInfo pool_info = {};
 		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
 		pool_info.pPoolSizes = pool_sizes.data();
-		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 2;
+		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 3;
 
 		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
 	}
 
-	{
-		VkDescriptorPoolSize pool_size = {};
-		pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		pool_size.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-		VkDescriptorPoolCreateInfo pool_info = {};
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.poolSizeCount = 1;
-		pool_info.pPoolSizes = &pool_size;
-		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &imgui_descriptor_pool));
-	}
-
 	deletion_queue.push_back([=]() {
 		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
-		vkDestroyDescriptorPool(device, imgui_descriptor_pool, nullptr);
 	});
 
 	return true;
@@ -952,7 +864,7 @@ bool Renderer::create_imgui() {
 	init_info.QueueFamily = graphics_queue_index;
 	init_info.Queue = graphics_queue;
 	init_info.PipelineCache = pipeline_cache;
-	init_info.DescriptorPool = imgui_descriptor_pool;
+	init_info.DescriptorPool = descriptor_pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
 	init_info.ImageCount = (uint32_t)framebuffers.size();
@@ -1057,79 +969,6 @@ void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&fun
 	vkFreeCommandBuffers(device, command_pool, 1, &command);
 }
 
-
-PipelinePair Renderer::build_triangle_pipeline() {
-	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
-
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.extent.width;
-	viewport.height = (float)swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.extent;
-
-	VkShaderModule triangle_vert = create_shader(fs::read_asset<uint32_t>("shaders/triangle.vert.spv", true));
-	VkShaderModule triangle_frag = create_shader(fs::read_asset<uint32_t>("shaders/triangle.frag.spv", true));
-
-	pipeline_constructor.input_info.vertexBindingDescriptionCount = 0;
-	pipeline_constructor.input_info.vertexAttributeDescriptionCount = 0;
-
-	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
-
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, triangle_vert);
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, triangle_frag);
-
-	pipeline_constructor.viewport_state.viewportCount = 1;
-	pipeline_constructor.viewport_state.pViewports = &viewport;
-	pipeline_constructor.viewport_state.scissorCount = 1;
-	pipeline_constructor.viewport_state.pScissors = &scissor;
-
-	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	pipeline_constructor.rasterizer.lineWidth = 1.0f;
-	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
-	pipeline_constructor.rasterizer.depthBiasConstantFactor = 0.0f;
-	pipeline_constructor.rasterizer.depthBiasSlopeFactor = 0.0f;
-
-	pipeline_constructor.multisampling.sampleShadingEnable = VK_FALSE;
-	pipeline_constructor.multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-											  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	color_blend_attachment.blendEnable = VK_FALSE;
-
-	pipeline_constructor.color_attachments.push_back(color_blend_attachment);
-
-	pipeline_constructor.color_blending.logicOpEnable = VK_FALSE;
-	pipeline_constructor.color_blending.logicOp = VK_LOGIC_OP_COPY;
-
-	pipeline_constructor.color_blending.blendConstants[0] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[1] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[2] = 0.0f;
-	pipeline_constructor.color_blending.blendConstants[3] = 0.0f;
-
-	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
-
-	pipeline_constructor.build(&pair.pipeline, &pair.layout);
-
-	vkDestroyShaderModule(device, triangle_vert, nullptr);
-	vkDestroyShaderModule(device, triangle_frag, nullptr);
-
-	return pair;
-}
-
 PipelinePair Renderer::build_vertex_pipeline() {
 	PipelinePair pair = {};
 	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
@@ -1181,7 +1020,7 @@ PipelinePair Renderer::build_vertex_pipeline() {
 	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	pipeline_constructor.rasterizer.lineWidth = 1.0f;
-	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_NONE;
+	pipeline_constructor.rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	pipeline_constructor.rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	pipeline_constructor.rasterizer.depthBiasEnable = VK_FALSE;
 

@@ -10,6 +10,7 @@
         "vulkan-memory-allocator",
         "glm",
         "tinyobjloader",
+        "protobuf",
         {
             "name": "imgui",
             "features": ["sdl2-binding", "vulkan-binding"]

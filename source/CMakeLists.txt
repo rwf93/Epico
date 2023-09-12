@@ -1,57 +1,60 @@
-add_executable(${PROJECT}
-	  main.cpp
-    fs.cpp
-    mathlib.cpp
+find_package(fmt CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(magic_enum CONFIG REQUIRED)
+find_package(Vulkan REQUIRED)
+find_package(vk-bootstrap CONFIG REQUIRED)
+find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(tinyobjloader CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
+find_package(protobuf CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
 
-    renderer/info.cpp
-    renderer/pipeline.cpp
-    renderer/primitives.cpp
-    renderer/voxel.cpp
-    renderer/renderer.cpp
+protobuf_generate_cpp(
+	PROTO_SOURCE PROTO_INCLUDE
+	proto/vkproto.proto
 )
 
-set_property(TARGET ${PROJECT} PROPERTY CXX_STANDARD 23)
-set_property(TARGET ${PROJECT} PROPERTY C_STANDARD 23)
+add_executable(${PROJECT}
+	main.cpp
+	fs.cpp
+	mathlib.cpp
 
-include_directories(${SOURCE})
+	renderer/info.cpp
+	renderer/pipeline.cpp
+	renderer/primitives.cpp
+	renderer/voxel.cpp
+	renderer/renderer.cpp
+
+	${PROTO_SOURCE}
+	${PROTO_INCLUDE}
+)
 
 target_precompile_headers(${PROJECT} PUBLIC stdafx.h)
-
-find_package(fmt CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE fmt::fmt-header-only)
-
-find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE spdlog::spdlog_header_only)
-
-find_package(magic_enum CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE magic_enum::magic_enum)
-
-find_package(Vulkan REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE Vulkan::Vulkan)
-
-find_package(vk-bootstrap CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE vk-bootstrap::vk-bootstrap)
-
-find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
-
-find_package(glm CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
-
-find_package(tinyobjloader CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE tinyobjloader::tinyobjloader)
-
-find_package(imgui CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE imgui::imgui)
-
-find_package(SDL2 CONFIG REQUIRED)
+target_link_libraries(${PROJECT} PRIVATE protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite)
 target_link_libraries(${PROJECT}
-    PRIVATE
-    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+	PRIVATE
+	$<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+	$<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
 target_compile_options(${PROJECT} PRIVATE
-  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
-  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+	$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )
+
+
+target_include_directories(${PROJECT} PUBLIC ${SOURCE})
+target_include_directories(${PROJECT} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
+set_property(TARGET ${PROJECT} PROPERTY CXX_STANDARD 23)
+set_property(TARGET ${PROJECT} PROPERTY C_STANDARD 23)

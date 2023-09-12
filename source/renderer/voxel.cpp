@@ -124,7 +124,6 @@ void Chunk::build_mesh() {
 
 						uint32_t count = static_cast<uint32_t>(chunk_mesh.verticies.size());
 
-						spdlog::info("Processing Current Mask: {}", current_mask);
 						// black magic wizardy insues
 						chunk_mesh.verticies.push_back( { { x[0], x[1], x[2] }, glm::vec3(1, 0, 0) } );
 						chunk_mesh.verticies.push_back( { { x[0]+du[0], x[1]+du[1], x[2]+du[2] }, glm::vec3(0, 1, 0) } );
