@@ -5,17 +5,17 @@
 
 #include "fs.h"
 
-using namespace fs;
+std::string fs::read_string_file(const std::filesystem::path &filename) {
+	std::vector<char> char_data = fs::read_file<char>(filename, false);
+	return std::string(char_data.begin(), char_data.end());
+}
 
-std::string read_file(const std::filesystem::path &filename, bool binary) {
-	std::ifstream file(filename, binary ? std::ifstream::ate | std::ifstream::binary : std::ifstream::ate);
+std::string fs::read_string_local(const std::filesystem::path &filename) {
+	std::vector<char> char_data = fs::read_local<char>(filename, false);
+	return std::string(char_data.begin(), char_data.end());
+}
 
-	if(!file.is_open())
-		std::runtime_error(fmt::format("Failed to open file {}", filename.string()));
-
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-	file.close();
-
-	return buffer.str();
+std::string fs::read_string_asset(const std::filesystem::path &filename) {
+	std::vector<char> char_data = fs::read_asset<char>(filename, false);
+	return std::string(char_data.begin(), char_data.end());
 }

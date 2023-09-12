@@ -30,4 +30,8 @@ std::vector<T> read_asset(const std::filesystem::path &filename, bool binary) {
 	return fs::read_local<T>(std::filesystem::path("assets/").append(filename.string()), binary);
 }
 
+std::string read_string_file(const std::filesystem::path &filename);
+std::string read_string_local(const std::filesystem::path &filename);
+std::string read_string_asset(const std::filesystem::path &filename);
+
 }

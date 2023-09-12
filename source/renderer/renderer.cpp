@@ -13,6 +13,8 @@
 #include "voxel.h"
 #include "renderer.h"
 
+#include "vkproto.pb.h"
+
 using namespace render;
 
 Renderer::Renderer(GameGlobals *game) {
