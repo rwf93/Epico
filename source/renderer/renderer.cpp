@@ -26,7 +26,7 @@ Renderer::~Renderer() {
 	vkQueueWaitIdle(present_queue);
 
 	// evil abuse of functional programming
-	std::for_each(deletion_queue.rbegin(), deletion_queue.rend(), [=](std::function<void()> &func) { func(); });
+	std::for_each(deletion_queue.rbegin(), deletion_queue.rend(), [=, this](std::function<void()> &func) { func(); });
 	deletion_queue.clear();
 }
 
@@ -244,7 +244,7 @@ bool Renderer::draw() {
 			}
 			ImGui::PopStyleVar();
 
-			for(int i = 0; i < chunks.size(); i++) {
+			for(int i = 0; i < static_cast<int>(chunks.size()); i++) {
 				Chunk &chunk = chunks[i];
 				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
 
@@ -342,7 +342,7 @@ bool Renderer::create_vk_instance() {
 
 	instance = instance_builder_ret.value();
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkb::destroy_instance(instance);
 	});
 
@@ -355,7 +355,7 @@ bool Renderer::create_surface() {
 		return false;
 	}
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkb::destroy_surface(instance, surface);
 	});
 
@@ -363,7 +363,7 @@ bool Renderer::create_surface() {
 }
 
 bool Renderer::create_device() {
-	const VkPhysicalDeviceFeatures device_features = {
+	static const VkPhysicalDeviceFeatures device_features = {
 		.fillModeNonSolid = true
 	};
 
@@ -395,7 +395,7 @@ bool Renderer::create_device() {
 
 	spdlog::info("Found capable render device: {}", device.physical_device.name);
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkb::destroy_device(device);
 	});
 
@@ -425,7 +425,7 @@ bool Renderer::create_swapchain() {
 	swapchain_image_views = swapchain.get_image_views().value();
 	swapchain_images = swapchain.get_images().value();
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		swapchain.destroy_image_views(swapchain_image_views);
 		vkb::destroy_swapchain(swapchain);
 	});
@@ -519,7 +519,7 @@ bool Renderer::create_render_pass() {
 
 	VK_CHECK_BOOL(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkDestroyRenderPass(device, render_pass, nullptr);
 	});
 
@@ -532,7 +532,7 @@ bool Renderer::create_pipeline_cache() {
 
 	VK_CHECK_BOOL(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkDestroyPipelineCache(device, pipeline_cache, nullptr);
 	});
 
@@ -566,7 +566,7 @@ bool Renderer::create_descriptor_layout() {
 		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
 	}
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkDestroyDescriptorSetLayout(device, object_descriptor_layout, nullptr);
 		vkDestroyDescriptorSetLayout(device, global_descriptor_layout, nullptr);
 	});
@@ -593,7 +593,7 @@ bool Renderer::create_pipelines() {
 		file.close();
 	}
 
-	deletion_queue.push_back([=] {
+	deletion_queue.push_back([=, this] {
 		for(auto &map: pipelines) {
 			vkDestroyPipeline(device, map.second, nullptr);
 			vkDestroyPipelineLayout(device, map.second, nullptr);
@@ -611,7 +611,7 @@ bool Renderer::create_vma_allocator() {
 
 	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vmaDestroyAllocator(allocator);
 	});
 
@@ -653,7 +653,7 @@ bool Renderer::create_depth_image() {
 
 	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_texture.view));
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkDestroyImageView(device, depth_texture.view, nullptr);
 		vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
 	});
@@ -686,7 +686,7 @@ bool Renderer::create_framebuffers() {
 		spdlog::debug("New Framebuffer @ {}", (void*)framebuffers[i]);
 	}
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		for(auto framebuffer: framebuffers)
 			vkDestroyFramebuffer(device, framebuffer, nullptr);
 	});
@@ -711,7 +711,7 @@ bool Renderer::create_descriptor_pool() {
 		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
 	}
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
 	});
 
@@ -739,7 +739,7 @@ bool Renderer::create_uniform_buffers() {
 			VK_CHECK_BOOL(vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &object_data_buffers[i].memory.buffer, &object_data_buffers[i].memory.allocation, &object_data_buffers[i].info));
 		}
 
-		deletion_queue.push_back([=]() {
+		deletion_queue.push_back([=, this]() {
 			vmaDestroyBuffer(allocator, object_data_buffers[i].memory.buffer, object_data_buffers[i].memory.allocation);
 			vmaDestroyBuffer(allocator, camera_data_buffers[i].memory.buffer, camera_data_buffers[i].memory.allocation);
 		});
@@ -823,7 +823,7 @@ bool Renderer::create_command_pool() {
 	auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
 	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		vkDestroyCommandPool(device, command_pool, nullptr);
 	});
 
@@ -847,7 +847,7 @@ bool Renderer::create_sync_objects() {
 		VK_CHECK_BOOL(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
 	}
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroySemaphore(device, finished_semaphores[i], nullptr);
 			vkDestroySemaphore(device, available_semaphores[i], nullptr);
@@ -887,7 +887,7 @@ bool Renderer::create_imgui() {
 
 	io.FontDefault = io.Fonts->AddFontFromFileTTF("./assets/fonts/Roboto-Regular.ttf", 16);
 
-	submit_command([=](VkCommandBuffer command) {
+	submit_command([=, this](VkCommandBuffer command) {
 		ImGui_ImplVulkan_CreateFontsTexture(command);
 	});
 
@@ -895,7 +895,7 @@ bool Renderer::create_imgui() {
 
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-	deletion_queue.push_back([=]() {
+	deletion_queue.push_back([=, this]() {
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplSDL2_Shutdown();
 		ImGui::DestroyContext();
