@@ -13,8 +13,6 @@
 #include "voxel.h"
 #include "renderer.h"
 
-#include "vkproto.pb.h"
-
 using namespace render;
 
 Renderer::Renderer(GameGlobals *game) {
@@ -52,8 +50,6 @@ bool Renderer::setup() {
 	if(!create_sync_objects())		return false;
 
 	if(!create_imgui())				return false;
-
-	Voxel::load_model();
 
 	const int GEN_CHUNKS = 2;
 	for(int cx = 0; cx < GEN_CHUNKS; cx++) {
@@ -230,14 +226,27 @@ bool Renderer::draw() {
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
 
-			ImGuiIO& io = ImGui::GetIO();
+			ImGuiIO &io = ImGui::GetIO();
 
-			ImGui::GetForegroundDrawList()->AddText(ImVec2(0,0), ImColor(255,255,255), "Epico Engine Text Rendering!!!");
-			ImGui::GetForegroundDrawList()->AddText(ImVec2(0,14), ImColor(255,255,255), fmt::format("Rendering at {:.2f}ms ({:.0f} fps)", 1000 / io.Framerate, io.Framerate).c_str());
+			ImGui::ShowDemoWindow();
+
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+			{
+				ImGui::SetNextWindowPos(ImVec2(1.5f, 1.5f));
+				ImGui::Begin("Statistics", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings);
+				{
+					ImGui::Text("Statistics");
+					ImGui::Separator();
+					ImGui::Text("Frames Per Second: %.2f", io.Framerate);
+					ImGui::Text("Frames Per Milisecond: %.2f", io.Framerate / 1000);
+				}
+				ImGui::End();
+			}
+			ImGui::PopStyleVar();
 
 			for(int i = 0; i < chunks.size(); i++) {
 				Chunk &chunk = chunks[i];
-				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.1, 0.1, 0.1));
+				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
 
 				glm::vec2 billboard = mathlib::calculate_billboard(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), ubo.projection, ubo.view, swapchain.extent.width, swapchain.extent.height);
 				ImGui::GetForegroundDrawList()->AddText(ImVec2(billboard.x,billboard.y), ImColor(0,0,0), fmt::format("({}, {})", chunk.chunk_x, chunk.chunk_y).c_str());
@@ -875,6 +884,8 @@ bool Renderer::create_imgui() {
 	init_info.CheckVkResultFn = nullptr;
 
 	ImGui_ImplVulkan_Init(&init_info, render_pass);
+
+	io.FontDefault = io.Fonts->AddFontFromFileTTF("./assets/fonts/Roboto-Regular.ttf", 16);
 
 	submit_command([=](VkCommandBuffer command) {
 		ImGui_ImplVulkan_CreateFontsTexture(command);

@@ -7,13 +7,7 @@ find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-find_package(protobuf CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
-
-protobuf_generate_cpp(
-	PROTO_SOURCE PROTO_INCLUDE
-	proto/vkproto.proto
-)
 
 add_executable(${PROJECT}
 	main.cpp
@@ -25,9 +19,6 @@ add_executable(${PROJECT}
 	renderer/primitives.cpp
 	renderer/voxel.cpp
 	renderer/renderer.cpp
-
-	${PROTO_SOURCE}
-	${PROTO_INCLUDE}
 )
 
 target_precompile_headers(${PROJECT} PUBLIC stdafx.h)
@@ -40,7 +31,6 @@ target_link_libraries(${PROJECT} PRIVATE unofficial::vulkan-memory-allocator::vu
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
 target_link_libraries(${PROJECT} PRIVATE tinyobjloader::tinyobjloader)
 target_link_libraries(${PROJECT} PRIVATE imgui::imgui)
-target_link_libraries(${PROJECT} PRIVATE protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite)
 target_link_libraries(${PROJECT}
 	PRIVATE
 	$<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>

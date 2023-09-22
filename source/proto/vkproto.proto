@@ -1,6 +1,0 @@
-syntax = "proto3";
-package vkproto;
-
-message PipelineCacheData {
-    uint32 header_version = 1;
-}

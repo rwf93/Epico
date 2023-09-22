@@ -17,11 +17,6 @@ class Voxel {
 public:
     bool active;
     VoxelType type;
-
-    // yes, this is indeed abuse.
-    static void load_model();
-    static const uint32_t MODEL_OFFSET = 2;
-    inline static std::vector<EVertex> block_model;
 };
 
 class Chunk {
@@ -49,8 +44,9 @@ public:
     };
 
 private:
-    void add_quad(std::vector<glm::vec3> &face, glm::vec3 color);
+    void add_quad(glm::vec3 translation, std::vector<glm::vec3> &face, glm::vec3 color);
     bool compare_mask(BMask m1, BMask m2) { return m1.type == m2.type && m1.index == m2.index; }
+    bool is_void(Voxel &voxel) { return voxel.type == VOXEL_NULL || voxel.type == VOXEL_AIR || voxel.type == VOXEL_MAXTYPE; };
 };
 
 }
