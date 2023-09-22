@@ -106,6 +106,10 @@ private:
 	std::deque<std::function<void()>> deletion_queue = {};
 
 	std::vector<Chunk> chunks = {};
+
+	struct VulkanExtensions {
+
+	} extensions;
 };
 
 }

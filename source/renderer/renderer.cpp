@@ -363,13 +363,12 @@ bool Renderer::create_surface() {
 }
 
 bool Renderer::create_device() {
-	static const VkPhysicalDeviceFeatures device_features = {
-		.fillModeNonSolid = true
-	};
+	VkPhysicalDeviceFeatures device_features = {};
+	device_features.fillModeNonSolid = true;
 
 	vkb::PhysicalDeviceSelector device_selector(instance);
 	auto device_selector_ret = device_selector
-								.set_required_features(device_features)
+								.set_required_features((const VkPhysicalDeviceFeatures)device_features)
 								.set_minimum_version(1, 1)
 								.set_surface(surface)
 								.select();
