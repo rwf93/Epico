@@ -56,3 +56,19 @@ VkDescriptorSetLayoutBinding info::descriptor_set_layout_binding(VkDescriptorTyp
 
 	return set_layout_binding;
 }
+
+VkViewport info::viewport(float width, float height, float x, float y, float min_depth, float max_depth) {
+	VkViewport viewport = {};
+	viewport.width = width;
+	viewport.height = height;
+	viewport.x = x;
+	viewport.y = y;
+	viewport.minDepth = min_depth;
+	viewport.minDepth = max_depth;
+
+	return viewport;
+}
+
+VkRect2D info::rect2d(VkOffset2D offset, VkExtent2D extent) {
+	return { offset, extent };
+}

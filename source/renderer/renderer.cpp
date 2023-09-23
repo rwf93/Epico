@@ -161,17 +161,8 @@ bool Renderer::draw() {
 
 		vkCmdBeginRenderingKHR(command_buffers[image_index], &rendering_info);
 		{
-			VkViewport viewport = {};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)swapchain.extent.width;
-			viewport.height = (float)swapchain.extent.height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			VkRect2D scissor = {};
-			scissor.offset = { 0, 0 };
-			scissor.extent = swapchain.extent;
+			VkViewport viewport = info::viewport(static_cast<float>(swapchain.extent.width), static_cast<float>(swapchain.extent.height));
+			VkRect2D scissor = info::rect2d({ 0, 0 }, swapchain.extent);
 
 			vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
 			vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
