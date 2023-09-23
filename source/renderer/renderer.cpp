@@ -31,7 +31,7 @@ Renderer::~Renderer() {
 }
 
 bool Renderer::setup() {
-	if(!create_vk_instance()) 		return false;
+	if(!create_instance()) 		return false;
 	if(!create_surface()) 			return false;
 	if(!create_device()) 			return false;
 	if(!create_swapchain()) 		return false;
@@ -42,7 +42,6 @@ bool Renderer::setup() {
 	if(!create_pipelines())			return false;
 	if(!create_vma_allocator())		return false;
 	if(!create_depth_image())		return false;
-	if(!create_framebuffers())		return false;
 	if(!create_descriptor_pool())	return false;
 	if(!create_uniform_buffers())	return false;
 	if(!create_descriptor_sets())	return false;
@@ -121,19 +120,50 @@ bool Renderer::draw() {
 	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
 	{
 		std::array<VkClearValue, 2> clear_values = {};
-		clear_values[0].color = { { 0.2f, 0.2f, 0.2f, 1.0f } };
 		clear_values[1].depthStencil = { 1.0f, 0 };
 
-		VkRenderPassBeginInfo render_pass_info = {};
-		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass = render_pass;
-		render_pass_info.framebuffer = framebuffers[image_index];
-		render_pass_info.renderArea.offset = { 0, 0 };
-		render_pass_info.renderArea.extent = swapchain.extent;
-		render_pass_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
-		render_pass_info.pClearValues = clear_values.data();
+		image_barrier(
+						command_buffers[image_index], swapchain_images[image_index],
+						0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+						VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+		);
 
-		vkCmdBeginRenderPass(command_buffers[image_index], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+		image_barrier(
+						command_buffers[image_index], depth_texture.image,
+						0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+						VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+						VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+						VkImageSubresourceRange{ VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 }
+		);
+
+		VkRenderingAttachmentInfoKHR color_attachment = {};
+		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+		color_attachment.imageView = swapchain_image_views[image_index];
+		color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		color_attachment.clearValue.color = { { 0.2f, 0.2f, 0.2f, 1.0f } };
+
+		VkRenderingAttachmentInfoKHR depth_attachment = {};
+		depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+		depth_attachment.imageView = depth_texture.view;
+		depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depth_attachment.clearValue.color = { 1.0f, 0 };
+
+		VkRenderingInfoKHR rendering_info = {};
+		rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+		rendering_info.renderArea = { 0, 0, swapchain.extent.width, swapchain.extent.height };
+		rendering_info.layerCount = 1;
+		rendering_info.colorAttachmentCount = 1;
+		rendering_info.pColorAttachments = &color_attachment;
+		rendering_info.pDepthAttachment = &depth_attachment;
+
+		vkCmdBeginRenderingKHR(command_buffers[image_index], &rendering_info);
 		{
 			VkViewport viewport = {};
 			viewport.x = 0.0f;
@@ -228,8 +258,6 @@ bool Renderer::draw() {
 
 			ImGuiIO &io = ImGui::GetIO();
 
-			ImGui::ShowDemoWindow();
-
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
 			{
 				ImGui::SetNextWindowPos(ImVec2(1.5f, 1.5f));
@@ -263,7 +291,15 @@ bool Renderer::draw() {
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
 		}
-		vkCmdEndRenderPass(command_buffers[image_index]);
+		vkCmdEndRenderingKHR(command_buffers[image_index]);
+
+		image_barrier(
+						command_buffers[image_index], swapchain_images[image_index],
+						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0,
+						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+						VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+		);
 	}
 	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[image_index]));
 	/* End recording our command buffer, intended on sending it to the GPU */
@@ -305,6 +341,27 @@ VkShaderModule Renderer::create_shader(const std::vector<uint32_t> &code) {
 	return shader_module;
 }
 
+void Renderer::image_barrier(
+						VkCommandBuffer command, VkImage image,
+						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
+						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
+						VkImageSubresourceRange resource_range
+) {
+	VkImageMemoryBarrier image_barrier = {};
+	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	image_barrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+	image_barrier.srcAccessMask = src_access_mask;
+	image_barrier.dstAccessMask = dst_access_mask;
+	image_barrier.oldLayout = old_image_layout;
+	image_barrier.newLayout = new_image_layout;
+	image_barrier.image = image;
+	image_barrier.subresourceRange = resource_range;
+
+	vkCmdPipelineBarrier(command, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
+}
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT serverity,
 	VkDebugUtilsMessageTypeFlagsEXT message_types,
@@ -325,7 +382,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 	return VK_FALSE;
 }
 
-bool Renderer::create_vk_instance() {
+bool Renderer::create_instance() {
 	vkb::InstanceBuilder instance_builder;
 	auto instance_builder_ret = instance_builder
 									.set_app_name("Epico")
@@ -333,6 +390,7 @@ bool Renderer::create_vk_instance() {
 									.require_api_version(1,1,0)
 									.request_validation_layers()
 									.set_debug_callback(vk_debug_callback)
+									.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
 									.build();
 
 	if(!instance_builder_ret) {
@@ -366,10 +424,19 @@ bool Renderer::create_device() {
 	VkPhysicalDeviceFeatures device_features = {};
 	device_features.fillModeNonSolid = true;
 
+	std::vector<const char*> extensions = {
+		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+		VK_KHR_MAINTENANCE2_EXTENSION_NAME,
+		VK_KHR_MULTIVIEW_EXTENSION_NAME,
+		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME
+	};
+
 	vkb::PhysicalDeviceSelector device_selector(instance);
 	auto device_selector_ret = device_selector
 								.set_required_features((const VkPhysicalDeviceFeatures)device_features)
-								.set_minimum_version(1, 1)
+								.add_required_extensions(extensions)
+								.set_minimum_version(1, 3)
 								.set_surface(surface)
 								.select();
 
@@ -382,8 +449,15 @@ bool Renderer::create_device() {
 	draw_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
 	draw_features.shaderDrawParameters = VK_TRUE;
 
+	VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering = {};
+	dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+	dynamic_rendering.dynamicRendering = VK_TRUE;
+
 	vkb::DeviceBuilder device_builder { device_selector_ret.value() };
-	auto device_builder_ret = device_builder.add_pNext(&draw_features).build();
+	auto device_builder_ret = device_builder
+								.add_pNext(&draw_features)
+								.add_pNext(&dynamic_rendering)
+								.build();
 
 	if(!device_builder_ret) {
 		spdlog::error("Failed to create Vulkan Device {}", device_builder_ret.error().message());
@@ -397,6 +471,9 @@ bool Renderer::create_device() {
 	deletion_queue.push_back([=, this]() {
 		vkb::destroy_device(device);
 	});
+
+	vkCmdBeginRenderingKHR = reinterpret_cast<PFN_vkCmdBeginRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR"));
+	vkCmdEndRenderingKHR = reinterpret_cast<PFN_vkCmdEndRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR"));
 
 	return true;
 }
@@ -575,7 +652,6 @@ bool Renderer::create_descriptor_layout() {
 
 bool Renderer::create_pipelines() {
 	pipelines["vertex"] 	= { build_vertex_pipeline() };
-	pipelines["imgui"] 		= { build_imgui_pipeline() };
 
 	{
 		size_t size = 0;
@@ -655,39 +731,6 @@ bool Renderer::create_depth_image() {
 	deletion_queue.push_back([=, this]() {
 		vkDestroyImageView(device, depth_texture.view, nullptr);
 		vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
-	});
-
-	return true;
-}
-
-bool Renderer::create_framebuffers() {
-	VkFramebufferCreateInfo framebuffer_info = {};
-	framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	framebuffer_info.renderPass = render_pass;
-	framebuffer_info.width = swapchain.extent.width;
-	framebuffer_info.height = swapchain.extent.height;
-	framebuffer_info.layers = 1;
-
-	size_t swapchain_image_count = swapchain_images.size();
-	framebuffers.resize(swapchain_images.size());
-
-	 for(size_t i = 0; i < swapchain_image_count; i++) {
-		std::array<VkImageView, 2> attachments = {
-			swapchain_image_views[i],
-			depth_texture
-		};
-
-		framebuffer_info.attachmentCount = static_cast<uint32_t>(attachments.size());
-		framebuffer_info.pAttachments = attachments.data();
-
-		VK_CHECK_BOOL(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &framebuffers[i]));
-
-		spdlog::debug("New Framebuffer @ {}", (void*)framebuffers[i]);
-	}
-
-	deletion_queue.push_back([=, this]() {
-		for(auto framebuffer: framebuffers)
-			vkDestroyFramebuffer(device, framebuffer, nullptr);
 	});
 
 	return true;
@@ -814,7 +857,7 @@ bool Renderer::create_descriptor_sets() {
 }
 
 bool Renderer::create_command_pool() {
-	command_buffers.resize(framebuffers.size());
+	command_buffers.resize(swapchain_images.size());
 
 	auto command_pool_info = info::command_pool_create_info(graphics_queue_index, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	VK_CHECK_BOOL(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
@@ -877,10 +920,13 @@ bool Renderer::create_imgui() {
 	init_info.DescriptorPool = descriptor_pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = MAX_FRAMES_IN_FLIGHT;
-	init_info.ImageCount = (uint32_t)framebuffers.size();
+	init_info.ImageCount = (uint32_t)swapchain_images.size();
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	init_info.Allocator = nullptr;
 	init_info.CheckVkResultFn = nullptr;
+	init_info.UseDynamicRendering = true;
+	init_info.ColorAttachmentFormat = swapchain.image_format;
+	init_info.DepthAttachmentFormat = find_depth_format();
 
 	ImGui_ImplVulkan_Init(&init_info, render_pass);
 
@@ -910,9 +956,6 @@ bool Renderer::rebuild_swapchain() {
 
 	vkDestroyCommandPool(device, command_pool, nullptr);
 
-	for(auto framebuffer: framebuffers)
-		vkDestroyFramebuffer(device, framebuffer, nullptr);
-
 	vkDestroyImageView(device, depth_texture.view, nullptr);
 	vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
 
@@ -920,12 +963,10 @@ bool Renderer::rebuild_swapchain() {
 
 	if(!create_swapchain()) 		return false;
 	if(!create_depth_image())		return false;
-	if(!create_framebuffers()) 		return false;
 	if(!create_command_pool()) 		return false;
 
-
 	// HACK: above create commands push a deleter onto the queue, we need to pop them so they don't double free
-	for(size_t i = 0; i <= 3; i++)
+	for(size_t i = 0; i <= 2; i++)
 		deletion_queue.pop_back();
 
 	return true;
@@ -983,7 +1024,7 @@ void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&fun
 
 PipelinePair Renderer::build_vertex_pipeline() {
 	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
+	RenderPipelineConstructor pipeline_constructor(device, VK_NULL_HANDLE, pipeline_cache);
 
 	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
 		global_descriptor_layout,
@@ -1002,18 +1043,6 @@ PipelinePair Renderer::build_vertex_pipeline() {
 	pipeline_constructor.input_info.pVertexBindingDescriptions = &binding_description;
 	pipeline_constructor.input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
 
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.extent.width;
-	viewport.height = (float)swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.extent;
-
 	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
 	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
 
@@ -1024,9 +1053,7 @@ PipelinePair Renderer::build_vertex_pipeline() {
 	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, vertex_frag);
 
 	pipeline_constructor.viewport_state.viewportCount = 1;
-	pipeline_constructor.viewport_state.pViewports = &viewport;
 	pipeline_constructor.viewport_state.scissorCount = 1;
-	pipeline_constructor.viewport_state.pScissors = &scissor;
 
 	pipeline_constructor.rasterizer.depthClampEnable = VK_FALSE;
 	pipeline_constructor.rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -1063,23 +1090,18 @@ PipelinePair Renderer::build_vertex_pipeline() {
 	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
 
+	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info = {};
+	pipeline_rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	pipeline_rendering_info.colorAttachmentCount = 1;
+	pipeline_rendering_info.pColorAttachmentFormats = &swapchain.image_format;
+	pipeline_rendering_info.depthAttachmentFormat = find_depth_format();
+
+	pipeline_constructor.pipeline_info.pNext = &pipeline_rendering_info;
+
 	pipeline_constructor.build(&pair.pipeline, &pair.layout);
 
 	vkDestroyShaderModule(device, vertex_vert, nullptr);
 	vkDestroyShaderModule(device, vertex_frag, nullptr);
-
-	return pair;
-}
-
-PipelinePair Renderer::build_imgui_pipeline() {
-	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, render_pass, pipeline_cache);
-
-	VkShaderModule ui_vert = create_shader(fs::read_asset<uint32_t>("shaders/ui.vert.spv", true));
-	VkShaderModule ui_frag = create_shader(fs::read_asset<uint32_t>("shaders/ui.frag.spv", true));
-
-	vkDestroyShaderModule(device, ui_vert, nullptr);
-	vkDestroyShaderModule(device, ui_frag, nullptr);
 
 	return pair;
 }

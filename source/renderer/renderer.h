@@ -18,7 +18,7 @@ public:
 
 	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
 private:
-	bool create_vk_instance();
+	bool create_instance();
 	bool create_surface();
 	bool create_device();
 	bool create_swapchain();
@@ -29,7 +29,6 @@ private:
 	bool create_pipelines();
 	bool create_vma_allocator();
 	bool create_depth_image();
-	bool create_framebuffers();
 	bool create_descriptor_pool();
 	bool create_uniform_buffers();
 	bool create_descriptor_sets();
@@ -45,9 +44,16 @@ private:
 
 	VkShaderModule create_shader(const std::vector<uint32_t> &code);
 
-	PipelinePair build_vertex_pipeline();
-	PipelinePair build_imgui_pipeline();
+	// this is fucking terrible, what do else do i do. kys retard.
+	void image_barrier(
+						VkCommandBuffer command, VkImage image,
+						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
+						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
+						VkImageSubresourceRange resource_range
+	);
 
+	PipelinePair build_vertex_pipeline();
 private:
 	GameGlobals *game = nullptr;
 
@@ -64,8 +70,6 @@ private:
 	uint32_t graphics_queue_index = UINT32_MAX;
 
 	VkRenderPass render_pass = {};
-
-	std::vector<VkFramebuffer> framebuffers = {};
 
 	VkDescriptorSetLayout global_descriptor_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;
@@ -107,9 +111,9 @@ private:
 
 	std::vector<Chunk> chunks = {};
 
-	struct VulkanExtensions {
-
-	} extensions;
+private:
+	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
+	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
 };
 
 }

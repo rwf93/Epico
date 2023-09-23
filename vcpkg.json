@@ -11,10 +11,6 @@
         "glm",
         "tinyobjloader",
         {
-            "name": "imgui",
-            "features": ["sdl2-binding", "vulkan-binding"]
-        },
-        {
             "name": "sdl2",
             "features": ["vulkan"]
         }

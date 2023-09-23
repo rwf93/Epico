@@ -6,7 +6,7 @@ find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(unofficial-vulkan-memory-allocator CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
-find_package(imgui CONFIG REQUIRED)
+# find_package(imgui CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
 add_executable(${PROJECT}
@@ -19,6 +19,14 @@ add_executable(${PROJECT}
 	renderer/primitives.cpp
 	renderer/voxel.cpp
 	renderer/renderer.cpp
+
+	imgui/imgui.cpp
+	imgui/imgui_demo.cpp
+	imgui/imgui_draw.cpp
+	imgui/imgui_impl_sdl2.cpp
+	imgui/imgui_impl_vulkan.cpp
+	imgui/imgui_tables.cpp
+	imgui/imgui_widgets.cpp
 )
 
 target_precompile_headers(${PROJECT} PUBLIC stdafx.h)
@@ -30,7 +38,7 @@ target_link_libraries(${PROJECT} PRIVATE vk-bootstrap::vk-bootstrap)
 target_link_libraries(${PROJECT} PRIVATE unofficial::vulkan-memory-allocator::vulkan-memory-allocator)
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
 target_link_libraries(${PROJECT} PRIVATE tinyobjloader::tinyobjloader)
-target_link_libraries(${PROJECT} PRIVATE imgui::imgui)
+# target_link_libraries(${PROJECT} PRIVATE imgui::imgui)
 target_link_libraries(${PROJECT}
 	PRIVATE
 	$<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
@@ -42,6 +50,7 @@ target_compile_options(${PROJECT} PRIVATE
 	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )
 
+target_include_directories(${PROJECT} PRIVATE ${SOURCE}/imgui)
 
 target_include_directories(${PROJECT} PUBLIC ${SOURCE})
 target_include_directories(${PROJECT} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
