@@ -23,7 +23,6 @@ private:
 	bool create_device();
 	bool create_swapchain();
 	bool create_queues();
-	bool create_render_pass();
 	bool create_pipeline_cache();
 	bool create_descriptor_layout();
 	bool create_pipelines();
@@ -68,8 +67,6 @@ private:
 	VkQueue graphics_queue = VK_NULL_HANDLE;
 	VkQueue present_queue = VK_NULL_HANDLE;
 	uint32_t graphics_queue_index = UINT32_MAX;
-
-	VkRenderPass render_pass = {};
 
 	VkDescriptorSetLayout global_descriptor_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;

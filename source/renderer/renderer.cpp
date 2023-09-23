@@ -36,7 +36,6 @@ bool Renderer::setup() {
 	if(!create_device()) 			return false;
 	if(!create_swapchain()) 		return false;
 	if(!create_queues())			return false;
-	if(!create_render_pass())		return false;
 	if(!create_pipeline_cache())	return false;
 	if(!create_descriptor_layout()) return false;
 	if(!create_pipelines())			return false;
@@ -119,9 +118,6 @@ bool Renderer::draw() {
 
 	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
 	{
-		std::array<VkClearValue, 2> clear_values = {};
-		clear_values[1].depthStencil = { 1.0f, 0 };
-
 		image_barrier(
 						command_buffers[image_index], swapchain_images[image_index],
 						0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -536,72 +532,6 @@ bool Renderer::create_queues() {
 	return true;
 }
 
-bool Renderer::create_render_pass() {
-	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = swapchain.image_format;
-	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = find_depth_format();
-	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference color_attachment_ref = {};
-	color_attachment_ref.attachment = 0;
-	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depth_attachment_ref = {};
-	depth_attachment_ref.attachment = 1;
-	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	std::array<VkAttachmentDescription, 2> attachments = {
-		color_attachment,
-		depth_attachment
-	};
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &color_attachment_ref;
-	subpass.pDepthStencilAttachment = &depth_attachment_ref;
-
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	VkRenderPassCreateInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.attachmentCount = static_cast<uint32_t>(attachments.size());
-	render_pass_info.pAttachments = attachments.data();
-	render_pass_info.subpassCount = 1;
-	render_pass_info.pSubpasses = &subpass;
-	render_pass_info.dependencyCount = 1;
-	render_pass_info.pDependencies = &dependency;
-
-	VK_CHECK_BOOL(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
-
-	deletion_queue.push_back([=, this]() {
-		vkDestroyRenderPass(device, render_pass, nullptr);
-	});
-
-	return true;
-}
-
 bool Renderer::create_pipeline_cache() {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -928,7 +858,7 @@ bool Renderer::create_imgui() {
 	init_info.ColorAttachmentFormat = swapchain.image_format;
 	init_info.DepthAttachmentFormat = find_depth_format();
 
-	ImGui_ImplVulkan_Init(&init_info, render_pass);
+	ImGui_ImplVulkan_Init(&init_info, VK_NULL_HANDLE);
 
 	io.FontDefault = io.Fonts->AddFontFromFileTTF("./assets/fonts/Roboto-Regular.ttf", 16);
 
