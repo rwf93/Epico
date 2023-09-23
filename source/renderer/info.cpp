@@ -64,7 +64,7 @@ VkViewport info::viewport(float width, float height, float x, float y, float min
 	viewport.x = x;
 	viewport.y = y;
 	viewport.minDepth = min_depth;
-	viewport.minDepth = max_depth;
+	viewport.maxDepth = max_depth;
 
 	return viewport;
 }
