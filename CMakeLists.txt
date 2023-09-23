@@ -30,3 +30,4 @@ project(${PROJECT})
 
 add_subdirectory(source)
 add_subdirectory(assets)
+add_subdirectory(thirdparty)

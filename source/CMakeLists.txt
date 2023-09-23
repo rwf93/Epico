@@ -19,14 +19,6 @@ add_executable(${PROJECT}
 	renderer/primitives.cpp
 	renderer/voxel.cpp
 	renderer/renderer.cpp
-
-	imgui/imgui.cpp
-	imgui/imgui_demo.cpp
-	imgui/imgui_draw.cpp
-	imgui/imgui_impl_sdl2.cpp
-	imgui/imgui_impl_vulkan.cpp
-	imgui/imgui_tables.cpp
-	imgui/imgui_widgets.cpp
 )
 
 target_precompile_headers(${PROJECT} PUBLIC stdafx.h)
@@ -50,7 +42,8 @@ target_compile_options(${PROJECT} PRIVATE
 	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )
 
-target_include_directories(${PROJECT} PRIVATE ${SOURCE}/imgui)
+target_include_directories(${PROJECT} PRIVATE ${THIRDPARTY}/imgui)
+target_link_libraries(${PROJECT} PRIVATE imgui)
 
 target_include_directories(${PROJECT} PUBLIC ${SOURCE})
 target_include_directories(${PROJECT} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
