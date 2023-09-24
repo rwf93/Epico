@@ -4,7 +4,7 @@
 
 layout(binding = 0) uniform ECameraData {
     mat4 view;
-    mat4 proj;
+    mat4 projection;
 } camera;
 
 layout(std140, set = 1, binding = 0) readonly buffer EObjectBuffer {
@@ -21,7 +21,7 @@ layout(location = 2) out vec3 out_normal;
 void main() {
     mat4 model_matrix = object_buffer.objects[gl_BaseInstance].model;
 
-    gl_Position = camera.proj * camera.view * model_matrix * vec4(in_position, 1.0);
+    gl_Position = camera.projection * camera.view * model_matrix * vec4(in_position, 1.0);
     out_color = in_color;
     out_normal = in_normal;
 }

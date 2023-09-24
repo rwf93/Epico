@@ -74,7 +74,7 @@ bool Renderer::setup() {
 	std::string warn;
 	std::string err;
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/models/poopy_newpole.obj", nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/models/monkey.obj", nullptr);
 
 	for(const auto& shape: shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -87,9 +87,7 @@ bool Renderer::setup() {
 			};
 
 			vertex.color = {
-				attrib.normals[3 * index.normal_index + 0],
-    			attrib.normals[3 * index.normal_index + 1],
-    			attrib.normals[3 * index.normal_index + 2]
+				0.912,0.475,0.289
 			};
 
 			vertex.normal = {
@@ -292,6 +290,7 @@ bool Renderer::draw() {
 				"Wireframe",
 				"Points",
 				"Phong",
+				"Toon"
 			};
 
 			switch(render_mode_index) {
@@ -299,6 +298,7 @@ bool Renderer::draw() {
 				case 1: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]); break;
 				case 2: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_points"]); break;
 				case 3: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_phong"]); break;
+				case 4: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]); break;
 			}
 
 			ImGui_ImplVulkan_NewFrame();
@@ -615,6 +615,40 @@ bool Renderer::create_queues() {
 bool Renderer::create_pipeline_cache() {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+	// load cache data
+	/*
+	{
+		std::vector<char> pipeline_cache_data = fs::read_local<char>("pipeline_cache_data.bin", true);
+		char *cache_data = pipeline_cache_data.data();
+		size_t cache_size = pipeline_cache_data.size();
+
+		bool bad_cache = false;
+
+		uint32_t header_length = 0;
+		uint32_t header_version = 0;
+		uint32_t vendor_id = 0;
+		uint32_t device_id = 0;
+		uint32_t uuid[VK_UUID_SIZE] = {};
+
+		memcpy(&header_length, (uint8_t*)cache_data, 4);
+		memcpy(&header_version, (uint8_t*)cache_data + 4, 4);
+		memcpy(&vendor_id, (uint8_t*)cache_data + 8, 4);
+		memcpy(&device_id, (uint8_t*)cache_data + 12, 4);
+		memcpy(&uuid, (uint8_t*)cache_data + 16, VK_UUID_SIZE);
+
+		if(header_length <= 0) bad_cache = true;
+		if(header_version != VK_PIPELINE_CACHE_HEADER_VERSION_ONE) bad_cache = true;
+		if(vendor_id != device.physical_device.properties.vendorID) bad_cache = true;
+		if(device_id != device.physical_device.properties.deviceID) bad_cache = true;
+		if(memcmp(uuid, device.physical_device.properties.pipelineCacheUUID, VK_UUID_SIZE) != 0) bad_cache = true;
+
+		if(!bad_cache) {
+			pipeline_cache_create_info.initialDataSize = static_cast<uint32_t>(cache_size);
+			pipeline_cache_create_info.pInitialData = pipeline_cache_data.data();
+		}
+	}
+	*/
 
 	VK_CHECK_BOOL(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
 
@@ -1059,11 +1093,12 @@ bool Renderer::build_vertex_pipelines() {
 	auto attribute_descriptions = EVertex::get_attribute_descriptions();
 	pipeline_constructor.input_info = info::input_vertex_info(binding_descriptions, attribute_descriptions);
 
-	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
-	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
 
 	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
+
+	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
+	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
 
 	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, vertex_vert);
 	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, vertex_frag);
@@ -1120,23 +1155,35 @@ bool Renderer::build_vertex_pipelines() {
 	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
 	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_points"]));
 
-	pipeline_constructor.shader_stages.clear();
+	// reset to fill mode for following pipelines...
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+
+	vkDestroyShaderModule(device, vertex_vert, nullptr);
+	vkDestroyShaderModule(device, vertex_frag, nullptr);
 
 	VkShaderModule phong_vert = create_shader(fs::read_asset<uint32_t>("shaders/phong.vert.spv", true));
 	VkShaderModule phong_frag = create_shader(fs::read_asset<uint32_t>("shaders/phong.frag.spv", true));
 
+	pipeline_constructor.shader_stages.clear();
 	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, phong_vert);
 	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, phong_frag);
-
-	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 
 	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_phong"]));
 
 	vkDestroyShaderModule(device, phong_vert, nullptr);
 	vkDestroyShaderModule(device, phong_frag, nullptr);
 
-	vkDestroyShaderModule(device, vertex_vert, nullptr);
-	vkDestroyShaderModule(device, vertex_frag, nullptr);
+	VkShaderModule toon_vert = create_shader(fs::read_asset<uint32_t>("shaders/toon.vert.spv", true));
+	VkShaderModule toon_frag = create_shader(fs::read_asset<uint32_t>("shaders/toon.frag.spv", true));
+
+	pipeline_constructor.shader_stages.clear();
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, toon_vert);
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, toon_frag);
+
+	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_toon"]));
+
+	vkDestroyShaderModule(device, toon_vert, nullptr);
+	vkDestroyShaderModule(device, toon_frag, nullptr);
 
 	return true;
 }

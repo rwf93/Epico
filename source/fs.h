@@ -7,8 +7,10 @@ std::vector<T> read_file(const std::filesystem::path &filename, bool binary) {
 	// onelining was a mistake
 	std::ifstream file(filename, binary ? std::ios::ate | std::ios::binary : std::ios::ate);
 
-	if(!file.is_open())
+	if(!file.is_open()) {
 		std::runtime_error(fmt::format("Failed to open file {}", filename.string()));
+		return {};
+	}
 
 	size_t file_size = (size_t)file.tellg();
 	std::vector<T> buffer(file_size);
