@@ -310,7 +310,7 @@ bool Renderer::draw() {
 			ImGui::Begin("Scene Settings");
 			{
 				if(ImGui::BeginCombo("Render Modes", render_modes[render_mode_index])) {
-					for(int n = 0; n < render_modes.size(); n++) {
+					for(int n = 0; n < static_cast<int>(render_modes.size()); n++) {
 						const bool is_selected = (render_mode_index == n);
 						if(ImGui::Selectable(render_modes[n], is_selected))
 							render_mode_index = n;
@@ -359,7 +359,7 @@ bool Renderer::draw() {
 			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &triangle_mesh.vertex_buffer.buffer, offset);
 			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(command_buffers[image_index], triangle_mesh.index_count, 1, 0, 0, (uint32_t)chunks.size() + 1);
+			vkCmdDrawIndexed(command_buffers[image_index], triangle_mesh.index_count, 1, 0, 0, static_cast<uint32_t>(chunks.size() + 1));
 
 			ImGui::Render();
 
