@@ -78,7 +78,7 @@ private:
 
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
-	ETexture depth_texture = {};
+	EImage depth_image = {};
 
 	const uint32_t MAX_OBJECTS = 1024*1024;
 

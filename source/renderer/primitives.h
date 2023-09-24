@@ -21,19 +21,13 @@ struct EBuffer {
 
 struct EImage {
 	VkImage image = VK_NULL_HANDLE;
+	VkImageView view = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
-
-	operator VmaAllocation() { return allocation; }
-	operator VkImage() { return image; };
 };
 
 struct ETexture {
 	EImage image = {};
-	VkImageView view = VK_NULL_HANDLE;
-
-	operator VmaAllocation() { return image; }
-	operator VkImage() { return image; };
-	operator VkImageView() { return view; };
+	VkSampler sampler = VK_NULL_HANDLE;
 };
 
 struct EMesh {

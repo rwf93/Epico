@@ -2,10 +2,10 @@
 
 #include "primitives.h"
 
-layout(binding = 0) uniform ECameraData {
+layout(binding = 0) uniform EGlobalData {
     mat4 view;
     mat4 projection;
-} camera;
+} global;
 
 layout(std140, set = 1, binding = 0) readonly buffer EObjectBuffer {
     EObjectData objects[];
@@ -24,7 +24,7 @@ layout(location = 4) out vec3 out_light;
 void main() {
     mat4 model_matrix = object_buffer.objects[gl_BaseInstance].model;
 
-    gl_Position = camera.projection * camera.view * model_matrix * vec4(in_position, 1.0);
+    gl_Position = global.projection * global.view * model_matrix * vec4(in_position, 1.0);
     out_color = in_color;
     out_normal = in_normal;
 

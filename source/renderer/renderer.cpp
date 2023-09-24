@@ -19,9 +19,6 @@ Renderer::Renderer(GameGlobals *game) {
 	this->game = game;
 }
 
-static EMesh block_mesh;
-static std::vector<Voxel> blocks;
-
 Renderer::~Renderer() {
 	vkQueueWaitIdle(present_queue);
 
@@ -173,7 +170,7 @@ bool Renderer::draw() {
 		);
 
 		image_barrier(
-						command_buffers[image_index], depth_texture.image,
+						command_buffers[image_index], depth_image.image,
 						0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 						VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
@@ -191,7 +188,7 @@ bool Renderer::draw() {
 
 		VkRenderingAttachmentInfoKHR depth_attachment = {};
 		depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-		depth_attachment.imageView = depth_texture.view;
+		depth_attachment.imageView = depth_image.view;
 		depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -759,11 +756,11 @@ bool Renderer::create_depth_image() {
 
 	auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT);
 
-	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_texture.image.image, &depth_texture.image.allocation, nullptr));
+	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_image.image, &depth_image.allocation, nullptr));
 
 	VkImageViewCreateInfo view_info = {};
 	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	view_info.image = depth_texture;
+	view_info.image = depth_image.image;
 	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	view_info.format = depth_format;
 	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -772,11 +769,11 @@ bool Renderer::create_depth_image() {
 	view_info.subresourceRange.baseArrayLayer = 0;
 	view_info.subresourceRange.layerCount = 1;
 
-	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_texture.view));
+	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_image.view));
 
 	deletion_queue.push_back([=, this]() {
-		vkDestroyImageView(device, depth_texture.view, nullptr);
-		vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
+		vkDestroyImageView(device, depth_image.view, nullptr);
+		vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
 	});
 
 	return true;
@@ -1006,8 +1003,8 @@ bool Renderer::rebuild_swapchain() {
 
 	vkDestroyCommandPool(device, command_pool, nullptr);
 
-	vkDestroyImageView(device, depth_texture.view, nullptr);
-	vmaDestroyImage(allocator, depth_texture.image, depth_texture.image.allocation);
+	vkDestroyImageView(device, depth_image.view, nullptr);
+	vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
 
 	swapchain.destroy_image_views(swapchain_image_views);
 
