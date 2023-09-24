@@ -48,8 +48,8 @@ std::vector<VkVertexInputAttributeDescription> EVertex::get_attribute_descriptio
 }
 
 VkResult EBuffer::allocate(VmaAllocator vma_allocator,
-							VmaAllocationCreateInfo *create_info,
 							VkBufferCreateInfo *buffer_info,
+							VmaAllocationCreateInfo *create_info,
 							VmaAllocationInfo *allocation_info
 ) {
 	assert(vma_allocator != VK_NULL_HANDLE);
@@ -72,20 +72,20 @@ void EMesh::allocate(VmaAllocator vma_allocator) {
 
 	auto allocate_info = info::allocation_create_info(0, 0, VMA_MEMORY_USAGE_GPU_ONLY);
 
-	staging_vertex_buffer.allocate(allocator, &staging_allocate_info, &staging_buffer_info, &alloc_info);
+	staging_vertex_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &alloc_info);
     memcpy(alloc_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
 
-  	staging_index_buffer.allocate(allocator, &staging_allocate_info, &staging_buffer_info, &alloc_info);
+  	staging_index_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &alloc_info);
     memcpy(alloc_info.pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
 
 	{
 		auto buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		vertex_buffer.allocate(allocator, &allocate_info, &buffer_info);
+		vertex_buffer.allocate(allocator, &buffer_info, &allocate_info);
 	}
 
 	{
 		auto buffer_info = info::buffer_create_info(indicies.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		index_buffer.allocate(allocator, &allocate_info, &buffer_info);
+		index_buffer.allocate(allocator, &buffer_info, &allocate_info);
 	}
 }
 

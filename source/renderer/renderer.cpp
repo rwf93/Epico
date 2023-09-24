@@ -813,7 +813,7 @@ bool Renderer::create_uniform_buffers() {
 			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			VK_CHECK_BOOL(camera_data_buffers[i].memory.allocate(allocator, &allocate_info, &buffer_info, &camera_data_buffers[i].info));
+			VK_CHECK_BOOL(camera_data_buffers[i].memory.allocate(allocator, &buffer_info, &allocate_info, &camera_data_buffers[i].info));
 		}
 
 		{
@@ -821,7 +821,7 @@ bool Renderer::create_uniform_buffers() {
 			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			VK_CHECK_BOOL(object_data_buffers[i].memory.allocate(allocator, &allocate_info, &buffer_info, &object_data_buffers[i].info))
+			VK_CHECK_BOOL(object_data_buffers[i].memory.allocate(allocator, &buffer_info, &allocate_info, &object_data_buffers[i].info))
 		}
 
 		deletion_queue.push_back([=, this]() {

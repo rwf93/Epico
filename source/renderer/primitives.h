@@ -19,7 +19,7 @@ struct EBuffer {
 	operator VmaAllocation() { return allocation; }
 	operator VkBuffer() { return buffer; };
 
-	VkResult allocate(VmaAllocator vma_allocator, VmaAllocationCreateInfo *create_info, VkBufferCreateInfo *buffer_info, VmaAllocationInfo *allocation_info = nullptr);
+	VkResult allocate(VmaAllocator vma_allocator, VkBufferCreateInfo *buffer_info, VmaAllocationCreateInfo *create_info, VmaAllocationInfo *allocation_info = nullptr);
 	void destroy();
 };
 
