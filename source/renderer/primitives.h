@@ -5,6 +5,7 @@ namespace render {
 struct EVertex {
 	glm::vec3 pos;
 	glm::vec3 color;
+	glm::vec3 normal;
 
 	static std::vector<VkVertexInputBindingDescription> get_binding_descriptions();
 	static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
@@ -56,7 +57,7 @@ struct EMesh {
 };
 
 // uniforms
-struct ECameraData {
+struct EGlobalData {
 	glm::mat4 view = {};
 	glm::mat4 projection = {};
 };

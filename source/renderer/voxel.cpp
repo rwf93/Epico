@@ -190,10 +190,10 @@ VoxelType Chunk::get_type(int x, int y, int z) {
 void Chunk::add_quad(glm::vec3 translation, std::vector<glm::vec3> &face, glm::vec3 color) {
 		uint32_t count = static_cast<uint32_t>(chunk_mesh.verticies.size());
 
-		chunk_mesh.verticies.push_back({ face[0] + translation, color });
-		chunk_mesh.verticies.push_back({ face[1] + translation, color });
-		chunk_mesh.verticies.push_back({ face[2] + translation, color });
-		chunk_mesh.verticies.push_back({ face[3] + translation, color });
+		chunk_mesh.verticies.push_back({ face[0] + translation, color, {1, 1, 1}});
+		chunk_mesh.verticies.push_back({ face[1] + translation, color, {1, 1, 1}});
+		chunk_mesh.verticies.push_back({ face[2] + translation, color, {1, 1, 1}});
+		chunk_mesh.verticies.push_back({ face[3] + translation, color, {1, 1, 1}});
 
 		chunk_mesh.indicies.push_back(count);
 		chunk_mesh.indicies.push_back(count + 1);

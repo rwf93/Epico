@@ -30,6 +30,8 @@ Renderer::~Renderer() {
 	deletion_queue.clear();
 }
 
+static EMesh triangle_mesh = {};
+
 bool Renderer::setup() {
 	if(!create_instance()) 		return false;
 	if(!create_surface()) 			return false;
@@ -64,6 +66,52 @@ bool Renderer::setup() {
 			chunks.push_back(chunk);
 		}
 	}
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+
+	std::string warn;
+	std::string err;
+
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/models/poopy_newpole.obj", nullptr);
+
+	for(const auto& shape: shapes) {
+		for (const auto& index : shape.mesh.indices) {
+			EVertex vertex = {};
+
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+    			attrib.vertices[3 * index.vertex_index + 1],
+    			attrib.vertices[3 * index.vertex_index + 2]
+			};
+
+			vertex.color = {
+				attrib.normals[3 * index.normal_index + 0],
+    			attrib.normals[3 * index.normal_index + 1],
+    			attrib.normals[3 * index.normal_index + 2]
+			};
+
+			vertex.normal = {
+				attrib.normals[3 * index.normal_index + 0],
+				attrib.normals[3 * index.normal_index + 1],
+				attrib.normals[3 * index.normal_index + 2]
+			};
+
+			triangle_mesh.verticies.push_back(vertex);
+			triangle_mesh.indicies.push_back((uint32_t)triangle_mesh.indicies.size());
+		}
+	}
+
+	triangle_mesh.allocate(allocator);
+	submit_command([&](VkCommandBuffer command) {
+		triangle_mesh.send_to_gpu(allocator, command);
+	});
+	triangle_mesh.cleanup_after_send(allocator);
+
+	deletion_queue.push_back([&]() {
+		triangle_mesh.destroy(allocator);
+	});
 
 	for (auto& chunk : chunks) {
 		chunk.build_mesh();
@@ -167,7 +215,7 @@ bool Renderer::draw() {
 			vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
 			vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
 
-			ECameraData ubo = {};
+			EGlobalData ubo = {};
 
 			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
 			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -228,22 +276,30 @@ bool Renderer::draw() {
 
 			ubo.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
-			ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.1f, 100.0f);
+			ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.01f, 100.0f);
 			ubo.projection[1][1] *= -1;
 
-			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(ECameraData));
+			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(EGlobalData));
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			static bool wireframe = false;
 			static bool chunk_positions = true;
+			static int render_mode_index = 0;
+			static std::vector<const char*> render_modes = {
+				"Normal",
+				"Wireframe",
+				"Points",
+				"Phong",
+			};
 
-			if(wireframe)
-				vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]);
-			else
-				vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
+			switch(render_mode_index) {
+				case 0: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]); break;
+				case 1: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]); break;
+				case 2: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_points"]); break;
+				case 3: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_phong"]); break;
+			}
 
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
@@ -253,11 +309,20 @@ bool Renderer::draw() {
 
 			ImGui::Begin("Scene Settings");
 			{
-				ImGui::Checkbox("Wireframe", &wireframe);
+				if(ImGui::BeginCombo("Render Modes", render_modes[render_mode_index])) {
+					for(int n = 0; n < render_modes.size(); n++) {
+						const bool is_selected = (render_mode_index == n);
+						if(ImGui::Selectable(render_modes[n], is_selected))
+							render_mode_index = n;
+
+						if(is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
 				ImGui::Checkbox("Chunk Positions", &chunk_positions);
 			}
 			ImGui::End();
-
 
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
 			{
@@ -272,7 +337,7 @@ bool Renderer::draw() {
 				ImGui::End();
 			}
 			ImGui::PopStyleVar();
-
+			/*
 			for(int i = 0; i < static_cast<int>(chunks.size()); i++) {
 				Chunk &chunk = chunks[i];
 				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
@@ -289,6 +354,14 @@ bool Renderer::draw() {
 
 				vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
 			}
+			*/
+
+			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(), glm::vec3(0.2, 0.2, 0.2));
+			VkDeviceSize offset[] = { 0 };
+			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &triangle_mesh.vertex_buffer.buffer, offset);
+			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdDrawIndexed(command_buffers[image_index], triangle_mesh.index_count, 1, 0, 0, 0);
 
 			ImGui::Render();
 
@@ -680,9 +753,9 @@ bool Renderer::create_depth_image() {
 bool Renderer::create_descriptor_pool() {
 	{
 		std::vector<VkDescriptorPoolSize> pool_sizes = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1 }
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 }
 		};
 
 		VkDescriptorPoolCreateInfo pool_info = {};
@@ -707,7 +780,7 @@ bool Renderer::create_uniform_buffers() {
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		{
-			auto buffer_info = info::buffer_create_info(sizeof(ECameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			auto buffer_info = info::buffer_create_info(sizeof(EGlobalData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -754,7 +827,11 @@ bool Renderer::create_descriptor_sets() {
 		object_descriptor_set_info.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 		object_descriptor_set_info.pSetLayouts = object_layouts.data();
 
-		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
+		VkResult result = vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data());
+
+		spdlog::info("result {}", (int)result);
+
+		VK_CHECK_BOOL(result);
 	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -762,7 +839,7 @@ bool Renderer::create_descriptor_sets() {
 		VkDescriptorBufferInfo buffer_info = {};
 		buffer_info.buffer = camera_data_buffers[i].memory.buffer;
 		buffer_info.offset = 0;
-		buffer_info.range = sizeof(ECameraData);
+		buffer_info.range = sizeof(EGlobalData);
 
 		VkWriteDescriptorSet camera_descriptor_write = {};
 		camera_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1040,6 +1117,23 @@ bool Renderer::build_vertex_pipelines() {
 	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex"]));
 	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
 	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_wireframe"]));
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_POINT;
+	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_points"]));
+
+	pipeline_constructor.shader_stages.clear();
+
+	VkShaderModule phong_vert = create_shader(fs::read_asset<uint32_t>("shaders/phong.vert.spv", true));
+	VkShaderModule phong_frag = create_shader(fs::read_asset<uint32_t>("shaders/phong.frag.spv", true));
+
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, phong_vert);
+	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, phong_frag);
+
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+
+	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_phong"]));
+
+	vkDestroyShaderModule(device, phong_vert, nullptr);
+	vkDestroyShaderModule(device, phong_frag, nullptr);
 
 	vkDestroyShaderModule(device, vertex_vert, nullptr);
 	vkDestroyShaderModule(device, vertex_frag, nullptr);

@@ -36,6 +36,13 @@ std::vector<VkVertexInputAttributeDescription> EVertex::get_attribute_descriptio
 		.offset = offsetof(EVertex, color)
 	});
 
+	attribute_descriptions.push_back({
+		.location = 2,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32B32_SFLOAT,
+		.offset = offsetof(EVertex, normal)
+	});
+
 	return attribute_descriptions;
 }
 
