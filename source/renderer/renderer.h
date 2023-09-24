@@ -52,7 +52,8 @@ private:
 						VkImageSubresourceRange resource_range
 	);
 
-	PipelinePair build_vertex_pipeline();
+	bool build_vertex_layout();
+	bool build_vertex_pipeline();
 private:
 	GameGlobals *game = nullptr;
 
@@ -72,7 +73,8 @@ private:
 	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;
 
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
-	std::map<std::string, PipelinePair> pipelines = {};
+	std::map<std::string, VkPipelineLayout> pipeline_layouts = {};
+	std::map<std::string, VkPipeline> pipelines = {};
 
 	VmaAllocator allocator = VK_NULL_HANDLE;
 

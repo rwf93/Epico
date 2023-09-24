@@ -4,8 +4,7 @@
 
 using namespace render;
 
-RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPass render_pass, VkPipelineCache pipeline_cache) {
-	this->input_info			= {};
+RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkPipelineLayout pipeline_layout, VkPipelineCache pipeline_cache, VkRenderPass render_pass) {
 	this->input_assembly		= {};
 	this->viewport_state		= {};
 	this->rasterizer			= {};
@@ -15,23 +14,21 @@ RenderPipelineConstructor::RenderPipelineConstructor(VkDevice device, VkRenderPa
 	this->dynamic_states		= {};
 	this->shader_stages			= {};
 	this->depth_stencil			= {};
-	this->pipeline_layout_info	= {};
 	this->pipeline_info			= {};
 
 	// set sTypes for all types... actual bruh
-	input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
 	this->device = device;
-	this->cache = pipeline_cache;
-	this->pass = render_pass;
+	this->pipeline_cache = pipeline_cache;
+	this->pipeline_layout = pipeline_layout;
+	this->render_pass = render_pass;
 }
 
 RenderPipelineConstructor::~RenderPipelineConstructor() {
@@ -48,7 +45,7 @@ void RenderPipelineConstructor::add_shader(VkShaderStageFlagBits stage, VkShader
 	shader_stages.push_back(shader_stage_info);
 }
 
-void RenderPipelineConstructor::build(VkPipeline *pipeline, VkPipelineLayout *pipeline_layout) {
+VkResult RenderPipelineConstructor::build(VkPipeline *pipeline) {
 	color_blending.attachmentCount = static_cast<uint32_t>(color_attachments.size());
 	color_blending.pAttachments = color_attachments.data();
 
@@ -56,8 +53,6 @@ void RenderPipelineConstructor::build(VkPipeline *pipeline, VkPipelineLayout *pi
 	dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
 	dynamic_info.pDynamicStates = dynamic_states.data();
-
-	VK_CHECK_VOID(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, pipeline_layout));
 
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
@@ -70,8 +65,8 @@ void RenderPipelineConstructor::build(VkPipeline *pipeline, VkPipelineLayout *pi
 	pipeline_info.pColorBlendState = &color_blending;
 	pipeline_info.pDepthStencilState = &depth_stencil;
 	pipeline_info.pDynamicState = &dynamic_info;
-	pipeline_info.layout = *pipeline_layout;
-	pipeline_info.renderPass = pass;
+	pipeline_info.layout = pipeline_layout;
+	pipeline_info.renderPass = render_pass;
 
-	VK_CHECK_VOID(vkCreateGraphicsPipelines(device, cache, 1, &pipeline_info, nullptr, pipeline));
+	return vkCreateGraphicsPipelines(device, pipeline_cache, 1, &pipeline_info, nullptr, pipeline);
 }

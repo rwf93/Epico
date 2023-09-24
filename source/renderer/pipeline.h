@@ -4,11 +4,11 @@ namespace render {
 // 4l8r
 class RenderPipelineConstructor {
 public:
-	RenderPipelineConstructor(VkDevice device, VkRenderPass render_pass, VkPipelineCache pipeline_cache);
+	RenderPipelineConstructor(VkDevice device, VkPipelineLayout pipeline_layout, VkPipelineCache pipeline_cache, VkRenderPass render_pass);
 	~RenderPipelineConstructor();
 
 	void add_shader(VkShaderStageFlagBits stage, VkShaderModule shader);
-	void build(VkPipeline *pipeline, VkPipelineLayout *pipeline_layout);
+	VkResult build(VkPipeline *pipeline);
 
 public:
 	VkPipelineVertexInputStateCreateInfo input_info;
@@ -28,20 +28,12 @@ public:
 
 	VkPipelineDepthStencilStateCreateInfo depth_stencil;
 
-	VkPipelineLayoutCreateInfo pipeline_layout_info;
 	VkGraphicsPipelineCreateInfo pipeline_info;
 private:
 	VkDevice device;
-	VkRenderPass pass;
-	VkPipelineCache cache;
-};
-
-struct PipelinePair {
-	VkPipeline pipeline;
-	VkPipelineLayout layout;
-
-	operator VkPipeline() { return pipeline; };
-	operator VkPipelineLayout() { return layout; };
+	VkPipelineCache pipeline_cache;
+	VkPipelineLayout pipeline_layout;
+	VkRenderPass render_pass;
 };
 
 }

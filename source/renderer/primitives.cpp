@@ -5,30 +5,36 @@
 
 using namespace render;
 
-VkVertexInputBindingDescription EVertex::get_binding_description() {
-	VkVertexInputBindingDescription binding_description = {};
+std::vector<VkVertexInputBindingDescription> EVertex::get_binding_descriptions() {
+	std::vector<VkVertexInputBindingDescription> binding_descriptions = {};
 
-	binding_description.binding = 0;
-	binding_description.stride = sizeof(EVertex);
-	binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	binding_descriptions.push_back({
+		.binding = 0,
+		.stride = sizeof(EVertex),
+		.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+	});
 
-	return binding_description;
+	return binding_descriptions;
 }
 
-std::array<VkVertexInputAttributeDescription, 2> EVertex::get_attribute_descriptions() {
-	std::array<VkVertexInputAttributeDescription, 2> attribute_descriptions = {};
+std::vector<VkVertexInputAttributeDescription> EVertex::get_attribute_descriptions() {
+	std::vector<VkVertexInputAttributeDescription> attribute_descriptions = {};
 
 	// set the position attribute
-	attribute_descriptions[0].binding = 0;
-	attribute_descriptions[0].location = 0;
-	attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attribute_descriptions[0].offset = offsetof(EVertex, pos);
+	attribute_descriptions.push_back({
+		.location = 0,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32B32_SFLOAT,
+		.offset = offsetof(EVertex, pos)
+	});
 
 	// set the color attribute
-	attribute_descriptions[1].binding = 0;
-	attribute_descriptions[1].location = 1;
-	attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attribute_descriptions[1].offset = offsetof(EVertex, color);
+	attribute_descriptions.push_back({
+		.location = 1,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32B32_SFLOAT,
+		.offset = offsetof(EVertex, color)
+	});
 
 	return attribute_descriptions;
 }

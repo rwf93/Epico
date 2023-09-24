@@ -167,8 +167,6 @@ bool Renderer::draw() {
 			vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
 			vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
 
-			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
-
 			ECameraData ubo = {};
 
 			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -236,8 +234,10 @@ bool Renderer::draw() {
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(ECameraData));
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
-			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
+
+			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
 
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
@@ -572,7 +572,9 @@ bool Renderer::create_descriptor_layout() {
 }
 
 bool Renderer::create_pipelines() {
-	pipelines["vertex"] 	= { build_vertex_pipeline() };
+	if(!build_vertex_layout()) return false;
+	if(!build_vertex_pipeline()) return false;
+	//pipelines["vertex"] 	= {  };
 
 	{
 		size_t size = 0;
@@ -592,6 +594,9 @@ bool Renderer::create_pipelines() {
 	deletion_queue.push_back([=, this] {
 		for(auto &map: pipelines) {
 			vkDestroyPipeline(device, map.second, nullptr);
+		}
+
+		for(auto &map: pipeline_layouts) {
 			vkDestroyPipelineLayout(device, map.second, nullptr);
 		}
 	});
@@ -943,26 +948,24 @@ void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&fun
 	vkFreeCommandBuffers(device, command_pool, 1, &command);
 }
 
-PipelinePair Renderer::build_vertex_pipeline() {
-	PipelinePair pair = {};
-	RenderPipelineConstructor pipeline_constructor(device, VK_NULL_HANDLE, pipeline_cache);
-
+bool Renderer::build_vertex_layout() {
 	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
 		global_descriptor_layout,
 		object_descriptor_layout
 	};
 
-	pipeline_constructor.pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
-	pipeline_constructor.pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
+	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
+	VK_CHECK_BOOL(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &pipeline_layouts["vertex"]));
 
-	auto binding_description = EVertex::get_binding_description();
+	return true;
+}
+
+bool Renderer::build_vertex_pipeline() {
+	RenderPipelineConstructor pipeline_constructor(device, pipeline_layouts["vertex"], pipeline_cache, VK_NULL_HANDLE);
+
+	auto binding_descriptions = EVertex::get_binding_descriptions();
 	auto attribute_descriptions = EVertex::get_attribute_descriptions();
-
-	pipeline_constructor.input_info.vertexBindingDescriptionCount = 1;
-	pipeline_constructor.input_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
-
-	pipeline_constructor.input_info.pVertexBindingDescriptions = &binding_description;
-	pipeline_constructor.input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
+	pipeline_constructor.input_info = info::input_vertex_info(binding_descriptions, attribute_descriptions);
 
 	VkShaderModule vertex_vert = create_shader(fs::read_asset<uint32_t>("shaders/vertex.vert.spv", true));
 	VkShaderModule vertex_frag = create_shader(fs::read_asset<uint32_t>("shaders/vertex.frag.spv", true));
@@ -1019,10 +1022,10 @@ PipelinePair Renderer::build_vertex_pipeline() {
 
 	pipeline_constructor.pipeline_info.pNext = &pipeline_rendering_info;
 
-	pipeline_constructor.build(&pair.pipeline, &pair.layout);
+	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex"]));
 
 	vkDestroyShaderModule(device, vertex_vert, nullptr);
 	vkDestroyShaderModule(device, vertex_frag, nullptr);
 
-	return pair;
+	return true;
 }

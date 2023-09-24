@@ -59,6 +59,7 @@ VkDescriptorSetLayoutBinding info::descriptor_set_layout_binding(VkDescriptorTyp
 
 VkViewport info::viewport(float width, float height, float x, float y, float min_depth, float max_depth) {
 	VkViewport viewport = {};
+
 	viewport.width = width;
 	viewport.height = height;
 	viewport.x = x;
@@ -72,3 +73,29 @@ VkViewport info::viewport(float width, float height, float x, float y, float min
 VkRect2D info::rect2d(VkOffset2D offset, VkExtent2D extent) {
 	return { offset, extent };
 }
+
+VkPipelineLayoutCreateInfo info::pipeline_layout_info(std::vector<VkDescriptorSetLayout> &descriptor_layouts) {
+	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+
+	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipeline_layout_info.setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size());
+	pipeline_layout_info.pSetLayouts = descriptor_layouts.data();
+
+	return pipeline_layout_info;
+}
+
+VkPipelineVertexInputStateCreateInfo info::input_vertex_info(
+	std::vector<VkVertexInputBindingDescription> &bindings,
+	std::vector<VkVertexInputAttributeDescription> &attributes
+) {
+	VkPipelineVertexInputStateCreateInfo input_vertex_info = {};
+
+	input_vertex_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	input_vertex_info.vertexBindingDescriptionCount = static_cast<uint32_t>(bindings.size());
+	input_vertex_info.pVertexBindingDescriptions = bindings.data();
+	input_vertex_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+	input_vertex_info.pVertexAttributeDescriptions = attributes.data();
+
+	return input_vertex_info;
+}
+
