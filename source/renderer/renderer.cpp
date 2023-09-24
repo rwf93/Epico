@@ -77,7 +77,7 @@ bool Renderer::setup() {
 		for (const auto& index : shape.mesh.indices) {
 			EVertex vertex = {};
 
-			vertex.pos = {
+			vertex.position = {
 				attrib.vertices[3 * index.vertex_index + 0],
     			attrib.vertices[3 * index.vertex_index + 1],
     			attrib.vertices[3 * index.vertex_index + 2]
@@ -91,6 +91,11 @@ bool Renderer::setup() {
 				attrib.normals[3 * index.normal_index + 0],
 				attrib.normals[3 * index.normal_index + 1],
 				attrib.normals[3 * index.normal_index + 2]
+			};
+
+			vertex.texcoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				attrib.texcoords[2 * index.texcoord_index + 1],
 			};
 
 			triangle_mesh.verticies.push_back(vertex);
@@ -856,11 +861,7 @@ bool Renderer::create_descriptor_sets() {
 		object_descriptor_set_info.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 		object_descriptor_set_info.pSetLayouts = object_layouts.data();
 
-		VkResult result = vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data());
-
-		spdlog::info("result {}", (int)result);
-
-		VK_CHECK_BOOL(result);
+		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
 	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {

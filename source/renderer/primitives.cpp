@@ -26,7 +26,7 @@ std::vector<VkVertexInputAttributeDescription> EVertex::get_attribute_descriptio
 		.location = 0,
 		.binding = 0,
 		.format = VK_FORMAT_R32G32B32_SFLOAT,
-		.offset = offsetof(EVertex, pos)
+		.offset = offsetof(EVertex, position)
 	});
 
 	// set the color attribute
@@ -42,6 +42,13 @@ std::vector<VkVertexInputAttributeDescription> EVertex::get_attribute_descriptio
 		.binding = 0,
 		.format = VK_FORMAT_R32G32B32_SFLOAT,
 		.offset = offsetof(EVertex, normal)
+	});
+
+	attribute_descriptions.push_back({
+		.location = 3,
+		.binding = 0,
+		.format = VK_FORMAT_R32G32_SFLOAT,
+		.offset = offsetof(EVertex, texcoord)
 	});
 
 	return attribute_descriptions;
@@ -66,17 +73,19 @@ void EMesh::allocate(VmaAllocator vma_allocator) {
 	assert(vma_allocator != VK_NULL_HANDLE);
 	this->allocator = vma_allocator;
 
-	VmaAllocationInfo alloc_info = {};
+	VmaAllocationInfo vertex_allocation_info = {};
+	VmaAllocationInfo index_allocation_info = {};
+
 	auto staging_allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, 0, VMA_MEMORY_USAGE_CPU_ONLY);
 	auto staging_buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
 	auto allocate_info = info::allocation_create_info(0, 0, VMA_MEMORY_USAGE_GPU_ONLY);
 
-	staging_vertex_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &alloc_info);
-    memcpy(alloc_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
+	staging_vertex_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &vertex_allocation_info);
+    memcpy(vertex_allocation_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
 
-  	staging_index_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &alloc_info);
-    memcpy(alloc_info.pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
+  	staging_index_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &index_allocation_info);
+    memcpy(index_allocation_info.pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
 
 	{
 		auto buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
