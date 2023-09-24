@@ -237,13 +237,27 @@ bool Renderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
+			static bool wireframe = false;
+			static bool chunk_positions = true;
+
+			if(wireframe)
+				vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]);
+			else
+				vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
 
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
 
 			ImGuiIO &io = ImGui::GetIO();
+
+			ImGui::Begin("Scene Settings");
+			{
+				ImGui::Checkbox("Wireframe", &wireframe);
+				ImGui::Checkbox("Chunk Positions", &chunk_positions);
+			}
+			ImGui::End();
+
 
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
 			{
@@ -264,7 +278,9 @@ bool Renderer::draw() {
 				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
 
 				glm::vec2 billboard = mathlib::calculate_billboard(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), ubo.projection, ubo.view, swapchain.extent.width, swapchain.extent.height);
-				ImGui::GetForegroundDrawList()->AddText(ImVec2(billboard.x,billboard.y), ImColor(0,0,0), fmt::format("({}, {})", chunk.chunk_x, chunk.chunk_y).c_str());
+
+				if(chunk_positions)
+					ImGui::GetForegroundDrawList()->AddText(ImVec2(billboard.x,billboard.y), ImColor(0,0,0), fmt::format("({}, {})", chunk.chunk_x, chunk.chunk_y).c_str());
 
 				VkDeviceSize offset[] = { 0 };
 
@@ -573,8 +589,7 @@ bool Renderer::create_descriptor_layout() {
 
 bool Renderer::create_pipelines() {
 	if(!build_vertex_layout()) return false;
-	if(!build_vertex_pipeline()) return false;
-	//pipelines["vertex"] 	= {  };
+	if(!build_vertex_pipelines()) return false;
 
 	{
 		size_t size = 0;
@@ -960,7 +975,7 @@ bool Renderer::build_vertex_layout() {
 	return true;
 }
 
-bool Renderer::build_vertex_pipeline() {
+bool Renderer::build_vertex_pipelines() {
 	RenderPipelineConstructor pipeline_constructor(device, pipeline_layouts["vertex"], pipeline_cache, VK_NULL_HANDLE);
 
 	auto binding_descriptions = EVertex::get_binding_descriptions();
@@ -1023,6 +1038,8 @@ bool Renderer::build_vertex_pipeline() {
 	pipeline_constructor.pipeline_info.pNext = &pipeline_rendering_info;
 
 	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex"]));
+	pipeline_constructor.rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_wireframe"]));
 
 	vkDestroyShaderModule(device, vertex_vert, nullptr);
 	vkDestroyShaderModule(device, vertex_frag, nullptr);

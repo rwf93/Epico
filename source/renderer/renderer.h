@@ -53,7 +53,7 @@ private:
 	);
 
 	bool build_vertex_layout();
-	bool build_vertex_pipeline();
+	bool build_vertex_pipelines();
 private:
 	GameGlobals *game = nullptr;
 
