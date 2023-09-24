@@ -187,7 +187,7 @@ bool Renderer::draw() {
 		color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.clearValue.color = { { 0.2f, 0.2f, 0.2f, 1.0f } };
+		color_attachment.clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
 
 		VkRenderingAttachmentInfoKHR depth_attachment = {};
 		depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -332,12 +332,11 @@ bool Renderer::draw() {
 					ImGui::Text("Statistics");
 					ImGui::Separator();
 					ImGui::Text("Frames Per Second: %.2f", io.Framerate);
-					ImGui::Text("Frames Per Milisecond: %.2f", io.Framerate / 1000);
 				}
 				ImGui::End();
 			}
 			ImGui::PopStyleVar();
-			/*
+
 			for(int i = 0; i < static_cast<int>(chunks.size()); i++) {
 				Chunk &chunk = chunks[i];
 				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
@@ -354,14 +353,13 @@ bool Renderer::draw() {
 
 				vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
 			}
-			*/
 
-			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(), glm::vec3(0.2, 0.2, 0.2));
+			ssbo[chunks.size() + 1].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &triangle_mesh.vertex_buffer.buffer, offset);
 			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(command_buffers[image_index], triangle_mesh.index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[image_index], triangle_mesh.index_count, 1, 0, 0, (uint32_t)chunks.size() + 1);
 
 			ImGui::Render();
 

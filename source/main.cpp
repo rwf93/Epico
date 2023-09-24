@@ -30,6 +30,7 @@ int main(int argc, char *args[]) {
 	while(!quit) {
 		clock_t time = std::clock();
 		game.time_delta = static_cast<float>(time - start_time) / CLOCKS_PER_SEC;
+		game.time = static_cast<float>(time) / CLOCKS_PER_SEC;
 
 		SDL_Event e;
 		while(SDL_PollEvent(&e)) {
