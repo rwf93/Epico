@@ -100,12 +100,12 @@ bool Renderer::setup() {
 
 	triangle_mesh.allocate(allocator);
 	submit_command([&](VkCommandBuffer command) {
-		triangle_mesh.send_to_gpu(allocator, command);
+		triangle_mesh.send_to_gpu(command);
 	});
-	triangle_mesh.cleanup_after_send(allocator);
+	triangle_mesh.cleanup_after_send();
 
 	deletion_queue.push_back([&]() {
-		triangle_mesh.destroy(allocator);
+		triangle_mesh.destroy();
 	});
 
 	for (auto& chunk : chunks) {
@@ -113,12 +113,12 @@ bool Renderer::setup() {
 
 		chunk.chunk_mesh.allocate(allocator);
 		submit_command([&](VkCommandBuffer command) {
-			chunk.chunk_mesh.send_to_gpu(allocator, command);
+			chunk.chunk_mesh.send_to_gpu(command);
 		});
-		chunk.chunk_mesh.cleanup_after_send(allocator);
+		chunk.chunk_mesh.cleanup_after_send();
 
 		deletion_queue.push_back([&]() {
-			chunk.chunk_mesh.destroy(allocator);
+			chunk.chunk_mesh.destroy();
 		});
 	}
 
@@ -813,7 +813,7 @@ bool Renderer::create_uniform_buffers() {
 			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			VK_CHECK_BOOL(vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &camera_data_buffers[i].memory.buffer, &camera_data_buffers[i].memory.allocation, &camera_data_buffers[i].info));
+			VK_CHECK_BOOL(camera_data_buffers[i].memory.allocate(allocator, &allocate_info, &buffer_info, &camera_data_buffers[i].info));
 		}
 
 		{
@@ -821,12 +821,12 @@ bool Renderer::create_uniform_buffers() {
 			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			VK_CHECK_BOOL(vmaCreateBuffer(allocator, &buffer_info, &allocate_info, &object_data_buffers[i].memory.buffer, &object_data_buffers[i].memory.allocation, &object_data_buffers[i].info));
+			VK_CHECK_BOOL(object_data_buffers[i].memory.allocate(allocator, &allocate_info, &buffer_info, &object_data_buffers[i].info))
 		}
 
 		deletion_queue.push_back([=, this]() {
-			vmaDestroyBuffer(allocator, object_data_buffers[i].memory.buffer, object_data_buffers[i].memory.allocation);
-			vmaDestroyBuffer(allocator, camera_data_buffers[i].memory.buffer, camera_data_buffers[i].memory.allocation);
+			object_data_buffers[i].memory.destroy();
+			camera_data_buffers[i].memory.destroy();
 		});
 	}
 

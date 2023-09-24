@@ -13,10 +13,14 @@ struct EVertex {
 
 struct EBuffer {
 	VkBuffer buffer = VK_NULL_HANDLE;
+	VmaAllocator allocator = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
 
 	operator VmaAllocation() { return allocation; }
 	operator VkBuffer() { return buffer; };
+
+	VkResult allocate(VmaAllocator vma_allocator, VmaAllocationCreateInfo *create_info, VkBufferCreateInfo *buffer_info, VmaAllocationInfo *allocation_info = nullptr);
+	void destroy();
 };
 
 struct EImage {
@@ -32,10 +36,10 @@ struct ETexture {
 
 struct EMesh {
 	void allocate(VmaAllocator allocator);
-	void destroy(VmaAllocator allocator);
+	void destroy();
 
-	void send_to_gpu(VmaAllocator allocator, VkCommandBuffer command);
-	void cleanup_after_send(VmaAllocator allocator); // used to free after transfers
+	void send_to_gpu(VkCommandBuffer command);
+	void cleanup_after_send(); // used to free after transfers
 
 	std::vector<EVertex> verticies = {};
 	std::vector<uint32_t> indicies = {};
@@ -48,6 +52,8 @@ struct EMesh {
 
 	EBuffer vertex_buffer = {};
 	EBuffer index_buffer = {};
+
+	VmaAllocator allocator = VK_NULL_HANDLE;
 };
 
 // uniforms
