@@ -2,9 +2,9 @@
 
 #include <vk_mem_alloc.h>
 
-#include "pipeline.h"
+#include "globals.h"
 #include "primitives.h"
-#include "voxel.h"
+#include "mesh.h"
 
 namespace render {
 
@@ -28,12 +28,12 @@ private:
 	bool create_pipelines();
 	bool create_vma_allocator();
 	bool create_depth_image();
+	bool create_texture_sampler();
 	bool create_descriptor_pool();
 	bool create_uniform_buffers();
 	bool create_descriptor_sets();
 	bool create_command_pool();
 	bool create_sync_objects();
-
 	bool create_imgui();
 
 	bool rebuild_swapchain();
@@ -79,8 +79,9 @@ private:
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
 	EImage depth_image = {};
-
 	const uint32_t MAX_OBJECTS = 1024*1024;
+
+	std::map<std::string, EMesh> meshes = {};
 
 	struct UniformBufferAllocation {
 		EBuffer memory;
@@ -107,9 +108,6 @@ private:
 	size_t current_frame = 0;
 
 	std::deque<std::function<void()>> deletion_queue = {};
-
-	std::vector<Chunk> chunks = {};
-
 private:
 	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
 	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;

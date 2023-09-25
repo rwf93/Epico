@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vk_mem_alloc.h>
+
 namespace render {
 
 struct EVertex {
@@ -28,34 +30,11 @@ struct EImage {
 	VkImage image = VK_NULL_HANDLE;
 	VkImageView view = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
-};
 
-struct ETexture {
-	EImage image = {};
-	VkSampler sampler = VK_NULL_HANDLE;
-};
-
-struct EMesh {
-	void allocate(VmaAllocator allocator);
+	VkResult create(int width, int height);
 	void destroy();
-
-	void send_to_gpu(VkCommandBuffer command);
-	void cleanup_after_send(); // used to free after transfers
-
-	std::vector<EVertex> verticies = {};
-	std::vector<uint32_t> indicies = {};
-
-	uint32_t vertex_count = 0;
-	uint32_t index_count = 0;
-
-	EBuffer staging_vertex_buffer = {};
-	EBuffer staging_index_buffer = {};
-
-	EBuffer vertex_buffer = {};
-	EBuffer index_buffer = {};
-
-	VmaAllocator allocator = VK_NULL_HANDLE;
 };
+
 
 // uniforms
 struct EGlobalData {

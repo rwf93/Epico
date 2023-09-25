@@ -57,6 +57,28 @@ VkDescriptorSetLayoutBinding info::descriptor_set_layout_binding(VkDescriptorTyp
 	return set_layout_binding;
 }
 
+VkDescriptorSetAllocateInfo info::descriptor_set_allocate_info(std::vector<VkDescriptorSetLayout> &allocate_info, VkDescriptorPool descriptor_pool) {
+	VkDescriptorSetAllocateInfo set_allocate_info = {};
+
+	set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	set_allocate_info.descriptorSetCount = static_cast<uint32_t>(allocate_info.size());
+	set_allocate_info.pSetLayouts = allocate_info.data();
+	set_allocate_info.descriptorPool = descriptor_pool;
+
+	return set_allocate_info;
+}
+
+VkDescriptorSetLayoutCreateInfo info::descriptor_set_layout_info(std::vector<VkDescriptorSetLayoutBinding> &layout_info) {
+	VkDescriptorSetLayoutCreateInfo set_layout_info = {};
+
+	set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	set_layout_info.bindingCount = static_cast<uint32_t>(layout_info.size());
+	set_layout_info.pBindings = layout_info.data();
+
+
+	return set_layout_info;
+}
+
 VkViewport info::viewport(float width, float height, float x, float y, float min_depth, float max_depth) {
 	VkViewport viewport = {};
 
@@ -97,5 +119,17 @@ VkPipelineVertexInputStateCreateInfo info::input_vertex_info(
 	input_vertex_info.pVertexAttributeDescriptions = attributes.data();
 
 	return input_vertex_info;
+}
+
+VkPipelineRenderingCreateInfoKHR info::rendering_create_info(std::vector<VkFormat> &color_attachment_formats, VkFormat depth_format, VkFormat stencil_format) {
+	VkPipelineRenderingCreateInfoKHR rendering_create_info = {};
+
+	rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	rendering_create_info.colorAttachmentCount = static_cast<uint32_t>(color_attachment_formats.size());
+	rendering_create_info.pColorAttachmentFormats = color_attachment_formats.data();
+	rendering_create_info.depthAttachmentFormat = depth_format;
+	rendering_create_info.stencilAttachmentFormat = stencil_format;
+
+	return rendering_create_info;
 }
 

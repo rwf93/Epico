@@ -4,6 +4,8 @@
 #include "tools.h"
 #include "primitives.h"
 
+#include "renderer.h"
+
 using namespace render;
 
 std::vector<VkVertexInputBindingDescription> EVertex::get_binding_descriptions() {
@@ -67,67 +69,4 @@ VkResult EBuffer::allocate(VmaAllocator vma_allocator,
 
 void EBuffer::destroy() {
 	vmaDestroyBuffer(allocator, buffer, allocation);
-}
-
-void EMesh::allocate(VmaAllocator vma_allocator) {
-	assert(vma_allocator != VK_NULL_HANDLE);
-	this->allocator = vma_allocator;
-
-	VmaAllocationInfo vertex_allocation_info = {};
-	VmaAllocationInfo index_allocation_info = {};
-
-	auto staging_allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, 0, VMA_MEMORY_USAGE_CPU_ONLY);
-	auto staging_buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-
-	auto allocate_info = info::allocation_create_info(0, 0, VMA_MEMORY_USAGE_GPU_ONLY);
-
-	staging_vertex_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &vertex_allocation_info);
-    memcpy(vertex_allocation_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
-
-  	staging_index_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &index_allocation_info);
-    memcpy(index_allocation_info.pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
-
-	{
-		auto buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		vertex_buffer.allocate(allocator, &buffer_info, &allocate_info);
-	}
-
-	{
-		auto buffer_info = info::buffer_create_info(indicies.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		index_buffer.allocate(allocator, &buffer_info, &allocate_info);
-	}
-}
-
-void EMesh::send_to_gpu(VkCommandBuffer command) {
-	VkBufferCopy vertex_copy;
-	vertex_copy.dstOffset = 0;
-	vertex_copy.srcOffset = 0;
-	vertex_copy.size = verticies.size() * sizeof(EVertex);
-
-	VkBufferCopy index_copy;
-	index_copy.dstOffset = 0;
-	index_copy.srcOffset = 0;
-	index_copy.size = indicies.size() * sizeof(uint32_t);
-
-	vmaFlushAllocation(allocator, staging_vertex_buffer, 0, VK_WHOLE_SIZE);
-	vmaFlushAllocation(allocator, staging_index_buffer, 0, VK_WHOLE_SIZE);
-
-	vkCmdCopyBuffer(command, staging_vertex_buffer, vertex_buffer, 1, &vertex_copy);
-	vkCmdCopyBuffer(command, staging_index_buffer, index_buffer, 1, &index_copy);
-}
-
-void EMesh::cleanup_after_send() {
-	staging_index_buffer.destroy();
-	staging_vertex_buffer.destroy();
-
-	// clears useless vertex data
-	vertex_count = static_cast<uint32_t>(verticies.size());
-	index_count = static_cast<uint32_t>(indicies.size());
-	verticies.clear();
-	indicies.clear();
-}
-
-void EMesh::destroy() {
-	index_buffer.destroy();
-	vertex_buffer.destroy();
 }

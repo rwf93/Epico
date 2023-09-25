@@ -10,15 +10,17 @@ find_package(tinyobjloader CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
 add_executable(${PROJECT}
-	main.cpp
-	fs.cpp
-	mathlib.cpp
-
 	renderer/info.cpp
 	renderer/pipeline.cpp
 	renderer/primitives.cpp
-	renderer/voxel.cpp
+	renderer/mesh.cpp
+	renderer/renderable.cpp
 	renderer/renderer.cpp
+
+	mathlib.cpp
+	fs.cpp
+
+	main.cpp
 )
 
 target_precompile_headers(${PROJECT} PUBLIC stdafx.h)

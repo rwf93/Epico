@@ -1,6 +1,8 @@
 file(GLOB SHADER_FILES
     shaders/*.vert
     shaders/*.frag
+    shaders/*.tesc
+    shaders/*.tese
 )
 
 foreach(SHADER ${SHADER_FILES})

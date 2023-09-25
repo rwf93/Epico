@@ -1,7 +1,4 @@
-#include "globals.h"
-
 #define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h> // haunting cpp file...
 
 #include "fs.h"
 #include "mathlib.h"
@@ -9,8 +6,7 @@
 #include "tools.h"
 #include "info.h"
 #include "pipeline.h"
-#include "primitives.h"
-#include "voxel.h"
+
 #include "renderer.h"
 
 using namespace render;
@@ -26,8 +22,6 @@ Renderer::~Renderer() {
 	std::for_each(deletion_queue.rbegin(), deletion_queue.rend(), [=, this](std::function<void()> &func) { func(); });
 	deletion_queue.clear();
 }
-
-static EMesh triangle_mesh = {};
 
 bool Renderer::setup() {
 	if(!create_instance()) 		return false;
@@ -48,84 +42,13 @@ bool Renderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	const int GEN_CHUNKS = 2;
-	for(int cx = 0; cx < GEN_CHUNKS; cx++) {
-		for(int cy = 0; cy < GEN_CHUNKS; cy++) {
-			Chunk chunk(cx, cy);
-			for(int x = 0; x < Chunk::MAX_WIDTH; x++) {
-				for(int y = 0; y < Chunk::MAX_HEIGHT; y++) {
-					for(int z = 0; z < Chunk::MAX_WIDTH; z++) {
-						chunk.voxels[x][y][z].active = true;
-						chunk.voxels[x][y][z].type = static_cast<VoxelType>(rand() % VOXEL_MAXTYPE);
-					}
-				}
-			}
-			chunks.push_back(chunk);
-		}
-	}
-
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-
-	std::string warn;
-	std::string err;
-
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "./assets/models/monkey.obj", nullptr);
-
-	for(const auto& shape: shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			EVertex vertex = {};
-
-			vertex.position = {
-				attrib.vertices[3 * index.vertex_index + 0],
-    			attrib.vertices[3 * index.vertex_index + 1],
-    			attrib.vertices[3 * index.vertex_index + 2]
-			};
-
-			vertex.color = {
-				0.912,0.475,0.289
-			};
-
-			vertex.normal = {
-				attrib.normals[3 * index.normal_index + 0],
-				attrib.normals[3 * index.normal_index + 1],
-				attrib.normals[3 * index.normal_index + 2]
-			};
-
-			vertex.texcoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				attrib.texcoords[2 * index.texcoord_index + 1],
-			};
-
-			triangle_mesh.verticies.push_back(vertex);
-			triangle_mesh.indicies.push_back((uint32_t)triangle_mesh.indicies.size());
-		}
-	}
-
-	triangle_mesh.allocate(allocator);
-	submit_command([&](VkCommandBuffer command) {
-		triangle_mesh.send_to_gpu(command);
-	});
-	triangle_mesh.cleanup_after_send();
+	meshes["monkey"].load_obj(allocator, "./assets/models/monkey.obj", this);
+	meshes["dog"].load_obj(allocator, "./assets/models/dog.obj", this);
 
 	deletion_queue.push_back([&]() {
-		triangle_mesh.destroy();
+		for(auto &map: meshes)
+			map.second.destroy();
 	});
-
-	for (auto& chunk : chunks) {
-		chunk.build_mesh();
-
-		chunk.chunk_mesh.allocate(allocator);
-		submit_command([&](VkCommandBuffer command) {
-			chunk.chunk_mesh.send_to_gpu(command);
-		});
-		chunk.chunk_mesh.cleanup_after_send();
-
-		deletion_queue.push_back([&]() {
-			chunk.chunk_mesh.destroy();
-		});
-	}
 
 	return true;
 }
@@ -156,8 +79,6 @@ bool Renderer::draw() {
 	submit_info.pCommandBuffers = &command_buffers[image_index];
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = signal_semaphores;
-
-	/* Begin recording our command buffer, intended on sending it to the GPU */
 
 	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[image_index], 0));
 
@@ -285,7 +206,6 @@ bool Renderer::draw() {
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
 			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
-			static bool chunk_positions = true;
 			static int render_mode_index = 0;
 			static std::vector<const char*> render_modes = {
 				"Normal",
@@ -322,7 +242,6 @@ bool Renderer::draw() {
 					}
 					ImGui::EndCombo();
 				}
-				ImGui::Checkbox("Chunk Positions", &chunk_positions);
 			}
 			ImGui::End();
 
@@ -339,29 +258,12 @@ bool Renderer::draw() {
 			}
 			ImGui::PopStyleVar();
 
-			for(int i = 0; i < static_cast<int>(chunks.size()); i++) {
-				Chunk &chunk = chunks[i];
-				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), glm::vec3(), glm::vec3(0.02, 0.02, 0.02));
-
-				glm::vec2 billboard = mathlib::calculate_billboard(glm::vec3(chunk.chunk_x, 0, chunk.chunk_y), ubo.projection, ubo.view, swapchain.extent.width, swapchain.extent.height);
-
-				if(chunk_positions)
-					ImGui::GetForegroundDrawList()->AddText(ImVec2(billboard.x,billboard.y), ImColor(0,0,0), fmt::format("({}, {})", chunk.chunk_x, chunk.chunk_y).c_str());
-
-				VkDeviceSize offset[] = { 0 };
-
-				vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &chunk.chunk_mesh.vertex_buffer.buffer, offset);
-				vkCmdBindIndexBuffer(command_buffers[image_index], chunk.chunk_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-				vkCmdDrawIndexed(command_buffers[image_index], chunk.chunk_mesh.index_count, 1, 0, 0, i);
-			}
-
-			ssbo[chunks.size() + 1].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
+			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 			VkDeviceSize offset[] = { 0 };
-			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &triangle_mesh.vertex_buffer.buffer, offset);
-			vkCmdBindIndexBuffer(command_buffers[image_index], triangle_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
+			vkCmdBindIndexBuffer(command_buffers[image_index], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(command_buffers[image_index], triangle_mesh.index_count, 1, 0, 0, static_cast<uint32_t>(chunks.size() + 1));
+			vkCmdDrawIndexed(command_buffers[image_index], meshes["monkey"].index_count, 1, 0, 0, 0);
 
 			ImGui::Render();
 
@@ -378,7 +280,6 @@ bool Renderer::draw() {
 		);
 	}
 	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[image_index]));
-	/* End recording our command buffer, intended on sending it to the GPU */
 
 	VK_CHECK_BOOL(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
 
@@ -666,11 +567,7 @@ bool Renderer::create_descriptor_layout() {
 			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
 		};
 
-		VkDescriptorSetLayoutCreateInfo layout_info = {};
-		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layout_info.bindingCount = static_cast<uint32_t>(bindings.size());
-		layout_info.pBindings = bindings.data();
-
+		auto layout_info = info::descriptor_set_layout_info(bindings);
 		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &global_descriptor_layout));
 	}
 	{
@@ -678,11 +575,7 @@ bool Renderer::create_descriptor_layout() {
 			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
 		};
 
-		VkDescriptorSetLayoutCreateInfo layout_info = {};
-		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layout_info.bindingCount = static_cast<uint32_t>(bindings.size());
-		layout_info.pBindings = bindings.data();
-
+		auto layout_info = info::descriptor_set_layout_info(bindings);
 		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
 	}
 
@@ -784,6 +677,11 @@ bool Renderer::create_depth_image() {
 	return true;
 }
 
+bool Renderer::create_texture_sampler() {
+	VkSamplerCreateInfo sampler_info = {};
+	return true;
+}
+
 bool Renderer::create_descriptor_pool() {
 	{
 		std::vector<VkDescriptorPoolSize> pool_sizes = {
@@ -844,23 +742,13 @@ bool Renderer::create_descriptor_sets() {
 
 	std::vector<VkDescriptorSetLayout> camera_layouts(MAX_FRAMES_IN_FLIGHT, global_descriptor_layout);
 	{
-		VkDescriptorSetAllocateInfo camera_descriptor_set_info = {};
-		camera_descriptor_set_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		camera_descriptor_set_info.descriptorPool = descriptor_pool;
-		camera_descriptor_set_info.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		camera_descriptor_set_info.pSetLayouts = camera_layouts.data();
-
+		VkDescriptorSetAllocateInfo camera_descriptor_set_info = info::descriptor_set_allocate_info(camera_layouts, descriptor_pool);
 		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &camera_descriptor_set_info, global_descriptor_sets.data()));
 	}
 
 	std::vector<VkDescriptorSetLayout> object_layouts(MAX_FRAMES_IN_FLIGHT, object_descriptor_layout);
 	{
-		VkDescriptorSetAllocateInfo object_descriptor_set_info = {};
-		object_descriptor_set_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		object_descriptor_set_info.descriptorPool = descriptor_pool;
-		object_descriptor_set_info.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-		object_descriptor_set_info.pSetLayouts = object_layouts.data();
-
+		auto object_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
 		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
 	}
 
@@ -1089,7 +977,6 @@ bool Renderer::build_vertex_pipelines() {
 	auto attribute_descriptions = EVertex::get_attribute_descriptions();
 	pipeline_constructor.input_info = info::input_vertex_info(binding_descriptions, attribute_descriptions);
 
-
 	pipeline_constructor.input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	pipeline_constructor.input_assembly.primitiveRestartEnable = VK_FALSE;
 
@@ -1137,12 +1024,11 @@ bool Renderer::build_vertex_pipelines() {
 	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 	pipeline_constructor.dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
 
-	VkPipelineRenderingCreateInfoKHR pipeline_rendering_info = {};
-	pipeline_rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-	pipeline_rendering_info.colorAttachmentCount = 1;
-	pipeline_rendering_info.pColorAttachmentFormats = &swapchain.image_format;
-	pipeline_rendering_info.depthAttachmentFormat = find_depth_format();
-
+	// create data type for dynamic rendering
+	std::vector<VkFormat> color_attachment_formats = {
+		swapchain.image_format
+	};
+	auto pipeline_rendering_info = info::rendering_create_info(color_attachment_formats, find_depth_format());
 	pipeline_constructor.pipeline_info.pNext = &pipeline_rendering_info;
 
 	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex"]));

@@ -1,4 +1,3 @@
-#include "globals.h"
 #include "tools.h"
 #include "pipeline.h"
 
