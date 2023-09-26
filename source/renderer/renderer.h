@@ -99,13 +99,12 @@ private:
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	std::vector<VkCommandBuffer> command_buffers = {};
 
-	const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+	const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+	uint32_t current_frame = 0;
 
 	std::vector<VkSemaphore> available_semaphores = {};
 	std::vector<VkSemaphore> finished_semaphores = {};
 	std::vector<VkFence> in_flight_fences = {};
-
-	size_t current_frame = 0;
 
 	std::deque<std::function<void()>> deletion_queue = {};
 private:
