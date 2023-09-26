@@ -76,19 +76,19 @@ bool Renderer::draw() {
 	submit_info.pWaitSemaphores = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &command_buffers[image_index];
+	submit_info.pCommandBuffers = &command_buffers[current_frame];
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = signal_semaphores;
 
-	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[image_index], 0));
+	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[current_frame], 0));
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[image_index], &begin_info));
+	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
 	{
 		image_barrier(
-						command_buffers[image_index], swapchain_images[image_index],
+						command_buffers[current_frame], swapchain_images[image_index],
 						0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -96,7 +96,7 @@ bool Renderer::draw() {
 		);
 
 		image_barrier(
-						command_buffers[image_index], depth_image.image,
+						command_buffers[current_frame], depth_image.image,
 						0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 						VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
@@ -128,13 +128,13 @@ bool Renderer::draw() {
 		rendering_info.pColorAttachments = &color_attachment;
 		rendering_info.pDepthAttachment = &depth_attachment;
 
-		vkCmdBeginRenderingKHR(command_buffers[image_index], &rendering_info);
+		vkCmdBeginRenderingKHR(command_buffers[current_frame], &rendering_info);
 		{
 			VkViewport viewport = info::viewport(static_cast<float>(swapchain.extent.width), static_cast<float>(swapchain.extent.height));
 			VkRect2D scissor = info::rect2d({ 0, 0 }, swapchain.extent);
 
-			vkCmdSetViewport(command_buffers[image_index], 0, 1, &viewport);
-			vkCmdSetScissor(command_buffers[image_index], 0, 1, &scissor);
+			vkCmdSetViewport(command_buffers[current_frame], 0, 1, &viewport);
+			vkCmdSetScissor(command_buffers[current_frame], 0, 1, &scissor);
 
 			EGlobalData ubo = {};
 
@@ -203,8 +203,8 @@ bool Renderer::draw() {
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(EGlobalData));
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
 
-			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
-			vkCmdBindDescriptorSets(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
 
 			static int render_mode_index = 0;
 			static std::vector<const char*> render_modes = {
@@ -216,11 +216,11 @@ bool Renderer::draw() {
 			};
 
 			switch(render_mode_index) {
-				case 0: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]); break;
-				case 1: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]); break;
-				case 2: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_points"]); break;
-				case 3: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_phong"]); break;
-				case 4: vkCmdBindPipeline(command_buffers[image_index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]); break;
+				case 0: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]); break;
+				case 1: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]); break;
+				case 2: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_points"]); break;
+				case 3: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_phong"]); break;
+				case 4: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]); break;
 			}
 
 			ImGui_ImplVulkan_NewFrame();
@@ -260,26 +260,26 @@ bool Renderer::draw() {
 
 			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 			VkDeviceSize offset[] = { 0 };
-			vkCmdBindVertexBuffers(command_buffers[image_index], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
-			vkCmdBindIndexBuffer(command_buffers[image_index], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
+			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(command_buffers[image_index], meshes["monkey"].index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 0);
 
 			ImGui::Render();
 
-			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[image_index]);
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
 		}
-		vkCmdEndRenderingKHR(command_buffers[image_index]);
+		vkCmdEndRenderingKHR(command_buffers[current_frame]);
 
 		image_barrier(
-						command_buffers[image_index], swapchain_images[image_index],
+						command_buffers[current_frame], swapchain_images[image_index],
 						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0,
 						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
 						VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
 		);
 	}
-	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[image_index]));
+	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[current_frame]));
 
 	VK_CHECK_BOOL(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
 
