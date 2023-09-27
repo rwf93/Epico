@@ -80,8 +80,8 @@ private:
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
 	EImage depth_image = {};
-	const uint32_t MAX_OBJECTS = 1024*1024;
 
+	const uint32_t MAX_OBJECTS = 1024*1024;
 	std::map<std::string, EMesh> meshes = {};
 
 	struct UniformBufferAllocation {
