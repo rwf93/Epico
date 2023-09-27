@@ -42,9 +42,7 @@ bool Renderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	//meshes["monkey"].load_obj(allocator, "./assets/models/monkey.obj", this);
-	meshes["dog"].load_obj(allocator, "./assets/models/dog.obj", this);
-	//meshes["poptart"].load_obj(allocator, "./assets/models/poptart.obj", this);
+	meshes["monkey"].load_obj(allocator, "./assets/models/monkey.obj", this);
 
 	deletion_queue.push_back([&]() {
 		for(auto &map: meshes)
@@ -249,10 +247,10 @@ bool Renderer::begin() {
 			//ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 1, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 
 			VkDeviceSize offset[] = { 0 };
-			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["dog"].vertex_buffer.buffer, offset);
-			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["dog"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
+			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(command_buffers[current_frame], meshes["dog"].index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 0);
 
 			//for(uint32_t i = 0; i >= MAX_OBJECTS; i++) {
 			//	ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
