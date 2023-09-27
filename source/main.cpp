@@ -44,9 +44,9 @@ int main(int argc, char *args[]) {
 			ImGui_ImplSDL2_ProcessEvent(&e);
 		}
 
-		if(!renderer.draw()) {
-			return false;
-		}
+
+		if(!renderer.begin()) break;
+		if(!renderer.end()) break;
 
 		start_time = time;
 	}

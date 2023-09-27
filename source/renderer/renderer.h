@@ -14,7 +14,8 @@ public:
 	~Renderer();
 
 	bool setup();
-	bool draw();
+	bool begin();
+	bool end();
 
 	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
 private:
@@ -100,6 +101,7 @@ private:
 	std::vector<VkCommandBuffer> command_buffers = {};
 
 	const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+	uint32_t image_index = 0;
 	uint32_t current_frame = 0;
 
 	std::vector<VkSemaphore> available_semaphores = {};

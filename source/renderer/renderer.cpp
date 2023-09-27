@@ -42,8 +42,9 @@ bool Renderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	meshes["monkey"].load_obj(allocator, "./assets/models/monkey.obj", this);
+	//meshes["monkey"].load_obj(allocator, "./assets/models/monkey.obj", this);
 	meshes["dog"].load_obj(allocator, "./assets/models/dog.obj", this);
+	//meshes["poptart"].load_obj(allocator, "./assets/models/poptart.obj", this);
 
 	deletion_queue.push_back([&]() {
 		for(auto &map: meshes)
@@ -53,32 +54,15 @@ bool Renderer::setup() {
 	return true;
 }
 
-bool Renderer::draw() {
+bool Renderer::begin() {
 	VK_CHECK_BOOL(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
 
-	uint32_t image_index = 0;
 	VkResult aquire_result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
-
 	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
 		return rebuild_swapchain();
 	}
 
 	VK_CHECK_BOOL(vkResetFences(device, 1, &in_flight_fences[current_frame]));
-
-	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
-	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-	VkSemaphore signal_semaphores[] = { finished_semaphores[current_frame] };
-
-	VkSubmitInfo submit_info = {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = wait_semaphores;
-	submit_info.pWaitDstStageMask = wait_stages;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &command_buffers[current_frame];
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = signal_semaphores;
 
 	VK_CHECK_BOOL(vkResetCommandBuffer(command_buffers[current_frame], 0));
 
@@ -86,6 +70,7 @@ bool Renderer::draw() {
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
+
 	{
 		image_barrier(
 						command_buffers[current_frame], swapchain_images[image_index],
@@ -226,6 +211,7 @@ bool Renderer::draw() {
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
+			ImGuizmo::BeginFrame();
 
 			ImGuiIO &io = ImGui::GetIO();
 
@@ -252,18 +238,26 @@ bool Renderer::draw() {
 				{
 					ImGui::Text("Statistics");
 					ImGui::Separator();
-					ImGui::Text("Frames Per Second: %.2f", io.Framerate);
+					ImGui::Text("Frames Per Second: %.1f (%.3fms/frame)", io.Framerate, 1000.0f / io.Framerate);
+					ImGui::Text("Surface Size: %ix%i", swapchain.extent.width, swapchain.extent.height);
 				}
 				ImGui::End();
 			}
 			ImGui::PopStyleVar();
 
 			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
-			VkDeviceSize offset[] = { 0 };
-			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
-			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+			//ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 1, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 
-			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 0);
+			VkDeviceSize offset[] = { 0 };
+			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["dog"].vertex_buffer.buffer, offset);
+			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["dog"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdDrawIndexed(command_buffers[current_frame], meshes["dog"].index_count, 1, 0, 0, 0);
+
+			//for(uint32_t i = 0; i >= MAX_OBJECTS; i++) {
+			//	ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
+			//	vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, i);
+			//}
 
 			ImGui::Render();
 
@@ -279,6 +273,27 @@ bool Renderer::draw() {
 						VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
 		);
 	}
+
+
+	return true;
+}
+
+bool Renderer::end() {
+	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	VkSemaphore signal_semaphores[] = { finished_semaphores[current_frame] };
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.waitSemaphoreCount = 1;
+	submit_info.pWaitSemaphores = wait_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffers[current_frame];
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = signal_semaphores;
+
 	VK_CHECK_BOOL(vkEndCommandBuffer(command_buffers[current_frame]));
 
 	VK_CHECK_BOOL(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
