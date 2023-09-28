@@ -9,7 +9,7 @@ namespace render {
 class Renderer;
 
 struct EMesh {
-	void load_obj(VmaAllocator vma_allocator, const char *path, Renderer *renderer);
+	void load_mesh(VmaAllocator vma_allocator, const char *path, Renderer *renderer);
 
 	void allocate(VmaAllocator allocator);
 	void destroy();

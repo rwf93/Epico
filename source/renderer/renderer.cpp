@@ -42,7 +42,7 @@ bool Renderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	meshes["monkey"].load_obj(allocator, "./assets/models/monkey.obj", this);
+	meshes["monkey"].load_mesh(allocator, "./assets/models/cubes.glb", this);
 
 	deletion_queue.push_back([&]() {
 		for(auto &map: meshes)
@@ -209,7 +209,6 @@ bool Renderer::begin() {
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
-			ImGuizmo::BeginFrame();
 
 			ImGuiIO &io = ImGui::GetIO();
 
@@ -244,7 +243,6 @@ bool Renderer::begin() {
 			ImGui::PopStyleVar();
 
 			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
-			//ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 1, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);

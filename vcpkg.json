@@ -9,7 +9,7 @@
         "vk-bootstrap",
         "vulkan-memory-allocator",
         "glm",
-        "imguizmo",
+        "assimp",
         "tinyobjloader",
         {
             "name": "sdl2",

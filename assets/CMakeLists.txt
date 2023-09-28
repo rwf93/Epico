@@ -22,7 +22,7 @@ add_custom_target(ShaderCompile ALL DEPENDS ${COMPILED_SHADERS})
 add_dependencies(${PROJECT} ShaderCompile)
 
 file(GLOB FONT_FILES fonts/*.ttf)
-file(GLOB MODEL_FILES models/*.obj models/*.gltf models/*.gltb)
+file(GLOB MODEL_FILES models/*.obj models/*.gltf models/*.glb)
 file(GLOB TEXTURE_FILES textures/*.ktx)
 
 macro(asset_link ASSET_FILES DIRNAME)

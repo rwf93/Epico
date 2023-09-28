@@ -5,43 +5,29 @@
 
 using namespace render;
 
-void EMesh::load_obj(VmaAllocator vma_allocator, const char *path, Renderer *renderer) {
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
+void EMesh::load_mesh(VmaAllocator vma_allocator, const char *path, Renderer *renderer) {
+	Assimp::Importer importer;
+	const aiScene *scene = importer.ReadFile(path, 0);
 
-	std::string warn;
-	std::string err;
+	for(unsigned int i = 0; i < scene->mNumMeshes; i++) {
+		aiMesh *mesh = scene->mMeshes[i];
+		for(unsigned int j = 0; j < mesh->mNumFaces; j++) {
+			aiFace &face = mesh->mFaces[j];
+			for(int k = 0; k < 3; k++) {
+				EVertex vertex = {};
 
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path, nullptr);
+				aiVector3D position = mesh->mVertices[face.mIndices[k]];
+				aiVector3D normal = mesh->HasNormals() ? mesh->mNormals[face.mIndices[k]] : aiVector3D(1.0f);
+				aiVector3D texcoord = mesh->mTextureCoords[0][face.mIndices[k]];
 
-	for(const auto& shape: shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			EVertex vertex = {};
+				vertex.position = { position.x, position.y, position.z };
+				vertex.normal = { normal.x, normal.y, normal.z };
+				vertex.texcoord = { texcoord.x, texcoord.y };
+				vertex.color = { 0.912, 0.475, 0.289 };
 
-			vertex.position = {
-				attrib.vertices[3 * index.vertex_index + 0],
-    			attrib.vertices[3 * index.vertex_index + 1],
-    			attrib.vertices[3 * index.vertex_index + 2]
-			};
-
-			vertex.color = {
-				0.912,0.475,0.289
-			};
-
-			vertex.normal = {
-				attrib.normals[3 * index.normal_index + 0],
-				attrib.normals[3 * index.normal_index + 1],
-				attrib.normals[3 * index.normal_index + 2]
-			};
-
-			vertex.texcoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				attrib.texcoords[2 * index.texcoord_index + 1],
-			};
-
-			verticies.push_back(vertex);
-			indicies.push_back((uint32_t)indicies.size());
+				verticies.push_back(vertex);
+				indicies.push_back((uint32_t)indicies.size());
+			}
 		}
 	}
 
