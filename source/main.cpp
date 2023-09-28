@@ -1,8 +1,6 @@
 #include "globals.h"
 #include "renderer/renderer.h"
 
-#include "renderer/renderable.h"
-
 int main(int argc, char *args[]) {
 	UNUSED(argc);
 	UNUSED(args);
