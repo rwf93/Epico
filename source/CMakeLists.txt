@@ -8,6 +8,7 @@ find_package(glm CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 # find_package(imgui CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
+find_package(Ktx CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
 add_executable(${PROJECT}
@@ -33,6 +34,7 @@ target_link_libraries(${PROJECT} PRIVATE unofficial::vulkan-memory-allocator::vu
 target_link_libraries(${PROJECT} PRIVATE glm::glm)
 target_link_libraries(${PROJECT} PRIVATE tinyobjloader::tinyobjloader)
 target_link_libraries(${PROJECT} PRIVATE assimp::assimp)
+target_link_libraries(${PROJECT} PRIVATE KTX::ktx)
 # target_link_libraries(${PROJECT} PRIVATE imgui::imgui)
 target_link_libraries(${PROJECT}
 	PRIVATE

@@ -30,6 +30,7 @@ private:
 	bool create_vma_allocator();
 	bool create_depth_image();
 	bool create_texture_sampler();
+	bool create_texture_array();
 	bool create_descriptor_pool();
 	bool create_uniform_buffers();
 	bool create_descriptor_sets();
@@ -72,6 +73,7 @@ private:
 
 	VkDescriptorSetLayout global_descriptor_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout sample_descriptor_layout = VK_NULL_HANDLE;
 
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 	std::map<std::string, VkPipelineLayout> pipeline_layouts = {};
@@ -80,6 +82,9 @@ private:
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
 	EImage depth_image = {};
+
+	EImage texture_array_image = {};
+	EBuffer texture_array_buffer = {};
 
 	const uint32_t MAX_OBJECTS = 1024*1024;
 	std::map<std::string, EMesh> meshes = {};
@@ -96,6 +101,7 @@ private:
 
 	std::vector<VkDescriptorSet> global_descriptor_sets = {};
 	std::vector<VkDescriptorSet> object_descriptor_sets = {};
+	std::vector<VkDescriptorSet> sample_descriptor_sets = {};
 
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	std::vector<VkCommandBuffer> command_buffers = {};

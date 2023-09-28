@@ -70,3 +70,13 @@ VkResult EBuffer::allocate(VmaAllocator vma_allocator,
 void EBuffer::destroy() {
 	vmaDestroyBuffer(allocator, buffer, allocation);
 }
+
+void ETexture::load_ktx(VmaAllocator vma_allocator, const char *path, Renderer &renderer) {
+	UNUSED(vma_allocator);
+	UNUSED(path);
+	UNUSED(renderer);
+}
+
+void ETexture::destroy() {
+
+}

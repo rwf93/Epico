@@ -4,6 +4,8 @@
 
 namespace render {
 
+class Renderer;
+
 struct EVertex {
 	glm::vec3 position = {};
 	glm::vec3 color = {};
@@ -35,6 +37,13 @@ struct EImage {
 	void destroy();
 };
 
+struct ETexture {
+	EImage image = {};
+	EBuffer buffer = {};
+
+	void load_ktx(VmaAllocator vma_allocator, const char *path, Renderer &renderer);
+	void destroy();
+};
 
 // uniforms
 struct EGlobalData {
@@ -44,6 +53,7 @@ struct EGlobalData {
 
 struct EObjectData {
 	glm::mat4 model = {};
+	int texture_index = 0;
 };
 
 }

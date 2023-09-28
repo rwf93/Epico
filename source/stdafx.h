@@ -38,3 +38,5 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
+
+#include <ktx.h>

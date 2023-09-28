@@ -34,6 +34,8 @@ bool Renderer::setup() {
 	if(!create_pipelines())			return false;
 	if(!create_vma_allocator())		return false;
 	if(!create_depth_image())		return false;
+	if(!create_texture_sampler())	return false;
+	if(!create_texture_array())		return false;
 	if(!create_descriptor_pool())	return false;
 	if(!create_uniform_buffers())	return false;
 	if(!create_descriptor_sets())	return false;
@@ -42,7 +44,7 @@ bool Renderer::setup() {
 
 	if(!create_imgui())				return false;
 
-	meshes["monkey"].load_mesh(allocator, "./assets/models/cubes.glb", this);
+	meshes["monkey"].load_mesh(allocator, "./assets/models/monkey.glb", this);
 
 	deletion_queue.push_back([&]() {
 		for(auto &map: meshes)
@@ -575,12 +577,13 @@ bool Renderer::create_pipeline_cache() {
 bool Renderer::create_descriptor_layout() {
 	{
 		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
+			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
 		};
 
 		auto layout_info = info::descriptor_set_layout_info(bindings);
 		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &global_descriptor_layout));
 	}
+
 	{
 		std::vector<VkDescriptorSetLayoutBinding> bindings = {
 			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
@@ -590,9 +593,19 @@ bool Renderer::create_descriptor_layout() {
 		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
 	}
 
+	{
+		std::vector<VkDescriptorSetLayoutBinding> bindings = {
+			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0)
+		};
+
+		auto layout_info = info::descriptor_set_layout_info(bindings);
+		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &sample_descriptor_layout));
+	}
+
 	deletion_queue.push_back([=, this]() {
 		vkDestroyDescriptorSetLayout(device, object_descriptor_layout, nullptr);
 		vkDestroyDescriptorSetLayout(device, global_descriptor_layout, nullptr);
+		vkDestroyDescriptorSetLayout(device, sample_descriptor_layout, nullptr);
 	});
 
 	return true;
@@ -693,12 +706,17 @@ bool Renderer::create_texture_sampler() {
 	return true;
 }
 
+bool Renderer::create_texture_array() {
+	return true;
+}
+
 bool Renderer::create_descriptor_pool() {
 	{
 		std::vector<VkDescriptorPoolSize> pool_sizes = {
 			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 }
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 }
 		};
 
 		VkDescriptorPoolCreateInfo pool_info = {};
@@ -750,6 +768,7 @@ bool Renderer::create_uniform_buffers() {
 bool Renderer::create_descriptor_sets() {
 	global_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
 	object_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
+	sample_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
 
 	std::vector<VkDescriptorSetLayout> camera_layouts(MAX_FRAMES_IN_FLIGHT, global_descriptor_layout);
 	{
@@ -763,6 +782,12 @@ bool Renderer::create_descriptor_sets() {
 		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
 	}
 
+	//std::vector<VkDescriptorSetLayout> sample_layouts(MAX_FRAMES_IN_FLIGHT, sample_descriptor_layout);
+	//{
+	//	auto sample_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
+	//	VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &sample_descriptor_set_info, sample_descriptor_sets.data()));
+	//}
+
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		// write global sets
 		VkDescriptorBufferInfo buffer_info = {};
@@ -770,15 +795,14 @@ bool Renderer::create_descriptor_sets() {
 		buffer_info.offset = 0;
 		buffer_info.range = sizeof(EGlobalData);
 
-		VkWriteDescriptorSet camera_descriptor_write = {};
-		camera_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		camera_descriptor_write.dstSet = global_descriptor_sets[i];
-		camera_descriptor_write.dstBinding = 0;
-		camera_descriptor_write.dstArrayElement = 0;
-		camera_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		camera_descriptor_write.descriptorCount = 1;
-		camera_descriptor_write.pBufferInfo = &buffer_info;
-
+		VkWriteDescriptorSet global_descriptor_write = {};
+		global_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		global_descriptor_write.dstSet = global_descriptor_sets[i];
+		global_descriptor_write.dstBinding = 0;
+		global_descriptor_write.dstArrayElement = 0;
+		global_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		global_descriptor_write.descriptorCount = 1;
+		global_descriptor_write.pBufferInfo = &buffer_info;
 
 		// write object sets
 		VkDescriptorBufferInfo object_buffer_info = {};
@@ -795,7 +819,7 @@ bool Renderer::create_descriptor_sets() {
 		object_descriptor_write.descriptorCount = 1;
 		object_descriptor_write.pBufferInfo = &object_buffer_info;
 
-		VkWriteDescriptorSet descriptor_writes[] = { camera_descriptor_write, object_descriptor_write };
+		VkWriteDescriptorSet descriptor_writes[] = { global_descriptor_write, object_descriptor_write };
 
 		vkUpdateDescriptorSets(device, 2, descriptor_writes, 0, nullptr);
 	}
@@ -972,7 +996,8 @@ void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&fun
 bool Renderer::build_vertex_layout() {
 	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
 		global_descriptor_layout,
-		object_descriptor_layout
+		object_descriptor_layout,
+		sample_descriptor_layout
 	};
 
 	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);

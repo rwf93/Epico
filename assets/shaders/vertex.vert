@@ -17,12 +17,15 @@ layout(location = 2) in vec3 in_normal;
 layout(location = 3) in vec2 in_texcoord;
 
 layout(location = 0) out vec3 out_color;
-layout(location = 2) out vec3 out_normal;
+layout(location = 1) out vec3 out_normal;
+layout(location = 2) out vec3 out_texcoord;
 
 void main() {
-    mat4 model_matrix = object_buffer.objects[gl_BaseInstance].model;
+    EObjectData object = object_buffer.objects[gl_BaseInstance];
 
-    gl_Position = global.projection * global.view * model_matrix * vec4(in_position, 1.0);
     out_color = in_color;
     out_normal = in_normal;
+    out_texcoord = vec3(in_texcoord, object.texture_index);
+
+    gl_Position = global.projection * global.view * object.model * vec4(in_position, 1.0);
 }
