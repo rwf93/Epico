@@ -143,8 +143,8 @@ bool Renderer::begin() {
 			float offset_mx = (float)mx - last_mx;
 			float offset_my = last_my - (float)my;
 
-			last_mx = (float)mx;
-			last_my = (float)my;
+			last_mx = static_cast<float>(mx);
+			last_my = static_cast<float>(my);
 
 			if(mouse_state & SDL_BUTTON(3)) {
 				offset_mx *= sensitivity;
@@ -182,7 +182,7 @@ bool Renderer::begin() {
 
 			ubo.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
-			ubo.projection = glm::perspective(glm::radians(90.0f), (float)swapchain.extent.width / (float)swapchain.extent.height, 0.01f, 100.0f);
+			ubo.projection = glm::perspective(glm::radians(90.0f), static_cast<float>(swapchain.extent.width) / static_cast<float>(swapchain.extent.height), 0.01f, 100.0f);
 			ubo.projection[1][1] *= -1;
 
 			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(EGlobalData));
@@ -251,11 +251,6 @@ bool Renderer::begin() {
 			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 0);
-
-			//for(uint32_t i = 0; i >= MAX_OBJECTS; i++) {
-			//	ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
-			//	vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, i);
-			//}
 
 			ImGui::Render();
 
