@@ -16,33 +16,10 @@ struct EVertex {
 	static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
 };
 
-struct EBuffer {
-	VkBuffer buffer = VK_NULL_HANDLE;
-	VmaAllocator allocator = VK_NULL_HANDLE;
-	VmaAllocation allocation = VK_NULL_HANDLE;
-
-	operator VmaAllocation() { return allocation; }
-	operator VkBuffer() { return buffer; };
-
-	VkResult allocate(VmaAllocator vma_allocator, VkBufferCreateInfo *buffer_info, VmaAllocationCreateInfo *create_info, VmaAllocationInfo *allocation_info = nullptr);
-	void destroy();
-};
-
 struct EImage {
 	VkImage image = VK_NULL_HANDLE;
 	VkImageView view = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
-
-	VkResult create(int width, int height);
-	void destroy();
-};
-
-struct ETexture {
-	EImage image = {};
-	EBuffer buffer = {};
-
-	void load_ktx(VmaAllocator vma_allocator, const char *path, Renderer &renderer);
-	void destroy();
 };
 
 // uniforms

@@ -55,28 +55,3 @@ std::vector<VkVertexInputAttributeDescription> EVertex::get_attribute_descriptio
 
 	return attribute_descriptions;
 }
-
-VkResult EBuffer::allocate(VmaAllocator vma_allocator,
-							VkBufferCreateInfo *buffer_info,
-							VmaAllocationCreateInfo *create_info,
-							VmaAllocationInfo *allocation_info
-) {
-	assert(vma_allocator != VK_NULL_HANDLE);
-	this->allocator = vma_allocator;
-
-	return vmaCreateBuffer(allocator, buffer_info, create_info, &buffer, &allocation, allocation_info);
-}
-
-void EBuffer::destroy() {
-	vmaDestroyBuffer(allocator, buffer, allocation);
-}
-
-void ETexture::load_ktx(VmaAllocator vma_allocator, const char *path, Renderer &renderer) {
-	UNUSED(vma_allocator);
-	UNUSED(path);
-	UNUSED(renderer);
-}
-
-void ETexture::destroy() {
-
-}

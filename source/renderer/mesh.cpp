@@ -32,9 +32,8 @@ void EMesh::load_mesh(VmaAllocator vma_allocator, const char *path, Renderer *re
 	}
 
 	allocate(vma_allocator);
-	renderer->submit_command([&](VkCommandBuffer command) {
-		send_to_gpu(command);
-	});
+	vertex_buffer.stage(renderer, &staging_vertex_buffer, verticies.size() * sizeof(EVertex));
+	index_buffer.stage(renderer, &staging_index_buffer, indicies.size() * sizeof(uint32_t));
 	cleanup_after_send();
 }
 
@@ -65,24 +64,6 @@ void EMesh::allocate(VmaAllocator vma_allocator) {
 		auto buffer_info = info::buffer_create_info(indicies.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		index_buffer.allocate(allocator, &buffer_info, &allocate_info);
 	}
-}
-
-void EMesh::send_to_gpu(VkCommandBuffer command) {
-	VkBufferCopy vertex_copy;
-	vertex_copy.dstOffset = 0;
-	vertex_copy.srcOffset = 0;
-	vertex_copy.size = verticies.size() * sizeof(EVertex);
-
-	VkBufferCopy index_copy;
-	index_copy.dstOffset = 0;
-	index_copy.srcOffset = 0;
-	index_copy.size = indicies.size() * sizeof(uint32_t);
-
-	vmaFlushAllocation(allocator, staging_vertex_buffer, 0, VK_WHOLE_SIZE);
-	vmaFlushAllocation(allocator, staging_index_buffer, 0, VK_WHOLE_SIZE);
-
-	vkCmdCopyBuffer(command, staging_vertex_buffer, vertex_buffer, 1, &vertex_copy);
-	vkCmdCopyBuffer(command, staging_index_buffer, index_buffer, 1, &index_copy);
 }
 
 void EMesh::cleanup_after_send() {

@@ -3,6 +3,7 @@
 #include <vk_mem_alloc.h>
 
 #include "primitives.h"
+#include "buffer.h"
 
 namespace render {
 
@@ -14,7 +15,6 @@ struct EMesh {
 	void allocate(VmaAllocator allocator);
 	void destroy();
 
-	void send_to_gpu(VkCommandBuffer command);
 	void cleanup_after_send(); // used to free after transfers
 
 	std::vector<EVertex> verticies = {};

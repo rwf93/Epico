@@ -2,8 +2,8 @@
 #define PRIMITIVES_H
 
 struct EObjectData {
-    mat4 model;
-    int texture_index;
+	mat4 model;
+	int texture_index;
 };
 
 #endif

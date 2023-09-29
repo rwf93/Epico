@@ -4,6 +4,7 @@
 
 #include "globals.h"
 #include "primitives.h"
+#include "buffer.h"
 #include "mesh.h"
 
 namespace render {
