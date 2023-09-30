@@ -3,7 +3,6 @@
 
 struct EObjectData {
 	mat4 model;
-	int texture_index;
 };
 
 #endif

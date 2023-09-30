@@ -31,7 +31,7 @@ void main() {
 
 	out_color = in_color;
 	out_normal = mat3(object.model) * in_normal;
-	out_texcoord = vec3(in_texcoord, object.texture_index);
+	out_texcoord = vec3(in_texcoord, 0);
 
 	out_light = lpos - pos.xyz;
 	out_view = -pos.xyz;

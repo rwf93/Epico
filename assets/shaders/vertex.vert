@@ -25,7 +25,7 @@ void main() {
 
 	out_color = in_color;
 	out_normal = in_normal;
-	out_texcoord = vec3(in_texcoord, object.texture_index);
+	out_texcoord = vec3(in_texcoord, 0);
 
 	gl_Position = global.projection * global.view * object.model * vec4(in_position, 1.0);
 }

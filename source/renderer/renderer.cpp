@@ -245,12 +245,14 @@ bool Renderer::begin() {
 			ImGui::PopStyleVar();
 
 			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
+			ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 4), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
 
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
 			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 1);
 
 			ImGui::Render();
 

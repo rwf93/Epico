@@ -30,7 +30,6 @@ struct EGlobalData {
 
 struct EObjectData {
 	glm::mat4 model = {};
-	int texture_index = 0;
 };
 
 }
