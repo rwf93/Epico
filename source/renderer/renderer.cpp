@@ -700,6 +700,7 @@ bool Renderer::create_depth_image() {
 
 bool Renderer::create_texture_sampler() {
 	VkSamplerCreateInfo sampler_info = {};
+	UNUSED(sampler_info);
 	return true;
 }
 
