@@ -212,6 +212,8 @@ bool Renderer::begin() {
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
 
+			ImGui::ShowDemoWindow();
+
 			ImGuiIO &io = ImGui::GetIO();
 
 			ImGui::Begin("Scene Settings");
@@ -257,6 +259,10 @@ bool Renderer::begin() {
 			ImGui::Render();
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
+			if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+				ImGui::UpdatePlatformWindows();
+				ImGui::RenderPlatformWindowsDefault();
+			}
 		}
 		vkCmdEndRenderingKHR(command_buffers[current_frame]);
 
@@ -871,9 +877,11 @@ bool Renderer::create_sync_objects() {
 
 bool Renderer::create_imgui() {
 	ImGui::CreateContext();
+
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 	ImGui::StyleColorsDark();
 

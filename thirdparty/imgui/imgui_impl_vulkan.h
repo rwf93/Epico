@@ -2,8 +2,9 @@
 // This needs to be used along with a Platform Backend (e.g. GLFW, SDL, Win32, custom..)
 
 // Implemented features:
-//  [!] Renderer: User texture binding. Use 'VkDescriptorSet' as ImTextureID. Read the FAQ about ImTextureID! See https://github.com/ocornut/imgui/pull/914 for discussions.
+//  [x] Renderer: User texture binding. Use 'VkDescriptorSet' as ImTextureID. Read the FAQ about ImTextureID! See https://github.com/ocornut/imgui/pull/914 for discussions.
 //  [X] Renderer: Large meshes support (64k+ vertices) with 16-bit indices.
+//  [x] Renderer: Multi-viewport / platform windows. With issues (flickering when creating a new viewport).
 
 // Important: on 32-bit systems, user texture binding is only supported if your imconfig file has '#define ImTextureID ImU64'.
 // See imgui_impl_vulkan.cpp file for details.
@@ -68,7 +69,7 @@ struct ImGui_ImplVulkan_InitInfo
     bool                            UseDynamicRendering;    // Need to explicitly enable VK_KHR_dynamic_rendering extension to use this, even for Vulkan 1.3.
     VkFormat                        ColorAttachmentFormat;  // Required for dynamic rendering
     VkFormat                        DepthAttachmentFormat; // Required for dynamic rendering
-    VkFormat                        StencilAttachmentFormat; // Required for dynamic rendering
+    VkFormat                        StencilAttachmentFormat; // Required for rendering
 
     // Allocation, Debugging
     const VkAllocationCallbacks*    Allocator;

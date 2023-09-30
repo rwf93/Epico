@@ -39,6 +39,8 @@ int main(int argc, char *args[]) {
 				default: break;
 			}
 
+			if(e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE && e.window.windowID == SDL_GetWindowID(game.window)) quit = true;
+
 			ImGui_ImplSDL2_ProcessEvent(&e);
 		}
 
@@ -56,7 +58,7 @@ int main(int argc, char *args[]) {
 }
 
 bool create_window(GameGlobals *game) {
-	game->window = SDL_CreateWindow("Epico", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN );
+	game->window = SDL_CreateWindow("Epico", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640*2, 480*2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN );
 	if(game->window == NULL) {
 		spdlog::error("Failed to create SDL Window {}", SDL_GetError());
 		return false;
