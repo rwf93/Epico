@@ -17,7 +17,7 @@ struct EVertex {
 };
 
 // uniforms
-struct EGlobalData {
+struct ECameraData {
 	glm::mat4 view = {};
 	glm::mat4 projection = {};
 };

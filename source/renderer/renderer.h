@@ -62,27 +62,34 @@ private:
 	bool build_vertex_layout();
 	bool build_vertex_pipelines();
 private:
+	std::deque<std::function<void()>> deletion_queue = {};
 	GameGlobals *game = nullptr;
 
 	vkb::Instance instance = {};
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	vkb::Device device = {};
 
-	vkb::Swapchain swapchain = {};
-	std::vector<VkImage> swapchain_images = {};
-	std::vector<VkImageView> swapchain_image_views = {};
-
 	VkQueue graphics_queue = VK_NULL_HANDLE;
 	VkQueue present_queue = VK_NULL_HANDLE;
 	uint32_t graphics_queue_index = UINT32_MAX;
 
+	vkb::Swapchain swapchain = {};
+	std::vector<VkImage> swapchain_images = {};
+	std::vector<VkImageView> swapchain_image_views = {};
+
+	VkCommandPool command_pool = VK_NULL_HANDLE;
+	std::vector<VkCommandBuffer> command_buffers = {};
+
+	std::vector<VkSemaphore> available_semaphores = {};
+	std::vector<VkSemaphore> finished_semaphores = {};
+	std::vector<VkFence> in_flight_fences = {};
+
+	const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+	uint32_t image_index = 0;
+	uint32_t current_frame = 0;
+
 	VkDescriptorSetLayout global_descriptor_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;
-	VkDescriptorSetLayout sample_descriptor_layout = VK_NULL_HANDLE;
-
-	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
-	std::map<std::string, VkPipelineLayout> pipeline_layouts = {};
-	std::map<std::string, VkPipeline> pipelines = {};
 
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
@@ -98,20 +105,10 @@ private:
 
 	std::vector<VkDescriptorSet> global_descriptor_sets = {};
 	std::vector<VkDescriptorSet> object_descriptor_sets = {};
-	std::vector<VkDescriptorSet> sample_descriptor_sets = {};
 
-	VkCommandPool command_pool = VK_NULL_HANDLE;
-	std::vector<VkCommandBuffer> command_buffers = {};
-
-	const uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-	uint32_t image_index = 0;
-	uint32_t current_frame = 0;
-
-	std::vector<VkSemaphore> available_semaphores = {};
-	std::vector<VkSemaphore> finished_semaphores = {};
-	std::vector<VkFence> in_flight_fences = {};
-
-	std::deque<std::function<void()>> deletion_queue = {};
+	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
+	std::map<std::string, VkPipelineLayout> pipeline_layouts = {};
+	std::map<std::string, VkPipeline> pipelines = {};
 private:
 	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
 	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;

@@ -23,6 +23,8 @@ Renderer::~Renderer() {
 	deletion_queue.clear();
 }
 
+static EMesh mesh = {};
+
 bool Renderer::setup() {
 	if(!create_instance()) 			return false;
 	if(!create_surface()) 			return false;
@@ -43,6 +45,11 @@ bool Renderer::setup() {
 	if(!create_pipeline_cache())	return false;
 	if(!create_imgui())				return false;
 	if(!create_pipelines())			return false;
+
+	mesh.load_mesh(this, "./assets/models/monkey.glb");
+	deletion_queue.push_back([=, this]() {
+		mesh.destroy();
+	});
 
 	return true;
 }
@@ -137,6 +144,86 @@ bool Renderer::begin() {
 			ImGui::PopStyleVar();
 
 			ImGui::Render();
+
+			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
+			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
+			static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+			static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
+
+			int mx = 0, my = 0;
+
+			SDL_PumpEvents();
+			const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
+			const Uint8* key_state = SDL_GetKeyboardState(NULL);
+
+			static float pitch = 0.0f;
+			static float yaw = -90.0f;
+			const float sensitivity = 0.1f;
+
+			static float last_mx = 400.0f, last_my = 300.0f;
+
+			float offset_mx = (float)mx - last_mx;
+			float offset_my = last_my - (float)my;
+
+			last_mx = static_cast<float>(mx);
+			last_my = static_cast<float>(my);
+
+			if(mouse_state & SDL_BUTTON(3)) {
+				offset_mx *= sensitivity;
+				offset_my *= sensitivity;
+
+				yaw += offset_mx;
+				pitch += offset_my;
+			}
+
+			static glm::vec3 camera_direction = {};
+
+			camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+			camera_direction.y = sin(glm::radians(pitch));
+			camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+			camera_front = glm::normalize(camera_direction);
+			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
+
+			float camera_speed = 0.3f;
+
+			if(key_state[SDL_SCANCODE_LSHIFT])
+				camera_speed *= 2.0f;
+
+			if(key_state[SDL_SCANCODE_W])
+				camera_position += camera_front * (game->time_delta * camera_speed);
+
+			if(key_state[SDL_SCANCODE_S])
+				camera_position -= camera_front * (game->time_delta * camera_speed);
+
+			if(key_state[SDL_SCANCODE_D])
+				camera_position += camera_right * (game->time_delta * camera_speed);
+
+			if(key_state[SDL_SCANCODE_A])
+				camera_position -= camera_right * (game->time_delta * camera_speed);
+
+			ECameraData camera = {};
+
+			camera.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+			camera.projection = glm::perspective(glm::radians(90.0f), static_cast<float>(swapchain.extent.width) / static_cast<float>(swapchain.extent.height), 0.01f, 100.0f);
+			camera.projection[1][1] *= -1;
+
+			memcpy(camera_data_buffers[current_frame].get_info().pMappedData, &camera, sizeof(ECameraData));
+			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].get_info().pMappedData);
+
+			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(0.2f));
+			ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(sin(game->time)), glm::vec3(0), glm::vec3(0.2f));
+
+			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
+			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]);
+
+			VkDeviceSize offset[] = { 0 };
+			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
+			vkCmdBindIndexBuffer(command_buffers[current_frame], mesh.index_buffer.get_buffer(), 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 1);
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
 		}
@@ -496,19 +583,9 @@ bool Renderer::create_descriptor_layout() {
 		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
 	}
 
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0)
-		};
-
-		auto layout_info = info::descriptor_set_layout_info(bindings);
-		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &sample_descriptor_layout));
-	}
-
 	deletion_queue.push_back([=, this]() {
 		vkDestroyDescriptorSetLayout(device, object_descriptor_layout, nullptr);
 		vkDestroyDescriptorSetLayout(device, global_descriptor_layout, nullptr);
-		vkDestroyDescriptorSetLayout(device, sample_descriptor_layout, nullptr);
 	});
 
 	return true;
@@ -545,7 +622,7 @@ bool Renderer::create_uniform_buffers() {
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		{
-			auto buffer_info = info::buffer_create_info(sizeof(EGlobalData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			auto buffer_info = info::buffer_create_info(sizeof(ECameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -572,7 +649,6 @@ bool Renderer::create_uniform_buffers() {
 bool Renderer::create_descriptor_sets() {
 	global_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
 	object_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-	sample_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
 
 	std::vector<VkDescriptorSetLayout> camera_layouts(MAX_FRAMES_IN_FLIGHT, global_descriptor_layout);
 	{
@@ -597,7 +673,7 @@ bool Renderer::create_descriptor_sets() {
 		VkDescriptorBufferInfo buffer_info = {};
 		buffer_info.buffer = camera_data_buffers[i].get_buffer();
 		buffer_info.offset = 0;
-		buffer_info.range = sizeof(EGlobalData);
+		buffer_info.range = sizeof(ECameraData);
 
 		VkWriteDescriptorSet global_descriptor_write = {};
 		global_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -870,7 +946,6 @@ bool Renderer::build_vertex_layout() {
 	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
 		global_descriptor_layout,
 		object_descriptor_layout,
-		sample_descriptor_layout
 	};
 
 	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
