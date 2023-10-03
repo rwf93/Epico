@@ -10,9 +10,9 @@ namespace render {
 class Renderer;
 
 struct EMesh {
-	void load_mesh(VmaAllocator vma_allocator, const char *path, Renderer *renderer);
+	void load_mesh(Renderer *renderer, const char *path);
 
-	void allocate(VmaAllocator allocator);
+	void allocate(Renderer *renderer);
 	void destroy();
 
 	void cleanup_after_send(); // used to free after transfers
@@ -29,7 +29,10 @@ struct EMesh {
 	EBuffer vertex_buffer = {};
 	EBuffer index_buffer = {};
 
-	VmaAllocator allocator = VK_NULL_HANDLE;
+	VkBuffer &get_vertex_buffer() { return vertex_buffer.get_buffer(); }
+	VkBuffer &get_index_buffer() { return index_buffer.get_buffer(); }
+
+	Renderer *context = nullptr;
 };
 
 }

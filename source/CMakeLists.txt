@@ -14,7 +14,7 @@ add_executable(${PROJECT}
 	renderer/pipeline.cpp
 	renderer/primitives.cpp
 	renderer/buffer.cpp
-	renderer/mesh.cpp
+	renderer/image.cpp
 	renderer/renderer.cpp
 
 	mathlib.cpp

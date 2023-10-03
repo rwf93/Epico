@@ -24,32 +24,25 @@ Renderer::~Renderer() {
 }
 
 bool Renderer::setup() {
-	if(!create_instance()) 		return false;
+	if(!create_instance()) 			return false;
 	if(!create_surface()) 			return false;
 	if(!create_device()) 			return false;
-	if(!create_swapchain()) 		return false;
 	if(!create_queues())			return false;
-	if(!create_pipeline_cache())	return false;
-	if(!create_descriptor_layout()) return false;
-	if(!create_pipelines())			return false;
-	if(!create_vma_allocator())		return false;
-	if(!create_depth_image())		return false;
-	if(!create_texture_sampler())	return false;
-	if(!create_texture_array())		return false;
-	if(!create_descriptor_pool())	return false;
-	if(!create_uniform_buffers())	return false;
-	if(!create_descriptor_sets())	return false;
+	if(!create_swapchain()) 		return false;
 	if(!create_command_pool())		return false;
 	if(!create_sync_objects())		return false;
 
+	if(!create_vma_allocator())		return false;
+	if(!create_depth_image())		return false;
+
+	if(!create_descriptor_layout()) return false;
+	if(!create_descriptor_pool())	return false;
+	if(!create_uniform_buffers())	return false;
+	if(!create_descriptor_sets())	return false;
+
+	if(!create_pipeline_cache())	return false;
 	if(!create_imgui())				return false;
-
-	meshes["monkey"].load_mesh(allocator, "./assets/models/monkey.glb", this);
-
-	deletion_queue.push_back([&]() {
-		for(auto &map: meshes)
-			map.second.destroy();
-	});
+	if(!create_pipelines())			return false;
 
 	return true;
 }
@@ -99,7 +92,7 @@ bool Renderer::begin() {
 
 		VkRenderingAttachmentInfoKHR depth_attachment = {};
 		depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-		depth_attachment.imageView = depth_image.view;
+		depth_attachment.imageView = depth_image_view;
 		depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -121,114 +114,13 @@ bool Renderer::begin() {
 			vkCmdSetViewport(command_buffers[current_frame], 0, 1, &viewport);
 			vkCmdSetScissor(command_buffers[current_frame], 0, 1, &scissor);
 
-			EGlobalData ubo = {};
-
-			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
-			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
-			static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-			static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
-
-			int mx = 0, my = 0;
-
-			SDL_PumpEvents();
-			const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
-			const Uint8* key_state = SDL_GetKeyboardState(NULL);
-
-			static float pitch = 0.0f;
-			static float yaw = -90.0f;
-			const float sensitivity = 0.1f;
-
-			static float last_mx = 400.0f, last_my = 300.0f;
-
-			float offset_mx = (float)mx - last_mx;
-			float offset_my = last_my - (float)my;
-
-			last_mx = static_cast<float>(mx);
-			last_my = static_cast<float>(my);
-
-			if(mouse_state & SDL_BUTTON(3)) {
-				offset_mx *= sensitivity;
-				offset_my *= sensitivity;
-
-				yaw += offset_mx;
-				pitch += offset_my;
-			}
-
-			static glm::vec3 camera_direction;
-
-			camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-			camera_direction.y = sin(glm::radians(pitch));
-			camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-			camera_front = glm::normalize(camera_direction);
-			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
-
-			float camera_speed = 0.3f;
-
-			if(key_state[SDL_SCANCODE_LSHIFT])
-				camera_speed *= 2.0f;
-
-			if(key_state[SDL_SCANCODE_W])
-				camera_position += camera_front * (game->time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_S])
-				camera_position -= camera_front * (game->time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_D])
-				camera_position += camera_right * (game->time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_A])
-				camera_position -= camera_right * (game->time_delta * camera_speed);
-
-			ubo.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
-
-			ubo.projection = glm::perspective(glm::radians(90.0f), static_cast<float>(swapchain.extent.width) / static_cast<float>(swapchain.extent.height), 0.01f, 100.0f);
-			ubo.projection[1][1] *= -1;
-
-			memcpy(camera_data_buffers[current_frame].info.pMappedData, &ubo, sizeof(EGlobalData));
-			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].info.pMappedData);
-
-			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
-			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
-
-			static int render_mode_index = 0;
-			static std::vector<const char*> render_modes = {
-				"Normal",
-				"Wireframe",
-				"Points",
-				"Phong",
-				"Toon"
-			};
-
-			switch(render_mode_index) {
-				case 0: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]); break;
-				case 1: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_wireframe"]); break;
-				case 2: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_points"]); break;
-				case 3: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_phong"]); break;
-				case 4: vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]); break;
-			}
-
 			ImGui_ImplVulkan_NewFrame();
 			ImGui_ImplSDL2_NewFrame();
 			ImGui::NewFrame();
 
 			ImGuiIO &io = ImGui::GetIO();
 
-			ImGui::Begin("Scene Settings");
-			{
-				if(ImGui::BeginCombo("Render Modes", render_modes[render_mode_index])) {
-					for(int n = 0; n < static_cast<int>(render_modes.size()); n++) {
-						const bool is_selected = (render_mode_index == n);
-						if(ImGui::Selectable(render_modes[n], is_selected))
-							render_mode_index = n;
-
-						if(is_selected)
-							ImGui::SetItemDefaultFocus();
-					}
-					ImGui::EndCombo();
-				}
-			}
-			ImGui::End();
+			ImGui::ShowDemoWindow();
 
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
 			{
@@ -243,16 +135,6 @@ bool Renderer::begin() {
 				ImGui::End();
 			}
 			ImGui::PopStyleVar();
-
-			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
-			ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, 4), glm::vec3(game->time), glm::vec3(0.2, 0.2, 0.2));
-
-			VkDeviceSize offset[] = { 0 };
-			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &meshes["monkey"].vertex_buffer.buffer, offset);
-			vkCmdBindIndexBuffer(command_buffers[current_frame], meshes["monkey"].index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 0);
-			vkCmdDrawIndexed(command_buffers[current_frame], meshes["monkey"].index_count, 1, 0, 0, 1);
 
 			ImGui::Render();
 
@@ -311,42 +193,6 @@ bool Renderer::end() {
 
 	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	return true;
-}
-
-VkShaderModule Renderer::create_shader(const std::vector<uint32_t> &code) {
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.codeSize = code.size();
-	create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-	VkShaderModule shader_module;
-	if(vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
-		spdlog::error("Warning: couldn't create shader module");
-		return VK_NULL_HANDLE;
-	}
-
-	return shader_module;
-}
-
-void Renderer::image_barrier(
-						VkCommandBuffer command, VkImage image,
-						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
-						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
-						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
-						VkImageSubresourceRange resource_range
-) {
-	VkImageMemoryBarrier image_barrier = {};
-	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	image_barrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
-	image_barrier.srcAccessMask = src_access_mask;
-	image_barrier.dstAccessMask = dst_access_mask;
-	image_barrier.oldLayout = old_image_layout;
-	image_barrier.newLayout = new_image_layout;
-	image_barrier.image = image;
-	image_barrier.subresourceRange = resource_range;
-
-	vkCmdPipelineBarrier(command, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
@@ -465,37 +311,6 @@ bool Renderer::create_device() {
 	return true;
 }
 
-bool Renderer::create_swapchain() {
-	VkSurfaceFormatKHR image_format = {};
-	image_format.format = VK_FORMAT_R8G8B8A8_UNORM;
-	image_format.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-
-	vkb::SwapchainBuilder swapchain_builder { device };
-	auto swapchain_builder_ret = swapchain_builder
-									.set_old_swapchain(swapchain)
-									.set_desired_format(image_format)
-									.build();
-
-	if(!swapchain_builder_ret) {
-		spdlog::error("Failed to create Vulkan Swapchain {}", swapchain_builder_ret.error().message());
-		return false;
-	}
-
-	// destroys the last swapchain during a rebuild
-	vkb::destroy_swapchain(swapchain);
-
-	swapchain = swapchain_builder_ret.value();
-	swapchain_image_views = swapchain.get_image_views().value();
-	swapchain_images = swapchain.get_images().value();
-
-	deletion_queue.push_back([=, this]() {
-		swapchain.destroy_image_views(swapchain_image_views);
-		vkb::destroy_swapchain(swapchain);
-	});
-
-	return true;
-}
-
 bool Renderer::create_queues() {
 	auto gq = device.get_queue(vkb::QueueType::graphics);
 	auto pq = device.get_queue(vkb::QueueType::present);
@@ -519,6 +334,299 @@ bool Renderer::create_queues() {
 	graphics_queue = gq.value();
 	present_queue = pq.value();
 	graphics_queue_index = gqi.value();
+
+	return true;
+}
+
+bool Renderer::create_swapchain(bool rebuild) {
+	VkSurfaceFormatKHR image_format = {};
+	image_format.format = VK_FORMAT_R8G8B8A8_UNORM;
+	image_format.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+
+	vkb::SwapchainBuilder swapchain_builder { device };
+	auto swapchain_builder_ret = swapchain_builder
+									.set_old_swapchain(swapchain)
+									.set_desired_format(image_format)
+									.build();
+
+	if(!swapchain_builder_ret) {
+		spdlog::error("Failed to create Vulkan Swapchain {}", swapchain_builder_ret.error().message());
+		return false;
+	}
+
+	if(rebuild) vkb::destroy_swapchain(swapchain);
+
+	swapchain = swapchain_builder_ret.value();
+	swapchain_image_views = swapchain.get_image_views().value();
+	swapchain_images = swapchain.get_images().value();
+
+	if(!rebuild) {
+		deletion_queue.push_back([=, this]() {
+			swapchain.destroy_image_views(swapchain_image_views);
+			vkb::destroy_swapchain(swapchain);
+		});
+	}
+
+	return true;
+}
+
+bool Renderer::create_command_pool(bool rebuild) {
+	command_buffers.resize(swapchain_images.size());
+
+	auto command_pool_info = info::command_pool_create_info(graphics_queue_index, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	VK_CHECK_BOOL(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
+
+	auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
+	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
+
+	if(!rebuild) {
+		deletion_queue.push_back([=, this]() {
+			vkDestroyCommandPool(device, command_pool, nullptr);
+		});
+	}
+
+	return true;
+}
+
+bool Renderer::create_sync_objects() {
+	available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
+
+	VkSemaphoreCreateInfo semaphore_info = {};
+	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fence_info = {};
+	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]));
+		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]));
+		VK_CHECK_BOOL(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
+	}
+
+	deletion_queue.push_back([=, this]() {
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			vkDestroySemaphore(device, finished_semaphores[i], nullptr);
+			vkDestroySemaphore(device, available_semaphores[i], nullptr);
+			vkDestroyFence(device, in_flight_fences[i], nullptr);
+		}
+	});
+
+	return true;
+}
+
+bool Renderer::create_vma_allocator() {
+	VmaAllocatorCreateInfo allocator_info = {};
+	allocator_info.physicalDevice = device.physical_device;
+	allocator_info.device = device;
+	allocator_info.instance = instance;
+
+	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
+
+	deletion_queue.push_back([=, this]() {
+		vmaDestroyAllocator(allocator);
+	});
+
+	return true;
+}
+
+bool Renderer::create_depth_image(bool rebuild) {
+	VkFormat depth_format = find_depth_format();
+
+	VkImageCreateInfo image_create_info = {};
+	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_create_info.imageType = VK_IMAGE_TYPE_2D;
+	image_create_info.extent.width = swapchain.extent.width;
+	image_create_info.extent.height = swapchain.extent.height;
+	image_create_info.extent.depth = 1;
+	image_create_info.mipLevels = 1;
+	image_create_info.arrayLayers = 1;
+	image_create_info.format = depth_format;
+	image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT);
+
+	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_image.image, &depth_image.allocation, nullptr));
+
+	VkImageViewCreateInfo view_info = {};
+	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_info.image = depth_image.image;
+	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	view_info.format = depth_format;
+	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	view_info.subresourceRange.baseMipLevel = 0;
+	view_info.subresourceRange.levelCount = 1;
+	view_info.subresourceRange.baseArrayLayer = 0;
+	view_info.subresourceRange.layerCount = 1;
+
+	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_image_view));
+
+	if(!rebuild) {
+		deletion_queue.push_back([=, this]() {
+			vkDestroyImageView(device, depth_image_view, nullptr);
+			vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
+		});
+	}
+
+	return true;
+}
+
+bool Renderer::create_descriptor_layout() {
+	{
+		std::vector<VkDescriptorSetLayoutBinding> bindings = {
+			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+		};
+
+		auto layout_info = info::descriptor_set_layout_info(bindings);
+		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &global_descriptor_layout));
+	}
+
+	{
+		std::vector<VkDescriptorSetLayoutBinding> bindings = {
+			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
+		};
+
+		auto layout_info = info::descriptor_set_layout_info(bindings);
+		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
+	}
+
+	{
+		std::vector<VkDescriptorSetLayoutBinding> bindings = {
+			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0)
+		};
+
+		auto layout_info = info::descriptor_set_layout_info(bindings);
+		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &sample_descriptor_layout));
+	}
+
+	deletion_queue.push_back([=, this]() {
+		vkDestroyDescriptorSetLayout(device, object_descriptor_layout, nullptr);
+		vkDestroyDescriptorSetLayout(device, global_descriptor_layout, nullptr);
+		vkDestroyDescriptorSetLayout(device, sample_descriptor_layout, nullptr);
+	});
+
+	return true;
+}
+
+bool Renderer::create_descriptor_pool() {
+	{
+		std::vector<VkDescriptorPoolSize> pool_sizes = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 }
+		};
+
+		VkDescriptorPoolCreateInfo pool_info = {};
+		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+		pool_info.pPoolSizes = pool_sizes.data();
+		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 3;
+
+		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
+	}
+
+	deletion_queue.push_back([=, this]() {
+		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+	});
+
+	return true;
+}
+
+bool Renderer::create_uniform_buffers() {
+	camera_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
+	object_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		{
+			auto buffer_info = info::buffer_create_info(sizeof(EGlobalData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			VK_CHECK_BOOL(camera_data_buffers[i].allocate(this, &buffer_info, &allocate_info));
+		}
+
+		{
+			auto buffer_info = info::buffer_create_info(sizeof(EObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			VK_CHECK_BOOL(object_data_buffers[i].allocate(this, &buffer_info, &allocate_info))
+		}
+
+		deletion_queue.push_back([=, this]() {
+			object_data_buffers[i].destroy();
+			camera_data_buffers[i].destroy();
+		});
+	}
+
+	return true;
+}
+
+bool Renderer::create_descriptor_sets() {
+	global_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
+	object_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
+	sample_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
+
+	std::vector<VkDescriptorSetLayout> camera_layouts(MAX_FRAMES_IN_FLIGHT, global_descriptor_layout);
+	{
+		VkDescriptorSetAllocateInfo camera_descriptor_set_info = info::descriptor_set_allocate_info(camera_layouts, descriptor_pool);
+		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &camera_descriptor_set_info, global_descriptor_sets.data()));
+	}
+
+	std::vector<VkDescriptorSetLayout> object_layouts(MAX_FRAMES_IN_FLIGHT, object_descriptor_layout);
+	{
+		auto object_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
+		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
+	}
+
+	//std::vector<VkDescriptorSetLayout> sample_layouts(MAX_FRAMES_IN_FLIGHT, sample_descriptor_layout);
+	//{
+	//	auto sample_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
+	//	VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &sample_descriptor_set_info, sample_descriptor_sets.data()));
+	//}
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		// write global sets
+		VkDescriptorBufferInfo buffer_info = {};
+		buffer_info.buffer = camera_data_buffers[i].get_buffer();
+		buffer_info.offset = 0;
+		buffer_info.range = sizeof(EGlobalData);
+
+		VkWriteDescriptorSet global_descriptor_write = {};
+		global_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		global_descriptor_write.dstSet = global_descriptor_sets[i];
+		global_descriptor_write.dstBinding = 0;
+		global_descriptor_write.dstArrayElement = 0;
+		global_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		global_descriptor_write.descriptorCount = 1;
+		global_descriptor_write.pBufferInfo = &buffer_info;
+
+		// write object sets
+		VkDescriptorBufferInfo object_buffer_info = {};
+		object_buffer_info.buffer = object_data_buffers[i].get_buffer();
+		object_buffer_info.offset = 0;
+		object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
+
+		VkWriteDescriptorSet object_descriptor_write = {};
+		object_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		object_descriptor_write.dstSet = object_descriptor_sets[i];
+		object_descriptor_write.dstBinding = 0;
+		object_descriptor_write.dstArrayElement = 0;
+		object_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		object_descriptor_write.descriptorCount = 1;
+		object_descriptor_write.pBufferInfo = &object_buffer_info;
+
+		VkWriteDescriptorSet descriptor_writes[] = { global_descriptor_write, object_descriptor_write };
+
+		vkUpdateDescriptorSets(device, 2, descriptor_writes, 0, nullptr);
+	}
 
 	return true;
 }
@@ -565,305 +673,6 @@ bool Renderer::create_pipeline_cache() {
 
 	deletion_queue.push_back([=, this]() {
 		vkDestroyPipelineCache(device, pipeline_cache, nullptr);
-	});
-
-	return true;
-}
-
-
-bool Renderer::create_descriptor_layout() {
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-		};
-
-		auto layout_info = info::descriptor_set_layout_info(bindings);
-		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &global_descriptor_layout));
-	}
-
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
-		};
-
-		auto layout_info = info::descriptor_set_layout_info(bindings);
-		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
-	}
-
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0)
-		};
-
-		auto layout_info = info::descriptor_set_layout_info(bindings);
-		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &sample_descriptor_layout));
-	}
-
-	deletion_queue.push_back([=, this]() {
-		vkDestroyDescriptorSetLayout(device, object_descriptor_layout, nullptr);
-		vkDestroyDescriptorSetLayout(device, global_descriptor_layout, nullptr);
-		vkDestroyDescriptorSetLayout(device, sample_descriptor_layout, nullptr);
-	});
-
-	return true;
-}
-
-bool Renderer::create_pipelines() {
-	if(!build_vertex_layout()) return false;
-	if(!build_vertex_pipelines()) return false;
-
-	{
-		size_t size = 0;
-
-		VK_CHECK_BOOL(vkGetPipelineCacheData(device, pipeline_cache, &size, nullptr));
-
-		std::vector<char> pipeline_data(size);
-		VK_CHECK_BOOL(vkGetPipelineCacheData(device, pipeline_cache, &size, static_cast<void*>(pipeline_data.data())));
-
-		std::ofstream file("pipeline_cache_data.bin", std::ofstream::out | std::ofstream::binary);
-
-		std::copy(pipeline_data.cbegin(), pipeline_data.cend(), std::ostream_iterator<char>(file));
-
-		file.close();
-	}
-
-	deletion_queue.push_back([=, this] {
-		for(auto &map: pipelines) {
-			vkDestroyPipeline(device, map.second, nullptr);
-		}
-
-		for(auto &map: pipeline_layouts) {
-			vkDestroyPipelineLayout(device, map.second, nullptr);
-		}
-	});
-
-	return true;
-}
-
-bool Renderer::create_vma_allocator() {
-	VmaAllocatorCreateInfo allocator_info = {};
-	allocator_info.physicalDevice = device.physical_device;
-	allocator_info.device = device;
-	allocator_info.instance = instance;
-
-	VK_CHECK_BOOL(vmaCreateAllocator(&allocator_info, &allocator));
-
-	deletion_queue.push_back([=, this]() {
-		vmaDestroyAllocator(allocator);
-	});
-
-	return true;
-}
-
-bool Renderer::create_depth_image() {
-	VkFormat depth_format = find_depth_format();
-
-	VkImageCreateInfo image_create_info = {};
-	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	image_create_info.imageType = VK_IMAGE_TYPE_2D;
-	image_create_info.extent.width = swapchain.extent.width;
-	image_create_info.extent.height = swapchain.extent.height;
-	image_create_info.extent.depth = 1;
-	image_create_info.mipLevels = 1;
-	image_create_info.arrayLayers = 1;
-	image_create_info.format = depth_format;
-	image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
-	image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT);
-
-	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_image.image, &depth_image.allocation, nullptr));
-
-	VkImageViewCreateInfo view_info = {};
-	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	view_info.image = depth_image.image;
-	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	view_info.format = depth_format;
-	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	view_info.subresourceRange.baseMipLevel = 0;
-	view_info.subresourceRange.levelCount = 1;
-	view_info.subresourceRange.baseArrayLayer = 0;
-	view_info.subresourceRange.layerCount = 1;
-
-	VK_CHECK_BOOL(vkCreateImageView(device, &view_info, nullptr, &depth_image.view));
-
-	deletion_queue.push_back([=, this]() {
-		vkDestroyImageView(device, depth_image.view, nullptr);
-		vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
-	});
-
-	return true;
-}
-
-bool Renderer::create_texture_sampler() {
-	VkSamplerCreateInfo sampler_info = {};
-	UNUSED(sampler_info);
-	return true;
-}
-
-bool Renderer::create_texture_array() {
-	return true;
-}
-
-bool Renderer::create_descriptor_pool() {
-	{
-		std::vector<VkDescriptorPoolSize> pool_sizes = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 }
-		};
-
-		VkDescriptorPoolCreateInfo pool_info = {};
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
-		pool_info.pPoolSizes = pool_sizes.data();
-		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 3;
-
-		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
-	}
-
-	deletion_queue.push_back([=, this]() {
-		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
-	});
-
-	return true;
-}
-
-bool Renderer::create_uniform_buffers() {
-	camera_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
-	object_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
-
-	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		{
-			auto buffer_info = info::buffer_create_info(sizeof(EGlobalData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-			VK_CHECK_BOOL(camera_data_buffers[i].memory.allocate(allocator, &buffer_info, &allocate_info, &camera_data_buffers[i].info));
-		}
-
-		{
-			auto buffer_info = info::buffer_create_info(sizeof(EObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-			VK_CHECK_BOOL(object_data_buffers[i].memory.allocate(allocator, &buffer_info, &allocate_info, &object_data_buffers[i].info))
-		}
-
-		deletion_queue.push_back([=, this]() {
-			object_data_buffers[i].memory.destroy();
-			camera_data_buffers[i].memory.destroy();
-		});
-	}
-
-	return true;
-}
-
-bool Renderer::create_descriptor_sets() {
-	global_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-	object_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-	sample_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-
-	std::vector<VkDescriptorSetLayout> camera_layouts(MAX_FRAMES_IN_FLIGHT, global_descriptor_layout);
-	{
-		VkDescriptorSetAllocateInfo camera_descriptor_set_info = info::descriptor_set_allocate_info(camera_layouts, descriptor_pool);
-		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &camera_descriptor_set_info, global_descriptor_sets.data()));
-	}
-
-	std::vector<VkDescriptorSetLayout> object_layouts(MAX_FRAMES_IN_FLIGHT, object_descriptor_layout);
-	{
-		auto object_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
-		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
-	}
-
-	//std::vector<VkDescriptorSetLayout> sample_layouts(MAX_FRAMES_IN_FLIGHT, sample_descriptor_layout);
-	//{
-	//	auto sample_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
-	//	VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &sample_descriptor_set_info, sample_descriptor_sets.data()));
-	//}
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		// write global sets
-		VkDescriptorBufferInfo buffer_info = {};
-		buffer_info.buffer = camera_data_buffers[i].memory.buffer;
-		buffer_info.offset = 0;
-		buffer_info.range = sizeof(EGlobalData);
-
-		VkWriteDescriptorSet global_descriptor_write = {};
-		global_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		global_descriptor_write.dstSet = global_descriptor_sets[i];
-		global_descriptor_write.dstBinding = 0;
-		global_descriptor_write.dstArrayElement = 0;
-		global_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		global_descriptor_write.descriptorCount = 1;
-		global_descriptor_write.pBufferInfo = &buffer_info;
-
-		// write object sets
-		VkDescriptorBufferInfo object_buffer_info = {};
-		object_buffer_info.buffer = object_data_buffers[i].memory.buffer;
-		object_buffer_info.offset = 0;
-		object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
-
-		VkWriteDescriptorSet object_descriptor_write = {};
-		object_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		object_descriptor_write.dstSet = object_descriptor_sets[i];
-		object_descriptor_write.dstBinding = 0;
-		object_descriptor_write.dstArrayElement = 0;
-		object_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		object_descriptor_write.descriptorCount = 1;
-		object_descriptor_write.pBufferInfo = &object_buffer_info;
-
-		VkWriteDescriptorSet descriptor_writes[] = { global_descriptor_write, object_descriptor_write };
-
-		vkUpdateDescriptorSets(device, 2, descriptor_writes, 0, nullptr);
-	}
-
-	return true;
-}
-
-bool Renderer::create_command_pool() {
-	command_buffers.resize(swapchain_images.size());
-
-	auto command_pool_info = info::command_pool_create_info(graphics_queue_index, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-	VK_CHECK_BOOL(vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool));
-
-	auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
-	VK_CHECK_BOOL(vkAllocateCommandBuffers(device, &command_allocate_info, command_buffers.data()));
-
-	deletion_queue.push_back([=, this]() {
-		vkDestroyCommandPool(device, command_pool, nullptr);
-	});
-
-	return true;
-}
-bool Renderer::create_sync_objects() {
-	available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
-
-	VkSemaphoreCreateInfo semaphore_info = {};
-	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	VkFenceCreateInfo fence_info = {};
-	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &available_semaphores[i]));
-		VK_CHECK_BOOL(vkCreateSemaphore(device, &semaphore_info, nullptr, &finished_semaphores[i]));
-		VK_CHECK_BOOL(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
-	}
-
-	deletion_queue.push_back([=, this]() {
-		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroySemaphore(device, finished_semaphores[i], nullptr);
-			vkDestroySemaphore(device, available_semaphores[i], nullptr);
-			vkDestroyFence(device, in_flight_fences[i], nullptr);
-		}
 	});
 
 	return true;
@@ -918,25 +727,54 @@ bool Renderer::create_imgui() {
 	return true;
 }
 
+bool Renderer::create_pipelines() {
+	if(!build_vertex_layout()) return false;
+	if(!build_vertex_pipelines()) return false;
+
+	{
+		size_t size = 0;
+
+		VK_CHECK_BOOL(vkGetPipelineCacheData(device, pipeline_cache, &size, nullptr));
+
+		std::vector<char> pipeline_data(size);
+		VK_CHECK_BOOL(vkGetPipelineCacheData(device, pipeline_cache, &size, static_cast<void*>(pipeline_data.data())));
+
+		std::ofstream file("pipeline_cache_data.bin", std::ofstream::out | std::ofstream::binary);
+
+		std::copy(pipeline_data.cbegin(), pipeline_data.cend(), std::ostream_iterator<char>(file));
+
+		file.close();
+	}
+
+	deletion_queue.push_back([=, this] {
+		for(auto &map: pipelines) {
+			vkDestroyPipeline(device, map.second, nullptr);
+		}
+
+		for(auto &map: pipeline_layouts) {
+			vkDestroyPipelineLayout(device, map.second, nullptr);
+		}
+	});
+
+	return true;
+}
+
 bool Renderer::rebuild_swapchain() {
 	spdlog::debug("Rebuilding swapchain");
 
 	vkDeviceWaitIdle(device);
 
-	vkDestroyCommandPool(device, command_pool, nullptr);
 
-	vkDestroyImageView(device, depth_image.view, nullptr);
+	vkDestroyImageView(device, depth_image_view, nullptr);
 	vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
+
+	vkDestroyCommandPool(device, command_pool, nullptr);
 
 	swapchain.destroy_image_views(swapchain_image_views);
 
-	if(!create_swapchain()) 		return false;
-	if(!create_depth_image())		return false;
-	if(!create_command_pool()) 		return false;
-
-	// HACK: above create commands push a deleter onto the queue, we need to pop them so they don't double free
-	for(size_t i = 0; i <= 2; i++)
-		deletion_queue.pop_back();
+	if(!create_swapchain(true)) 		return false;
+	if(!create_command_pool(true)) 		return false;
+	if(!create_depth_image(true))		return false;
 
 	return true;
 }
@@ -962,6 +800,43 @@ VkFormat Renderer::find_depth_format() {
 	return find_supported_format({
 		VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT
 	}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+
+VkShaderModule Renderer::create_shader(const std::vector<uint32_t> &code) {
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.codeSize = code.size();
+	create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+	VkShaderModule shader_module;
+	if(vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS) {
+		spdlog::error("Warning: couldn't create shader module");
+		return VK_NULL_HANDLE;
+	}
+
+	return shader_module;
+}
+
+void Renderer::image_barrier(
+						VkCommandBuffer command, VkImage image,
+						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
+						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
+						VkImageSubresourceRange resource_range
+) {
+	VkImageMemoryBarrier image_barrier = {};
+	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	image_barrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+	image_barrier.srcAccessMask = src_access_mask;
+	image_barrier.dstAccessMask = dst_access_mask;
+	image_barrier.oldLayout = old_image_layout;
+	image_barrier.newLayout = new_image_layout;
+	image_barrier.image = image;
+	image_barrier.subresourceRange = resource_range;
+
+	vkCmdPipelineBarrier(command, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 }
 
 void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {

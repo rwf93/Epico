@@ -5,6 +5,7 @@
 #include "globals.h"
 #include "primitives.h"
 #include "buffer.h"
+#include "image.h"
 #include "mesh.h"
 
 namespace render {
@@ -18,26 +19,29 @@ public:
 	bool begin();
 	bool end();
 
+	VmaAllocator get_allocator() { return allocator; }
+
 	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
 private:
 	bool create_instance();
 	bool create_surface();
 	bool create_device();
-	bool create_swapchain();
 	bool create_queues();
-	bool create_pipeline_cache();
-	bool create_descriptor_layout();
-	bool create_pipelines();
+	bool create_swapchain(bool rebuild = false);
+	bool create_command_pool(bool rebuild = false);
+	bool create_sync_objects();
+
 	bool create_vma_allocator();
-	bool create_depth_image();
-	bool create_texture_sampler();
-	bool create_texture_array();
+	bool create_depth_image(bool rebuild = false);
+
+	bool create_descriptor_layout();
 	bool create_descriptor_pool();
 	bool create_uniform_buffers();
 	bool create_descriptor_sets();
-	bool create_command_pool();
-	bool create_sync_objects();
+
+	bool create_pipeline_cache();
 	bool create_imgui();
+	bool create_pipelines();
 
 	bool rebuild_swapchain();
 
@@ -83,22 +87,14 @@ private:
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
 	EImage depth_image = {};
-
-	EImage texture_array_image = {};
-	EBuffer texture_array_buffer = {};
+	VkImageView depth_image_view = {};
 
 	const uint32_t MAX_OBJECTS = 1024*1024;
-	std::map<std::string, EMesh> meshes = {};
-
-	struct UniformBufferAllocation {
-		EBuffer memory;
-		VmaAllocationInfo info;
-	};
 
 	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 
-	std::vector<UniformBufferAllocation> camera_data_buffers = {};
-	std::vector<UniformBufferAllocation> object_data_buffers = {};
+	std::vector<EBuffer> camera_data_buffers = {};
+	std::vector<EBuffer> object_data_buffers = {};
 
 	std::vector<VkDescriptorSet> global_descriptor_sets = {};
 	std::vector<VkDescriptorSet> object_descriptor_sets = {};

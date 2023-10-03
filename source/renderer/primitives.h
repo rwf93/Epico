@@ -16,12 +16,6 @@ struct EVertex {
 	static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions();
 };
 
-struct EImage {
-	VkImage image = VK_NULL_HANDLE;
-	VkImageView view = VK_NULL_HANDLE;
-	VmaAllocation allocation = VK_NULL_HANDLE;
-};
-
 // uniforms
 struct EGlobalData {
 	glm::mat4 view = {};

@@ -5,7 +5,7 @@
 
 using namespace render;
 
-void EMesh::load_mesh(VmaAllocator vma_allocator, const char *path, Renderer *renderer) {
+void EMesh::load_mesh(Renderer *renderer, const char *path) {
 	Assimp::Importer importer;
 	const aiScene *scene = importer.ReadFile(path, 0);
 
@@ -31,38 +31,35 @@ void EMesh::load_mesh(VmaAllocator vma_allocator, const char *path, Renderer *re
 		}
 	}
 
-	allocate(vma_allocator);
-	vertex_buffer.stage(renderer, &staging_vertex_buffer, verticies.size() * sizeof(EVertex));
-	index_buffer.stage(renderer, &staging_index_buffer, indicies.size() * sizeof(uint32_t));
+	allocate(renderer);
+	vertex_buffer.stage(&staging_vertex_buffer, verticies.size() * sizeof(EVertex));
+	index_buffer.stage(&staging_index_buffer, indicies.size() * sizeof(uint32_t));
 	cleanup_after_send();
 }
 
-void EMesh::allocate(VmaAllocator vma_allocator) {
-	assert(vma_allocator != VK_NULL_HANDLE);
-	this->allocator = vma_allocator;
-
-	VmaAllocationInfo vertex_allocation_info = {};
-	VmaAllocationInfo index_allocation_info = {};
+void EMesh::allocate(Renderer *renderer) {
+	assert(renderer != VK_NULL_HANDLE);
+	this->context = renderer;
 
 	auto staging_allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, 0, VMA_MEMORY_USAGE_CPU_ONLY);
 	auto staging_buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
 	auto allocate_info = info::allocation_create_info(0, 0, VMA_MEMORY_USAGE_GPU_ONLY);
 
-	staging_vertex_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &vertex_allocation_info);
-	memcpy(vertex_allocation_info.pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
+	staging_vertex_buffer.allocate(context, &staging_buffer_info, &staging_allocate_info);
+	memcpy(staging_vertex_buffer.get_info().pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
 
-  	staging_index_buffer.allocate(allocator, &staging_buffer_info, &staging_allocate_info, &index_allocation_info);
-	memcpy(index_allocation_info.pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
+  	staging_index_buffer.allocate(context, &staging_buffer_info, &staging_allocate_info);
+	memcpy(staging_index_buffer.get_info().pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
 
 	{
 		auto buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		vertex_buffer.allocate(allocator, &buffer_info, &allocate_info);
+		vertex_buffer.allocate(context, &buffer_info, &allocate_info);
 	}
 
 	{
 		auto buffer_info = info::buffer_create_info(indicies.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		index_buffer.allocate(allocator, &buffer_info, &allocate_info);
+		index_buffer.allocate(context, &buffer_info, &allocate_info);
 	}
 }
 
