@@ -336,7 +336,7 @@ bool Renderer::create_instance() {
 	auto instance_builder_ret = instance_builder
 									.set_app_name("Epico")
 									.set_engine_name("Epico Engine")
-									.require_api_version(1,1,0)
+									.require_api_version(VK_API_VERSION_1_1)
 									.request_validation_layers()
 									.set_debug_callback(vk_debug_callback)
 									.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
@@ -374,20 +374,27 @@ bool Renderer::create_device() {
 	device_features.fillModeNonSolid = true;
 
 	std::vector<const char*> extensions = {
-		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+		// required for dynamic rendering
 		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 		VK_KHR_MAINTENANCE2_EXTENSION_NAME,
 		VK_KHR_MULTIVIEW_EXTENSION_NAME,
 		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME
+		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+
+		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, // will be phased out soon
+		// required for descriptor buffers
+		VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+		VK_KHR_MAINTENANCE3_EXTENSION_NAME
 	};
 
 	vkb::PhysicalDeviceSelector device_selector(instance);
 	auto device_selector_ret = device_selector
+								.set_surface(surface)
+								.set_minimum_version(1, 3)
 								.set_required_features((const VkPhysicalDeviceFeatures)device_features)
 								.add_required_extensions(extensions)
-								.set_minimum_version(1, 3)
-								.set_surface(surface)
 								.select();
 
 	if(!device_selector_ret) {
@@ -403,10 +410,20 @@ bool Renderer::create_device() {
 	dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
 	dynamic_rendering.dynamicRendering = VK_TRUE;
 
+	VkPhysicalDeviceBufferDeviceAddressFeatures address_features = {};
+	address_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+	address_features.bufferDeviceAddress = VK_TRUE;
+
+	VkPhysicalDeviceDescriptorBufferFeaturesEXT buffer_features = {};
+	buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+	buffer_features.descriptorBuffer = VK_TRUE;
+
 	vkb::DeviceBuilder device_builder { device_selector_ret.value() };
 	auto device_builder_ret = device_builder
 								.add_pNext(&draw_features)
 								.add_pNext(&dynamic_rendering)
+								.add_pNext(&address_features)
+								.add_pNext(&buffer_features)
 								.build();
 
 	if(!device_builder_ret) {
@@ -425,6 +442,16 @@ bool Renderer::create_device() {
 	vkCmdBeginRenderingKHR = reinterpret_cast<PFN_vkCmdBeginRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR"));
 	vkCmdEndRenderingKHR = reinterpret_cast<PFN_vkCmdEndRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR"));
 	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetDeviceProcAddr(device, "vkCmdPushDescriptorSetKHR"));
+
+	descriptor_buffer_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+
+	auto vkGetPhysicalDeviceProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2KHR>(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2KHR"));
+
+	VkPhysicalDeviceProperties2KHR device_props = {};
+	device_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+	device_props.pNext = &descriptor_buffer_properties;
+
+	vkGetPhysicalDeviceProperties2KHR(device.physical_device, &device_props);
 
 	return true;
 }

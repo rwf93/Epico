@@ -2,6 +2,8 @@
 
 #include <vk_mem_alloc.h>
 
+#include "tools.h"
+
 #include "globals.h"
 #include "primitives.h"
 #include "buffer.h"
@@ -44,11 +46,6 @@ private:
 	bool create_pipelines();
 
 	bool rebuild_swapchain();
-
-	size_t align_ubo(size_t size) {
-		size_t offset = device.physical_device.properties.limits.minUniformBufferOffsetAlignment;
-		return offset > 0 ? (size + offset - 1) & ~(offset - 1) : size;
-	}
 
 	VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat find_depth_format();
@@ -114,6 +111,8 @@ private:
 	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR = nullptr;
 	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR = nullptr;
 	PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
+
+	VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties = {};
 };
 
 }
