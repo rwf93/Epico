@@ -108,11 +108,40 @@ private:
 	std::map<std::string, VkPipelineLayout> pipeline_layouts = {};
 	std::map<std::string, VkPipeline> pipelines = {};
 private:
-	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR = nullptr;
-	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR = nullptr;
-	PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
+	void get_vulkan_extensions();
 
-	VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties = {};
+    template<typename T> T get_instance_proc(const char *proc) {
+        assert(instance.instance != VK_NULL_HANDLE); // instance.instance == VkInstance, not vkb::Instance. Major difference.
+        T ret = reinterpret_cast<T>(vkGetInstanceProcAddr(instance, proc));
+        if(ret != nullptr)
+            return ret;
+
+        spdlog::error("Couldn't get instance procedure: {}", proc);
+
+        return nullptr;
+    }
+
+    template<typename T> T get_device_proc(const char *proc) {
+        assert(device.device != VK_NULL_HANDLE); // same as above, so as below.
+        T ret = reinterpret_cast<T>(vkGetDeviceProcAddr(device, proc));
+        if(ret != nullptr)
+            return ret;
+
+        spdlog::error("Couldn't get device procedure: {}", proc);
+
+        return nullptr;
+    }
+
+    PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR = nullptr;
+    PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR = nullptr;
+    PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
+    PFN_vkGetDescriptorSetLayoutSizeEXT vkGetDescriptorSetLayoutSizeEXT = nullptr;
+    PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR = nullptr;
+    PFN_vkGetDescriptorEXT vkGetDescriptorEXT = nullptr;
+    PFN_vkCmdBindDescriptorBuffersEXT vkCmdBindDescriptorBuffersEXT = nullptr;
+    PFN_vkCmdSetDescriptorBufferOffsetsEXT vkCmdSetDescriptorBufferOffsetsEXT = nullptr;
+
+    VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptor_buffer_properties = {};
 };
 
 }

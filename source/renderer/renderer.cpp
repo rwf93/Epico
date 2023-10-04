@@ -242,16 +242,14 @@ bool Renderer::begin() {
 			};
 
 			vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
-			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
+			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]);
 
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
 			vkCmdBindIndexBuffer(command_buffers[current_frame], mesh.index_buffer.get_buffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			for(int i = 0; i < 100; i++) {
-				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3((float)i), glm::vec3(0), glm::vec3(0.2f));
-				vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, i);
-			}
+			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(0), glm::vec3(0.2f));
+			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 0);
 
 			ImGui::Render();
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
@@ -371,87 +369,78 @@ bool Renderer::create_surface() {
 
 bool Renderer::create_device() {
 	VkPhysicalDeviceFeatures device_features = {};
-	device_features.fillModeNonSolid = true;
+    device_features.fillModeNonSolid = true;
 
-	std::vector<const char*> extensions = {
-		// required for dynamic rendering
-		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-		VK_KHR_MAINTENANCE2_EXTENSION_NAME,
-		VK_KHR_MULTIVIEW_EXTENSION_NAME,
-		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-		VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
+    std::vector<const char*> extensions = {
+        // required for dynamic rendering.
+        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE2_EXTENSION_NAME,
+        VK_KHR_MULTIVIEW_EXTENSION_NAME,
+        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+        VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,
 
-		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, // will be phased out soon
-		// required for descriptor buffers
-		VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-		VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-		VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-		VK_KHR_MAINTENANCE3_EXTENSION_NAME
-	};
+        VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, // to be culled.
 
-	vkb::PhysicalDeviceSelector device_selector(instance);
-	auto device_selector_ret = device_selector
-								.set_surface(surface)
-								.set_minimum_version(1, 3)
-								.set_required_features((const VkPhysicalDeviceFeatures)device_features)
-								.add_required_extensions(extensions)
-								.select();
+        // required for descriptor buffers.
+        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE3_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
+    };
 
-	if(!device_selector_ret) {
-		spdlog::error("Failed to create Vulkan Device Selector {}", device_selector_ret.error().message());
-		return false;
-	}
+    vkb::PhysicalDeviceSelector device_selector(instance);
+    auto device_selector_ret = device_selector
+                                .set_surface(surface)
+                                .set_minimum_version(1, 3)
+                                .set_required_features((const VkPhysicalDeviceFeatures)device_features)
+                                .add_required_extensions(extensions)
+                                .select();
 
-	VkPhysicalDeviceShaderDrawParametersFeatures draw_features = {};
-	draw_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
-	draw_features.shaderDrawParameters = VK_TRUE;
+    if(!device_selector_ret) {
+        spdlog::error("Failed to create Vulkan Device Selector {}", device_selector_ret.error().message());
+        return false;
+    }
 
-	VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering = {};
-	dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-	dynamic_rendering.dynamicRendering = VK_TRUE;
+    VkPhysicalDeviceShaderDrawParametersFeatures draw_features = {};
+    draw_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    draw_features.shaderDrawParameters = VK_TRUE;
 
-	VkPhysicalDeviceBufferDeviceAddressFeatures address_features = {};
-	address_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-	address_features.bufferDeviceAddress = VK_TRUE;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering = {};
+    dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+    dynamic_rendering.dynamicRendering = VK_TRUE;
 
-	VkPhysicalDeviceDescriptorBufferFeaturesEXT buffer_features = {};
-	buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
-	buffer_features.descriptorBuffer = VK_TRUE;
+    VkPhysicalDeviceBufferDeviceAddressFeatures address_features = {};
+    address_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    address_features.bufferDeviceAddress = VK_TRUE;
 
-	vkb::DeviceBuilder device_builder { device_selector_ret.value() };
-	auto device_builder_ret = device_builder
-								.add_pNext(&draw_features)
-								.add_pNext(&dynamic_rendering)
-								.add_pNext(&address_features)
-								.add_pNext(&buffer_features)
-								.build();
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT buffer_features = {};
+    buffer_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+    buffer_features.descriptorBuffer = VK_TRUE;
+    buffer_features.descriptorBufferCaptureReplay = VK_TRUE;
 
-	if(!device_builder_ret) {
-		spdlog::error("Failed to create Vulkan Device {}", device_builder_ret.error().message());
-		return false;
-	}
+    vkb::DeviceBuilder device_builder { device_selector_ret.value() };
+    auto device_builder_ret = device_builder
+                                .add_pNext(&draw_features)
+                                .add_pNext(&dynamic_rendering)
+                                .add_pNext(&address_features)
+                                .add_pNext(&buffer_features)
+                                .build();
 
-	device = device_builder_ret.value(); // ze bluechowth dewice has connectedey suchessfulley
+    if(!device_builder_ret) {
+        spdlog::error("Failed to create Vulkan Device {}", device_builder_ret.error().message());
+        return false;
+    }
 
-	spdlog::info("Found capable render device: {}", device.physical_device.name);
+    device = device_builder_ret.value(); // ze bluechowth dewice has connectedey suchessfulley
 
-	deletion_queue.push_back([=, this]() {
-		vkb::destroy_device(device);
-	});
+    spdlog::info("Found capable render device: {}", device.physical_device.name);
 
-	vkCmdBeginRenderingKHR = reinterpret_cast<PFN_vkCmdBeginRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR"));
-	vkCmdEndRenderingKHR = reinterpret_cast<PFN_vkCmdEndRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR"));
-	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetDeviceProcAddr(device, "vkCmdPushDescriptorSetKHR"));
+    deletion_queue.push_back([=, this]() {
+        vkb::destroy_device(device);
+    });
 
-	descriptor_buffer_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
-
-	auto vkGetPhysicalDeviceProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2KHR>(vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties2KHR"));
-
-	VkPhysicalDeviceProperties2KHR device_props = {};
-	device_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
-	device_props.pNext = &descriptor_buffer_properties;
-
-	vkGetPhysicalDeviceProperties2KHR(device.physical_device, &device_props);
+    get_vulkan_extensions();
 
 	return true;
 }
@@ -1041,4 +1030,26 @@ bool Renderer::build_vertex_pipelines() {
 	vkDestroyShaderModule(device, toon_frag, nullptr);
 
 	return true;
+}
+
+void Renderer::get_vulkan_extensions() {
+    vkCmdBeginRenderingKHR = get_device_proc<PFN_vkCmdBeginRenderingKHR>("vkCmdBeginRenderingKHR");
+    vkCmdEndRenderingKHR = get_device_proc<PFN_vkCmdEndRenderingKHR>("vkCmdEndRenderingKHR");
+
+	vkCmdPushDescriptorSetKHR = get_device_proc<PFN_vkCmdPushDescriptorSetKHR>("vkCmdPushDescriptorSetKHR");
+
+	vkGetDescriptorSetLayoutSizeEXT = get_device_proc<PFN_vkGetDescriptorSetLayoutSizeEXT>("vkGetDescriptorSetLayoutSizeEXT");
+    vkGetBufferDeviceAddressKHR = get_device_proc<PFN_vkGetBufferDeviceAddressKHR>("vkGetBufferDeviceAddressKHR");
+    vkGetDescriptorEXT = get_device_proc<PFN_vkGetDescriptorEXT>("vkGetDescriptorEXT");
+    vkCmdBindDescriptorBuffersEXT = get_device_proc<PFN_vkCmdBindDescriptorBuffersEXT>("vkCmdBindDescriptorBuffersEXT");
+    vkCmdSetDescriptorBufferOffsetsEXT = get_device_proc<PFN_vkCmdSetDescriptorBufferOffsetsEXT>("vkCmdSetDescriptorBufferOffsetsEXT");
+
+    auto vkGetPhysicalDeviceProperties2KHR = get_instance_proc<PFN_vkGetPhysicalDeviceProperties2KHR>("vkGetPhysicalDeviceProperties2KHR");
+
+    VkPhysicalDeviceProperties2KHR device_props = {};
+    device_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+    descriptor_buffer_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+    device_props.pNext = &descriptor_buffer_properties;
+
+    vkGetPhysicalDeviceProperties2KHR(device.physical_device, &device_props);
 }

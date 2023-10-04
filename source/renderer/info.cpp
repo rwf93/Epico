@@ -25,12 +25,13 @@ VkCommandBufferAllocateInfo info::command_buffer_allocate_info(VkCommandPool com
 	return command_allocate_info;
 }
 
-VkBufferCreateInfo info::buffer_create_info(VkDeviceSize size, VkBufferUsageFlags usage) {
+VkBufferCreateInfo info::buffer_create_info(VkDeviceSize size, VkBufferUsageFlags usage, VkBufferCreateFlags flags) {
 	VkBufferCreateInfo buffer_info = {};
 
 	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	buffer_info.size = size;
 	buffer_info.usage = usage;
+	buffer_info.flags = flags;
 
 	return buffer_info;
 }
