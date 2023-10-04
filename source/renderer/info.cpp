@@ -68,12 +68,13 @@ VkDescriptorSetAllocateInfo info::descriptor_set_allocate_info(std::vector<VkDes
 	return set_allocate_info;
 }
 
-VkDescriptorSetLayoutCreateInfo info::descriptor_set_layout_info(std::vector<VkDescriptorSetLayoutBinding> &layout_info) {
+VkDescriptorSetLayoutCreateInfo info::descriptor_set_layout_info(std::vector<VkDescriptorSetLayoutBinding> &layout_info, VkDescriptorSetLayoutCreateFlags flags) {
 	VkDescriptorSetLayoutCreateInfo set_layout_info = {};
 
 	set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	set_layout_info.bindingCount = static_cast<uint32_t>(layout_info.size());
 	set_layout_info.pBindings = layout_info.data();
+	set_layout_info.flags = flags;
 
 
 	return set_layout_info;

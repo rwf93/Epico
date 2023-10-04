@@ -211,18 +211,52 @@ bool Renderer::begin() {
 			memcpy(camera_data_buffers[current_frame].get_info().pMappedData, &camera, sizeof(ECameraData));
 			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].get_info().pMappedData);
 
-			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(0.2f));
-			ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(sin(game->time)), glm::vec3(0), glm::vec3(0.2f));
+			VkDescriptorBufferInfo camera_buffer_info = {};
+			camera_buffer_info.buffer = camera_data_buffers[current_frame].get_buffer();
+			camera_buffer_info.offset = 0;
+			camera_buffer_info.range = sizeof(ECameraData);
 
-			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, 1, &global_descriptor_sets[current_frame], 0, nullptr);
-			vkCmdBindDescriptorSets(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 1, 1, &object_descriptor_sets[current_frame], 0, nullptr);
+			VkWriteDescriptorSet camera_descrpitor_write = {};
+			camera_descrpitor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			camera_descrpitor_write.dstSet = 0;
+			camera_descrpitor_write.dstBinding = 0;
+			camera_descrpitor_write.dstArrayElement = 0;
+			camera_descrpitor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			camera_descrpitor_write.descriptorCount = 1;
+			camera_descrpitor_write.pBufferInfo = &camera_buffer_info;
+
+			VkDescriptorBufferInfo object_buffer_info = {};
+			object_buffer_info.buffer = object_data_buffers[current_frame].get_buffer();
+			object_buffer_info.offset = 0;
+			object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
+
+			VkWriteDescriptorSet object_buffer_write = {};
+			object_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			object_buffer_write.dstSet = 0;
+			object_buffer_write.dstBinding = 1;
+			object_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			object_buffer_write.descriptorCount = 1;
+			object_buffer_write.pBufferInfo = &object_buffer_info;
+
+			std::vector<VkWriteDescriptorSet> write_descriptors = {
+				camera_descrpitor_write,
+				object_buffer_write,
+			};
+
+			vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
 			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]);
+
+			//ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(0.2f));
+			//ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(sin(game->time)), glm::vec3(0), glm::vec3(0.2f));
 
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
 			vkCmdBindIndexBuffer(command_buffers[current_frame], mesh.index_buffer.get_buffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 0);
+			for(int i = 0; i < 100; i++) {
+				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3((float)i), glm::vec3(0), glm::vec3(0.2f));
+				vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, i);
+			}
 			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 1);
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
@@ -345,6 +379,7 @@ bool Renderer::create_device() {
 	device_features.fillModeNonSolid = true;
 
 	std::vector<const char*> extensions = {
+		VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
 		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 		VK_KHR_MAINTENANCE2_EXTENSION_NAME,
 		VK_KHR_MULTIVIEW_EXTENSION_NAME,
@@ -394,6 +429,7 @@ bool Renderer::create_device() {
 
 	vkCmdBeginRenderingKHR = reinterpret_cast<PFN_vkCmdBeginRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR"));
 	vkCmdEndRenderingKHR = reinterpret_cast<PFN_vkCmdEndRenderingKHR>(vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR"));
+	vkCmdPushDescriptorSetKHR = reinterpret_cast<PFN_vkCmdPushDescriptorSetKHR>(vkGetDeviceProcAddr(device, "vkCmdPushDescriptorSetKHR"));
 
 	return true;
 }
@@ -565,27 +601,16 @@ bool Renderer::create_depth_image(bool rebuild) {
 }
 
 bool Renderer::create_descriptor_layout() {
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-		};
+	std::vector<VkDescriptorSetLayoutBinding> bindings = {
+		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
+	};
 
-		auto layout_info = info::descriptor_set_layout_info(bindings);
-		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &global_descriptor_layout));
-	}
-
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings = {
-			info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0)
-		};
-
-		auto layout_info = info::descriptor_set_layout_info(bindings);
-		VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &object_descriptor_layout));
-	}
+	auto layout_info = info::descriptor_set_layout_info(bindings, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+	VK_CHECK_BOOL(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &descriptor_layout));
 
 	deletion_queue.push_back([=, this]() {
-		vkDestroyDescriptorSetLayout(device, object_descriptor_layout, nullptr);
-		vkDestroyDescriptorSetLayout(device, global_descriptor_layout, nullptr);
+		vkDestroyDescriptorSetLayout(device, descriptor_layout, nullptr);
 	});
 
 	return true;
@@ -647,63 +672,6 @@ bool Renderer::create_uniform_buffers() {
 }
 
 bool Renderer::create_descriptor_sets() {
-	global_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-	object_descriptor_sets.resize(MAX_FRAMES_IN_FLIGHT);
-
-	std::vector<VkDescriptorSetLayout> camera_layouts(MAX_FRAMES_IN_FLIGHT, global_descriptor_layout);
-	{
-		VkDescriptorSetAllocateInfo camera_descriptor_set_info = info::descriptor_set_allocate_info(camera_layouts, descriptor_pool);
-		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &camera_descriptor_set_info, global_descriptor_sets.data()));
-	}
-
-	std::vector<VkDescriptorSetLayout> object_layouts(MAX_FRAMES_IN_FLIGHT, object_descriptor_layout);
-	{
-		auto object_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
-		VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &object_descriptor_set_info, object_descriptor_sets.data()));
-	}
-
-	//std::vector<VkDescriptorSetLayout> sample_layouts(MAX_FRAMES_IN_FLIGHT, sample_descriptor_layout);
-	//{
-	//	auto sample_descriptor_set_info = info::descriptor_set_allocate_info(object_layouts, descriptor_pool);
-	//	VK_CHECK_BOOL(vkAllocateDescriptorSets(device, &sample_descriptor_set_info, sample_descriptor_sets.data()));
-	//}
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		// write global sets
-		VkDescriptorBufferInfo buffer_info = {};
-		buffer_info.buffer = camera_data_buffers[i].get_buffer();
-		buffer_info.offset = 0;
-		buffer_info.range = sizeof(ECameraData);
-
-		VkWriteDescriptorSet global_descriptor_write = {};
-		global_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		global_descriptor_write.dstSet = global_descriptor_sets[i];
-		global_descriptor_write.dstBinding = 0;
-		global_descriptor_write.dstArrayElement = 0;
-		global_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		global_descriptor_write.descriptorCount = 1;
-		global_descriptor_write.pBufferInfo = &buffer_info;
-
-		// write object sets
-		VkDescriptorBufferInfo object_buffer_info = {};
-		object_buffer_info.buffer = object_data_buffers[i].get_buffer();
-		object_buffer_info.offset = 0;
-		object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
-
-		VkWriteDescriptorSet object_descriptor_write = {};
-		object_descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		object_descriptor_write.dstSet = object_descriptor_sets[i];
-		object_descriptor_write.dstBinding = 0;
-		object_descriptor_write.dstArrayElement = 0;
-		object_descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		object_descriptor_write.descriptorCount = 1;
-		object_descriptor_write.pBufferInfo = &object_buffer_info;
-
-		VkWriteDescriptorSet descriptor_writes[] = { global_descriptor_write, object_descriptor_write };
-
-		vkUpdateDescriptorSets(device, 2, descriptor_writes, 0, nullptr);
-	}
-
 	return true;
 }
 
@@ -944,8 +912,7 @@ void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&fun
 
 bool Renderer::build_vertex_layout() {
 	std::vector<VkDescriptorSetLayout> descriptor_layouts = {
-		global_descriptor_layout,
-		object_descriptor_layout,
+		descriptor_layout,
 	};
 
 	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);

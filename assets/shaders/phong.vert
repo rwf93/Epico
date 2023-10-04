@@ -7,7 +7,7 @@ layout(binding = 0) uniform EGlobalData {
 	mat4 projection;
 } global;
 
-layout(std140, set = 1, binding = 0) readonly buffer EObjectBuffer {
+layout(std140, set = 0, binding = 1) readonly buffer EObjectBuffer {
 	EObjectData objects[];
 } object_buffer;
 

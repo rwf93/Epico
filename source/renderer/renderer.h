@@ -45,6 +45,11 @@ private:
 
 	bool rebuild_swapchain();
 
+	size_t align_ubo(size_t size) {
+		size_t offset = device.physical_device.properties.limits.minUniformBufferOffsetAlignment;
+		return offset > 0 ? (size + offset - 1) & ~(offset - 1) : size;
+	}
+
 	VkFormat find_supported_format(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	VkFormat find_depth_format();
 
@@ -88,8 +93,7 @@ private:
 	uint32_t image_index = 0;
 	uint32_t current_frame = 0;
 
-	VkDescriptorSetLayout global_descriptor_layout = VK_NULL_HANDLE;
-	VkDescriptorSetLayout object_descriptor_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout descriptor_layout = VK_NULL_HANDLE;
 
 	VmaAllocator allocator = VK_NULL_HANDLE;
 
@@ -103,15 +107,13 @@ private:
 	std::vector<EBuffer> camera_data_buffers = {};
 	std::vector<EBuffer> object_data_buffers = {};
 
-	std::vector<VkDescriptorSet> global_descriptor_sets = {};
-	std::vector<VkDescriptorSet> object_descriptor_sets = {};
-
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 	std::map<std::string, VkPipelineLayout> pipeline_layouts = {};
 	std::map<std::string, VkPipeline> pipelines = {};
 private:
-	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
-	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
+	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR = nullptr;
+	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR = nullptr;
+	PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
 };
 
 }
