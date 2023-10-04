@@ -143,8 +143,6 @@ bool Renderer::begin() {
 			}
 			ImGui::PopStyleVar();
 
-			ImGui::Render();
-
 			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
 			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
 			static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -246,18 +244,16 @@ bool Renderer::begin() {
 			vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
 			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]);
 
-			//ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(0.2f));
-			//ssbo[1].model = mathlib::calculate_model_matrix(glm::vec3(sin(game->time)), glm::vec3(0), glm::vec3(0.2f));
-
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
 			vkCmdBindIndexBuffer(command_buffers[current_frame], mesh.index_buffer.get_buffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			for(int i = 0; i < 100; i++) {
-				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3((float)i), glm::vec3(0), glm::vec3(0.2f));
+				ssbo[i].model = mathlib::calculate_model_matrix(glm::vec3((float)i, (float)i, (float)i), glm::vec3(0), glm::vec3(0.2f));
 				vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, i);
 			}
-			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 1);
+
+			ImGui::Render();
 
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
 		}
