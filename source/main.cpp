@@ -6,7 +6,7 @@ int main(int argc, char *args[]) {
 	UNUSED(args);
 
 	GameGlobals game = {};
-	render::Renderer renderer(&game);
+	render::Renderer renderer = {};
 
 #if !defined(NDEBUG)
 	spdlog::set_level(spdlog::level::debug);
@@ -20,7 +20,7 @@ int main(int argc, char *args[]) {
 	}
 
 	if(!create_window(&game)) return 0;
-	if(!renderer.setup()) return 0;
+	if(!renderer.setup(&game)) return 0;
 
 	static bool quit = false;
 	game.quit = &quit; // make quitting accessable anywhere.

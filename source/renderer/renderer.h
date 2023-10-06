@@ -14,10 +14,9 @@ namespace render {
 
 class Renderer {
 public:
-	Renderer(GameGlobals *game);
 	~Renderer();
 
-	bool setup();
+	bool setup(GameGlobals *game_globals);
 	bool begin();
 	bool end();
 

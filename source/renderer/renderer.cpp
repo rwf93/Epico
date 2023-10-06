@@ -11,10 +11,6 @@
 
 using namespace render;
 
-Renderer::Renderer(GameGlobals *game) {
-	this->game = game;
-}
-
 Renderer::~Renderer() {
 	vkQueueWaitIdle(present_queue);
 
@@ -25,7 +21,9 @@ Renderer::~Renderer() {
 
 static EMesh mesh = {};
 
-bool Renderer::setup() {
+bool Renderer::setup(GameGlobals *game_globals) {
+	this->game = game_globals;
+
 	if(!create_instance()) 			return false;
 	if(!create_surface()) 			return false;
 	if(!create_device()) 			return false;
