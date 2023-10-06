@@ -34,6 +34,7 @@ private:
 
 	bool create_vma_allocator();
 	bool create_depth_image(bool rebuild = false);
+	bool create_texture_array();
 
 	bool create_descriptor_layout();
 	bool create_descriptor_pool();
@@ -95,6 +96,10 @@ private:
 
 	EImage depth_image = {};
 	VkImageView depth_image_view = {};
+
+	EImage texture_array = {};
+	VkImageView texture_array_view = {};
+	VkSampler texture_array_sampler = {};
 
 	const uint32_t MAX_OBJECTS = 1024*1024;
 

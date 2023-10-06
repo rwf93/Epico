@@ -41,26 +41,20 @@ void EMesh::allocate(Renderer *renderer) {
 	assert(renderer != VK_NULL_HANDLE);
 	this->context = renderer;
 
-	auto staging_allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, 0, VMA_MEMORY_USAGE_CPU_ONLY);
-	auto staging_buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	auto staging_buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex));
+	auto vertex_buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	auto index_buffer_info = info::buffer_create_info(indicies.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
-	auto allocate_info = info::allocation_create_info(0, 0, VMA_MEMORY_USAGE_GPU_ONLY);
+	auto allocate_info = info::allocation_create_info();
 
-	staging_vertex_buffer.allocate(context, &staging_buffer_info, &staging_allocate_info);
+	staging_vertex_buffer.allocate(context, &staging_buffer_info, &allocate_info);
 	memcpy(staging_vertex_buffer.get_info().pMappedData, verticies.data(), verticies.size() * sizeof(EVertex));
 
-  	staging_index_buffer.allocate(context, &staging_buffer_info, &staging_allocate_info);
+  	staging_index_buffer.allocate(context, &staging_buffer_info, &allocate_info);
 	memcpy(staging_index_buffer.get_info().pMappedData, indicies.data(), indicies.size() * sizeof(uint32_t));
 
-	{
-		auto buffer_info = info::buffer_create_info(verticies.size() * sizeof(EVertex), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		vertex_buffer.allocate(context, &buffer_info, &allocate_info);
-	}
-
-	{
-		auto buffer_info = info::buffer_create_info(indicies.size() * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-		index_buffer.allocate(context, &buffer_info, &allocate_info);
-	}
+	vertex_buffer.allocate(context, &vertex_buffer_info, &allocate_info);
+	index_buffer.allocate(context, &index_buffer_info, &allocate_info);
 }
 
 void EMesh::cleanup_after_send() {

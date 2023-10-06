@@ -34,6 +34,7 @@ bool Renderer::setup(GameGlobals *game_globals) {
 
 	if(!create_vma_allocator())		return false;
 	if(!create_depth_image())		return false;
+	if(!create_texture_array())		return false;
 
 	if(!create_descriptor_layout()) return false;
 	if(!create_descriptor_pool())	return false;
@@ -234,13 +235,26 @@ bool Renderer::begin() {
 			object_buffer_write.descriptorCount = 1;
 			object_buffer_write.pBufferInfo = &object_buffer_info;
 
+			//VkDescriptorImageInfo texture_image_info = {};
+			//texture_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			//texture_image_info.sampler = texture_array_sampler;
+			//texture_image_info.imageView = texture_array_view;
+
+			//VkWriteDescriptorSet image_buffer_write = {};
+			//image_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			//image_buffer_write.dstSet = 0;
+			//image_buffer_write.dstBinding = 2;
+			//image_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			//image_buffer_write.descriptorCount = 1;
+			//image_buffer_write.pImageInfo = &texture_image_info;
+
 			std::vector<VkWriteDescriptorSet> write_descriptors = {
 				camera_descrpitor_write,
-				object_buffer_write,
+				object_buffer_write
 			};
 
 			vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
-			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex_toon"]);
+			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
 
 			VkDeviceSize offset[] = { 0 };
 			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
@@ -367,7 +381,8 @@ bool Renderer::create_surface() {
 
 bool Renderer::create_device() {
 	VkPhysicalDeviceFeatures device_features = {};
-    device_features.fillModeNonSolid = true;
+    device_features.fillModeNonSolid = VK_TRUE;
+	device_features.samplerAnisotropy = VK_TRUE;
 
     std::vector<const char*> extensions = {
         // required for dynamic rendering.
@@ -609,10 +624,40 @@ bool Renderer::create_depth_image(bool rebuild) {
 	return true;
 }
 
+bool Renderer::create_texture_array() {
+	VkSamplerCreateInfo sampler_info = {};
+	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.magFilter = VK_FILTER_LINEAR;
+	sampler_info.minFilter = VK_FILTER_LINEAR;
+	sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.anisotropyEnable = VK_TRUE;
+	sampler_info.maxAnisotropy = device.physical_device.properties.limits.maxSamplerAnisotropy;
+	sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_info.compareEnable = VK_FALSE;
+	sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+	sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_info.mipLodBias = 0.0f;
+	sampler_info.minLod = 0.0f;
+	sampler_info.maxLod = 0.0f;
+
+	VK_CHECK_BOOL(vkCreateSampler(device, &sampler_info, nullptr, &texture_array_sampler));
+
+	deletion_queue.push_back([=, this]() {
+		//vkDestroyImageView(device, texture_array_view, nullptr);
+		vkDestroySampler(device, texture_array_sampler, nullptr);
+	});
+
+	return true;
+}
+
 bool Renderer::create_descriptor_layout() {
 	std::vector<VkDescriptorSetLayoutBinding> bindings = {
 		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
+		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1),
+		info::descriptor_set_layout_binding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2)
 	};
 
 	auto layout_info = info::descriptor_set_layout_info(bindings, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
@@ -655,21 +700,12 @@ bool Renderer::create_uniform_buffers() {
 	object_data_buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		{
-			auto buffer_info = info::buffer_create_info(sizeof(ECameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		auto camera_buffer_info = info::buffer_create_info(sizeof(ECameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		auto object_buffer_info = info::buffer_create_info(sizeof(EObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		auto allocate_info = info::allocation_create_info();
 
-			VK_CHECK_BOOL(camera_data_buffers[i].allocate(this, &buffer_info, &allocate_info));
-		}
-
-		{
-			auto buffer_info = info::buffer_create_info(sizeof(EObjectData) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-			auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-																VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-			VK_CHECK_BOOL(object_data_buffers[i].allocate(this, &buffer_info, &allocate_info))
-		}
+		VK_CHECK_BOOL(camera_data_buffers[i].allocate(this, &camera_buffer_info, &allocate_info));
+		VK_CHECK_BOOL(object_data_buffers[i].allocate(this, &object_buffer_info, &allocate_info))
 
 		deletion_queue.push_back([=, this]() {
 			object_data_buffers[i].destroy();
@@ -687,40 +723,6 @@ bool Renderer::create_descriptor_sets() {
 bool Renderer::create_pipeline_cache() {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info  = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-
-	// load cache data
-	/*
-	{
-		std::vector<char> pipeline_cache_data = fs::read_local<char>("pipeline_cache_data.bin", true);
-		char *cache_data = pipeline_cache_data.data();
-		size_t cache_size = pipeline_cache_data.size();
-
-		bool bad_cache = false;
-
-		uint32_t header_length = 0;
-		uint32_t header_version = 0;
-		uint32_t vendor_id = 0;
-		uint32_t device_id = 0;
-		uint32_t uuid[VK_UUID_SIZE] = {};
-
-		memcpy(&header_length, (uint8_t*)cache_data, 4);
-		memcpy(&header_version, (uint8_t*)cache_data + 4, 4);
-		memcpy(&vendor_id, (uint8_t*)cache_data + 8, 4);
-		memcpy(&device_id, (uint8_t*)cache_data + 12, 4);
-		memcpy(&uuid, (uint8_t*)cache_data + 16, VK_UUID_SIZE);
-
-		if(header_length <= 0) bad_cache = true;
-		if(header_version != VK_PIPELINE_CACHE_HEADER_VERSION_ONE) bad_cache = true;
-		if(vendor_id != device.physical_device.properties.vendorID) bad_cache = true;
-		if(device_id != device.physical_device.properties.deviceID) bad_cache = true;
-		if(memcmp(uuid, device.physical_device.properties.pipelineCacheUUID, VK_UUID_SIZE) != 0) bad_cache = true;
-
-		if(!bad_cache) {
-			pipeline_cache_create_info.initialDataSize = static_cast<uint32_t>(cache_size);
-			pipeline_cache_create_info.pInitialData = pipeline_cache_data.data();
-		}
-	}
-	*/
 
 	VK_CHECK_BOOL(vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr, &pipeline_cache));
 
@@ -1002,30 +1004,6 @@ bool Renderer::build_vertex_pipelines() {
 
 	vkDestroyShaderModule(device, vertex_vert, nullptr);
 	vkDestroyShaderModule(device, vertex_frag, nullptr);
-
-	VkShaderModule phong_vert = create_shader(fs::read_asset<uint32_t>("shaders/phong.vert.spv", true));
-	VkShaderModule phong_frag = create_shader(fs::read_asset<uint32_t>("shaders/phong.frag.spv", true));
-
-	pipeline_constructor.shader_stages.clear();
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, phong_vert);
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, phong_frag);
-
-	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_phong"]));
-
-	vkDestroyShaderModule(device, phong_vert, nullptr);
-	vkDestroyShaderModule(device, phong_frag, nullptr);
-
-	VkShaderModule toon_vert = create_shader(fs::read_asset<uint32_t>("shaders/toon.vert.spv", true));
-	VkShaderModule toon_frag = create_shader(fs::read_asset<uint32_t>("shaders/toon.frag.spv", true));
-
-	pipeline_constructor.shader_stages.clear();
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_VERTEX_BIT, toon_vert);
-	pipeline_constructor.add_shader(VK_SHADER_STAGE_FRAGMENT_BIT, toon_frag);
-
-	VK_CHECK_BOOL(pipeline_constructor.build(&pipelines["vertex_toon"]));
-
-	vkDestroyShaderModule(device, toon_vert, nullptr);
-	vkDestroyShaderModule(device, toon_frag, nullptr);
 
 	return true;
 }

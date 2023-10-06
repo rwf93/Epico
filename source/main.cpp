@@ -23,7 +23,7 @@ int main(int argc, char *args[]) {
 	if(!renderer.setup(&game)) return 0;
 
 	static bool quit = false;
-	game.quit = &quit; // make quitting accessable anywhere.
+	game.quit = &quit;
 
 	clock_t start_time = std::clock();
 
