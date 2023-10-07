@@ -42,9 +42,11 @@ int main(int argc, char *args[]) {
 			ImGui_ImplSDL2_ProcessEvent(&e);
 		}
 
+		if(!renderer.begin()) return false;
 
-		if(!renderer.begin()) break;
-		if(!renderer.end()) break;
+		renderer.run();
+
+		if(!renderer.end())   return false;
 
 		start_time = time;
 	}

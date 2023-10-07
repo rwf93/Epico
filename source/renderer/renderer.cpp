@@ -70,218 +70,217 @@ bool Renderer::begin() {
 
 	VK_CHECK_BOOL(vkBeginCommandBuffer(command_buffers[current_frame], &begin_info));
 
-	{
-		image_barrier(
-						command_buffers[current_frame], swapchain_images[image_index],
-						0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-						VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
-		);
+	image_barrier(
+					command_buffers[current_frame], swapchain_images[image_index],
+					0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+					VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+	);
 
-		image_barrier(
-						command_buffers[current_frame], depth_image.image,
-						0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-						VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-						VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-						VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-						VkImageSubresourceRange{ VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 }
-		);
-
-		VkRenderingAttachmentInfoKHR color_attachment = {};
-		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-		color_attachment.imageView = swapchain_image_views[image_index];
-		color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
-
-		VkRenderingAttachmentInfoKHR depth_attachment = {};
-		depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-		depth_attachment.imageView = depth_image_view;
-		depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		depth_attachment.clearValue.color = { 1.0f, 0 };
-
-		VkRenderingInfoKHR rendering_info = {};
-		rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-		rendering_info.renderArea = { 0, 0, swapchain.extent.width, swapchain.extent.height };
-		rendering_info.layerCount = 1;
-		rendering_info.colorAttachmentCount = 1;
-		rendering_info.pColorAttachments = &color_attachment;
-		rendering_info.pDepthAttachment = &depth_attachment;
-
-		vkCmdBeginRenderingKHR(command_buffers[current_frame], &rendering_info);
-		{
-			VkViewport viewport = info::viewport(static_cast<float>(swapchain.extent.width), static_cast<float>(swapchain.extent.height));
-			VkRect2D scissor = info::rect2d({ 0, 0 }, swapchain.extent);
-
-			vkCmdSetViewport(command_buffers[current_frame], 0, 1, &viewport);
-			vkCmdSetScissor(command_buffers[current_frame], 0, 1, &scissor);
-
-			ImGui_ImplVulkan_NewFrame();
-			ImGui_ImplSDL2_NewFrame();
-			ImGui::NewFrame();
-
-			ImGuiIO &io = ImGui::GetIO();
-
-			ImGui::ShowDemoWindow();
-
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-			{
-				ImGui::SetNextWindowPos(ImVec2(1.5f, 1.5f));
-				ImGui::Begin("Statistics", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings);
-				{
-					ImGui::Text("Statistics");
-					ImGui::Separator();
-					ImGui::Text("Frames Per Second: %.1f (%.3fms/frame)", io.Framerate, 1000.0f / io.Framerate);
-					ImGui::Text("Surface Size: %ix%i", swapchain.extent.width, swapchain.extent.height);
-				}
-				ImGui::End();
-			}
-			ImGui::PopStyleVar();
-
-			static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
-			static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
-			static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-			static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
-
-			int mx = 0, my = 0;
-
-			SDL_PumpEvents();
-			const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
-			const Uint8* key_state = SDL_GetKeyboardState(NULL);
-
-			static float pitch = 0.0f;
-			static float yaw = -90.0f;
-			const float sensitivity = 0.1f;
-
-			static float last_mx = 400.0f, last_my = 300.0f;
-
-			float offset_mx = (float)mx - last_mx;
-			float offset_my = last_my - (float)my;
-
-			last_mx = static_cast<float>(mx);
-			last_my = static_cast<float>(my);
-
-			if(mouse_state & SDL_BUTTON(3)) {
-				offset_mx *= sensitivity;
-				offset_my *= sensitivity;
-
-				yaw += offset_mx;
-				pitch += offset_my;
-			}
-
-			static glm::vec3 camera_direction = {};
-
-			camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-			camera_direction.y = sin(glm::radians(pitch));
-			camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-			camera_front = glm::normalize(camera_direction);
-			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
-
-			float camera_speed = 0.3f;
-
-			if(key_state[SDL_SCANCODE_LSHIFT])
-				camera_speed *= 2.0f;
-
-			if(key_state[SDL_SCANCODE_W])
-				camera_position += camera_front * (game->time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_S])
-				camera_position -= camera_front * (game->time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_D])
-				camera_position += camera_right * (game->time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_A])
-				camera_position -= camera_right * (game->time_delta * camera_speed);
-
-			ECameraData camera = {};
-
-			camera.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
-			camera.projection = glm::perspective(glm::radians(90.0f), static_cast<float>(swapchain.extent.width) / static_cast<float>(swapchain.extent.height), 0.01f, 100.0f);
-			camera.projection[1][1] *= -1;
-
-			memcpy(camera_data_buffers[current_frame].get_info().pMappedData, &camera, sizeof(ECameraData));
-			const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].get_info().pMappedData);
-
-			VkDescriptorBufferInfo camera_buffer_info = {};
-			camera_buffer_info.buffer = camera_data_buffers[current_frame].get_buffer();
-			camera_buffer_info.offset = 0;
-			camera_buffer_info.range = sizeof(ECameraData);
-
-			VkWriteDescriptorSet camera_descrpitor_write = {};
-			camera_descrpitor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			camera_descrpitor_write.dstSet = 0;
-			camera_descrpitor_write.dstBinding = 0;
-			camera_descrpitor_write.dstArrayElement = 0;
-			camera_descrpitor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			camera_descrpitor_write.descriptorCount = 1;
-			camera_descrpitor_write.pBufferInfo = &camera_buffer_info;
-
-			VkDescriptorBufferInfo object_buffer_info = {};
-			object_buffer_info.buffer = object_data_buffers[current_frame].get_buffer();
-			object_buffer_info.offset = 0;
-			object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
-
-			VkWriteDescriptorSet object_buffer_write = {};
-			object_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			object_buffer_write.dstSet = 0;
-			object_buffer_write.dstBinding = 1;
-			object_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			object_buffer_write.descriptorCount = 1;
-			object_buffer_write.pBufferInfo = &object_buffer_info;
-
-			//VkDescriptorImageInfo texture_image_info = {};
-			//texture_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			//texture_image_info.sampler = texture_array_sampler;
-			//texture_image_info.imageView = texture_array_view;
-
-			//VkWriteDescriptorSet image_buffer_write = {};
-			//image_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			//image_buffer_write.dstSet = 0;
-			//image_buffer_write.dstBinding = 2;
-			//image_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			//image_buffer_write.descriptorCount = 1;
-			//image_buffer_write.pImageInfo = &texture_image_info;
-
-			std::vector<VkWriteDescriptorSet> write_descriptors = {
-				camera_descrpitor_write,
-				object_buffer_write
-			};
-
-			vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
-			vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
-
-			VkDeviceSize offset[] = { 0 };
-			vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
-			vkCmdBindIndexBuffer(command_buffers[current_frame], mesh.index_buffer.get_buffer(), 0, VK_INDEX_TYPE_UINT32);
-
-			ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(0), glm::vec3(0.2f));
-			vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 0);
-
-			ImGui::Render();
-			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
-		}
-		vkCmdEndRenderingKHR(command_buffers[current_frame]);
-
-		image_barrier(
-						command_buffers[current_frame], swapchain_images[image_index],
-						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0,
-						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-						VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
-		);
-	}
-
+	image_barrier(
+					command_buffers[current_frame], depth_image.image,
+					0, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+					VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+					VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+					VkImageSubresourceRange{ VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 }
+	);
 
 	return true;
 }
 
+void Renderer::run() {
+	VkRenderingAttachmentInfoKHR color_attachment = {};
+	color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+	color_attachment.imageView = swapchain_image_views[image_index];
+	color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachment.clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+
+	VkRenderingAttachmentInfoKHR depth_attachment = {};
+	depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+	depth_attachment.imageView = depth_image_view;
+	depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depth_attachment.clearValue.color = { 1.0f, 0 };
+
+	VkRenderingInfoKHR rendering_info = {};
+	rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+	rendering_info.renderArea = { 0, 0, swapchain.extent.width, swapchain.extent.height };
+	rendering_info.layerCount = 1;
+	rendering_info.colorAttachmentCount = 1;
+	rendering_info.pColorAttachments = &color_attachment;
+	rendering_info.pDepthAttachment = &depth_attachment;
+
+	vkCmdBeginRenderingKHR(command_buffers[current_frame], &rendering_info);
+	{
+		VkViewport viewport = info::viewport(static_cast<float>(swapchain.extent.width), static_cast<float>(swapchain.extent.height));
+		VkRect2D scissor = info::rect2d({ 0, 0 }, swapchain.extent);
+
+		vkCmdSetViewport(command_buffers[current_frame], 0, 1, &viewport);
+		vkCmdSetScissor(command_buffers[current_frame], 0, 1, &scissor);
+
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplSDL2_NewFrame();
+		ImGui::NewFrame();
+
+		ImGuiIO &io = ImGui::GetIO();
+
+		ImGui::ShowDemoWindow();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+		{
+			ImGui::SetNextWindowPos(ImVec2(1.5f, 1.5f));
+			ImGui::Begin("Statistics", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings);
+			{
+				ImGui::Text("Statistics");
+				ImGui::Separator();
+				ImGui::Text("Frames Per Second: %.1f (%.3fms/frame)", io.Framerate, 1000.0f / io.Framerate);
+				ImGui::Text("Surface Size: %ix%i", swapchain.extent.width, swapchain.extent.height);
+			}
+			ImGui::End();
+		}
+		ImGui::PopStyleVar();
+
+		static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
+		static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
+		static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+		static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
+
+		int mx = 0, my = 0;
+
+		SDL_PumpEvents();
+		const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
+		const Uint8* key_state = SDL_GetKeyboardState(NULL);
+
+		static float pitch = 0.0f;
+		static float yaw = -90.0f;
+		const float sensitivity = 0.1f;
+
+		static float last_mx = 400.0f, last_my = 300.0f;
+
+		float offset_mx = (float)mx - last_mx;
+		float offset_my = last_my - (float)my;
+
+		last_mx = static_cast<float>(mx);
+		last_my = static_cast<float>(my);
+
+		if(mouse_state & SDL_BUTTON(3)) {
+			offset_mx *= sensitivity;
+			offset_my *= sensitivity;
+
+			yaw += offset_mx;
+			pitch += offset_my;
+		}
+
+		static glm::vec3 camera_direction = {};
+
+		camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+		camera_direction.y = sin(glm::radians(pitch));
+		camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+		camera_front = glm::normalize(camera_direction);
+		camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
+
+		float camera_speed = 0.3f;
+
+		if(key_state[SDL_SCANCODE_LSHIFT])
+			camera_speed *= 2.0f;
+
+		if(key_state[SDL_SCANCODE_W])
+			camera_position += camera_front * (game->time_delta * camera_speed);
+
+		if(key_state[SDL_SCANCODE_S])
+			camera_position -= camera_front * (game->time_delta * camera_speed);
+
+		if(key_state[SDL_SCANCODE_D])
+			camera_position += camera_right * (game->time_delta * camera_speed);
+
+		if(key_state[SDL_SCANCODE_A])
+			camera_position -= camera_right * (game->time_delta * camera_speed);
+
+		ECameraData camera = {};
+
+		camera.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+		camera.projection = glm::perspective(glm::radians(90.0f), static_cast<float>(swapchain.extent.width) / static_cast<float>(swapchain.extent.height), 0.01f, 100.0f);
+		camera.projection[1][1] *= -1;
+
+		memcpy(camera_data_buffers[current_frame].get_info().pMappedData, &camera, sizeof(ECameraData));
+		const auto ssbo = static_cast<EObjectData*>(object_data_buffers[current_frame].get_info().pMappedData);
+
+		VkDescriptorBufferInfo camera_buffer_info = {};
+		camera_buffer_info.buffer = camera_data_buffers[current_frame].get_buffer();
+		camera_buffer_info.offset = 0;
+		camera_buffer_info.range = sizeof(ECameraData);
+
+		VkWriteDescriptorSet camera_descrpitor_write = {};
+		camera_descrpitor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		camera_descrpitor_write.dstSet = 0;
+		camera_descrpitor_write.dstBinding = 0;
+		camera_descrpitor_write.dstArrayElement = 0;
+		camera_descrpitor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		camera_descrpitor_write.descriptorCount = 1;
+		camera_descrpitor_write.pBufferInfo = &camera_buffer_info;
+
+		VkDescriptorBufferInfo object_buffer_info = {};
+		object_buffer_info.buffer = object_data_buffers[current_frame].get_buffer();
+		object_buffer_info.offset = 0;
+		object_buffer_info.range = sizeof(EObjectData) * MAX_OBJECTS;
+
+		VkWriteDescriptorSet object_buffer_write = {};
+		object_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		object_buffer_write.dstSet = 0;
+		object_buffer_write.dstBinding = 1;
+		object_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		object_buffer_write.descriptorCount = 1;
+		object_buffer_write.pBufferInfo = &object_buffer_info;
+
+		//VkDescriptorImageInfo texture_image_info = {};
+		//texture_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		//texture_image_info.sampler = texture_array_sampler;
+		//texture_image_info.imageView = texture_array_view;
+
+		//VkWriteDescriptorSet image_buffer_write = {};
+		//image_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//image_buffer_write.dstSet = 0;
+		//image_buffer_write.dstBinding = 2;
+		//image_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		//image_buffer_write.descriptorCount = 1;
+		//image_buffer_write.pImageInfo = &texture_image_info;
+
+		std::vector<VkWriteDescriptorSet> write_descriptors = {
+			camera_descrpitor_write,
+			object_buffer_write
+		};
+
+		vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
+		vkCmdBindPipeline(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines["vertex"]);
+
+		VkDeviceSize offset[] = { 0 };
+		vkCmdBindVertexBuffers(command_buffers[current_frame], 0, 1, &mesh.vertex_buffer.get_buffer(), offset);
+		vkCmdBindIndexBuffer(command_buffers[current_frame], mesh.index_buffer.get_buffer(), 0, VK_INDEX_TYPE_UINT32);
+
+		ssbo[0].model = mathlib::calculate_model_matrix(glm::vec3(0, 0, -2), glm::vec3(0), glm::vec3(0.2f));
+		vkCmdDrawIndexed(command_buffers[current_frame], mesh.index_count, 1, 0, 0, 0);
+
+		ImGui::Render();
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffers[current_frame]);
+	}
+	vkCmdEndRenderingKHR(command_buffers[current_frame]);
+}
+
 bool Renderer::end() {
+	image_barrier(
+					command_buffers[current_frame], swapchain_images[image_index],
+					VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+					VkImageSubresourceRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+	);
+
 	VkSemaphore wait_semaphores[] = { available_semaphores[current_frame] };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -625,6 +624,23 @@ bool Renderer::create_depth_image(bool rebuild) {
 }
 
 bool Renderer::create_texture_array() {
+	VkImageCreateInfo image_info = {};
+	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.extent.width = 512;
+    image_info.extent.height = 512;
+    image_info.extent.depth = 1;
+    image_info.mipLevels = 1;
+    image_info.arrayLayers = 1;
+    image_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VkImageViewCreateInfo view_info = {};
+
 	VkSamplerCreateInfo sampler_info = {};
 	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	sampler_info.magFilter = VK_FILTER_LINEAR;
@@ -646,7 +662,7 @@ bool Renderer::create_texture_array() {
 	VK_CHECK_BOOL(vkCreateSampler(device, &sampler_info, nullptr, &texture_array_sampler));
 
 	deletion_queue.push_back([=, this]() {
-		//vkDestroyImageView(device, texture_array_view, nullptr);
+		vkDestroyImageView(device, texture_array_view, nullptr);
 		vkDestroySampler(device, texture_array_sampler, nullptr);
 	});
 
@@ -671,22 +687,20 @@ bool Renderer::create_descriptor_layout() {
 }
 
 bool Renderer::create_descriptor_pool() {
-	{
-		std::vector<VkDescriptorPoolSize> pool_sizes = {
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 }
-		};
+	std::vector<VkDescriptorPoolSize> pool_sizes = {
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 10 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 }
+	};
 
-		VkDescriptorPoolCreateInfo pool_info = {};
-		pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
-		pool_info.pPoolSizes = pool_sizes.data();
-		pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 3;
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+	pool_info.pPoolSizes = pool_sizes.data();
+	pool_info.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 3;
 
-		VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
-	}
+	VK_CHECK_BOOL(vkCreateDescriptorPool(device, &pool_info, nullptr, &descriptor_pool));
 
 	deletion_queue.push_back([=, this]() {
 		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
@@ -873,28 +887,7 @@ VkShaderModule Renderer::create_shader(const std::vector<uint32_t> &code) {
 	return shader_module;
 }
 
-void Renderer::image_barrier(
-						VkCommandBuffer command, VkImage image,
-						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
-						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
-						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
-						VkImageSubresourceRange resource_range
-) {
-	VkImageMemoryBarrier image_barrier = {};
-	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	image_barrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
-	image_barrier.srcAccessMask = src_access_mask;
-	image_barrier.dstAccessMask = dst_access_mask;
-	image_barrier.oldLayout = old_image_layout;
-	image_barrier.newLayout = new_image_layout;
-	image_barrier.image = image;
-	image_barrier.subresourceRange = resource_range;
-
-	vkCmdPipelineBarrier(command, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
-}
-
-void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&function) {
+void Renderer::submit_command(SubmitFunction &&function) {
 	VkCommandBuffer command = {};
 
 	auto command_buffer_info = info::command_buffer_allocate_info(command_pool);
@@ -919,6 +912,27 @@ void Renderer::submit_command(std::function<void(VkCommandBuffer command)> &&fun
 	VK_CHECK_VOID(vkQueueWaitIdle(graphics_queue));
 
 	vkFreeCommandBuffers(device, command_pool, 1, &command);
+}
+
+void Renderer::image_barrier(
+						VkCommandBuffer command, VkImage image,
+						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
+						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
+						VkImageSubresourceRange resource_range
+) {
+	VkImageMemoryBarrier image_barrier = {};
+	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	image_barrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
+	image_barrier.srcAccessMask = src_access_mask;
+	image_barrier.dstAccessMask = dst_access_mask;
+	image_barrier.oldLayout = old_image_layout;
+	image_barrier.newLayout = new_image_layout;
+	image_barrier.image = image;
+	image_barrier.subresourceRange = resource_range;
+
+	vkCmdPipelineBarrier(command, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1, &image_barrier);
 }
 
 bool Renderer::build_vertex_layout() {

@@ -18,11 +18,22 @@ public:
 
 	bool setup(GameGlobals *game_globals);
 	bool begin();
+	void run();
 	bool end();
 
 	VmaAllocator get_allocator() { return allocator; }
 
-	void submit_command(std::function<void(VkCommandBuffer command)> &&function);
+	using SubmitFunction = std::function<void(VkCommandBuffer)>;
+	void submit_command(SubmitFunction &&function);
+
+	void image_barrier(
+						VkCommandBuffer command, VkImage image,
+						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
+						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
+						VkImageSubresourceRange resource_range
+	);
+
 private:
 	bool create_instance();
 	bool create_surface();
@@ -51,21 +62,11 @@ private:
 	VkFormat find_depth_format();
 
 	VkShaderModule create_shader(const std::vector<uint32_t> &code);
-
-	// this is fucking terrible, what do else do i do. kys retard.
-	void image_barrier(
-						VkCommandBuffer command, VkImage image,
-						VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
-						VkImageLayout old_image_layout, VkImageLayout new_image_layout,
-						VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,
-						VkImageSubresourceRange resource_range
-	);
-
 	bool build_vertex_layout();
 	bool build_vertex_pipelines();
 private:
-	std::deque<std::function<void()>> deletion_queue = {};
 	GameGlobals *game = nullptr;
+	std::deque<std::function<void()>> deletion_queue = {};
 
 	vkb::Instance instance = {};
 	VkSurfaceKHR surface = VK_NULL_HANDLE;

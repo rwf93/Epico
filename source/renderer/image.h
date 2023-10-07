@@ -10,10 +10,12 @@ class EImage {
 public:
     VkImage &get_image() { return image; }
     VmaAllocation &get_allocation() { return allocation; }
+    VmaAllocationInfo &get_info() { return info; }
 public:
     Renderer *context = nullptr;
     VkImage image = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
+    VmaAllocationInfo info = {};
 };
 
 }
