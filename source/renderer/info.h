@@ -26,4 +26,7 @@ VkPipelineVertexInputStateCreateInfo input_vertex_info(
 
 VkPipelineRenderingCreateInfoKHR rendering_create_info(std::vector<VkFormat> &color_attachment_formats, VkFormat depth_format, VkFormat stencil_format = VK_FORMAT_UNDEFINED);
 
+VkImageCreateInfo image_create_info(int width, int height);
+VkImageCreateInfo image_create_info(VkExtent2D extent);
+
 }

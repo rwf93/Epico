@@ -33,6 +33,7 @@ bool Renderer::setup(GameGlobals *game_globals) {
 	if(!create_sync_objects())		return false;
 
 	if(!create_vma_allocator())		return false;
+
 	if(!create_depth_image())		return false;
 	if(!create_texture_array())		return false;
 
@@ -238,22 +239,23 @@ void Renderer::run() {
 		object_buffer_write.descriptorCount = 1;
 		object_buffer_write.pBufferInfo = &object_buffer_info;
 
-		//VkDescriptorImageInfo texture_image_info = {};
-		//texture_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		//texture_image_info.sampler = texture_array_sampler;
-		//texture_image_info.imageView = texture_array_view;
+		VkDescriptorImageInfo texture_image_info = {};
+		texture_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		texture_image_info.sampler = texture_array_sampler;
+		texture_image_info.imageView = texture_array_view;
 
-		//VkWriteDescriptorSet image_buffer_write = {};
-		//image_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//image_buffer_write.dstSet = 0;
-		//image_buffer_write.dstBinding = 2;
-		//image_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		//image_buffer_write.descriptorCount = 1;
-		//image_buffer_write.pImageInfo = &texture_image_info;
+		VkWriteDescriptorSet image_buffer_write = {};
+		image_buffer_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		image_buffer_write.dstSet = 0;
+		image_buffer_write.dstBinding = 2;
+		image_buffer_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		image_buffer_write.descriptorCount = 1;
+		image_buffer_write.pImageInfo = &texture_image_info;
 
 		std::vector<VkWriteDescriptorSet> write_descriptors = {
 			camera_descrpitor_write,
-			object_buffer_write
+			object_buffer_write,
+			image_buffer_write
 		};
 
 		vkCmdPushDescriptorSetKHR(command_buffers[current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layouts["vertex"], 0, static_cast<uint32_t>(write_descriptors.size()), write_descriptors.data());
@@ -581,12 +583,9 @@ bool Renderer::create_vma_allocator() {
 bool Renderer::create_depth_image(bool rebuild) {
 	VkFormat depth_format = find_depth_format();
 
-	VkImageCreateInfo image_create_info = {};
+	auto image_create_info = info::image_create_info(swapchain.extent);
 	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image_create_info.imageType = VK_IMAGE_TYPE_2D;
-	image_create_info.extent.width = swapchain.extent.width;
-	image_create_info.extent.height = swapchain.extent.height;
-	image_create_info.extent.depth = 1;
 	image_create_info.mipLevels = 1;
 	image_create_info.arrayLayers = 1;
 	image_create_info.format = depth_format;
@@ -598,7 +597,7 @@ bool Renderer::create_depth_image(bool rebuild) {
 
 	auto allocate_info = info::allocation_create_info(VMA_ALLOCATION_CREATE_CAN_ALIAS_BIT);
 
-	VK_CHECK_BOOL(vmaCreateImage(allocator, &image_create_info, &allocate_info, &depth_image.image, &depth_image.allocation, nullptr));
+	depth_image.allocate(this, &image_create_info, &allocate_info);
 
 	VkImageViewCreateInfo view_info = {};
 	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -616,7 +615,7 @@ bool Renderer::create_depth_image(bool rebuild) {
 	if(!rebuild) {
 		deletion_queue.push_back([=, this]() {
 			vkDestroyImageView(device, depth_image_view, nullptr);
-			vmaDestroyImage(allocator, depth_image.image, depth_image.allocation);
+			depth_image.destroy();
 		});
 	}
 
@@ -624,22 +623,33 @@ bool Renderer::create_depth_image(bool rebuild) {
 }
 
 bool Renderer::create_texture_array() {
-	VkImageCreateInfo image_info = {};
-	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	image_info.imageType = VK_IMAGE_TYPE_2D;
-    image_info.extent.width = 512;
-    image_info.extent.height = 512;
-    image_info.extent.depth = 1;
-    image_info.mipLevels = 1;
-    image_info.arrayLayers = 1;
-    image_info.format = VK_FORMAT_R8G8B8A8_SRGB;
-    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    image_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
-    image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	auto image_create_info = info::image_create_info(512, 512);
+	auto allocate_info = info::allocation_create_info(0);
 
-	VkImageViewCreateInfo view_info = {};
+	image_create_info.imageType = VK_IMAGE_TYPE_2D;
+    image_create_info.mipLevels = 1;
+    image_create_info.arrayLayers = 1;
+    image_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+    image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	texture_array.allocate(this, &image_create_info, &allocate_info);
+
+	VkImageViewCreateInfo view_create_info = {};
+	view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+	view_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+	view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	view_create_info.subresourceRange.baseMipLevel = 0;
+	view_create_info.subresourceRange.levelCount = 1;
+	view_create_info.subresourceRange.baseArrayLayer = 0;
+	view_create_info.subresourceRange.layerCount = 1;
+	view_create_info.image = texture_array.get_image();
+
+	VK_CHECK_BOOL(vkCreateImageView(device, &view_create_info, nullptr, &texture_array_view));
 
 	VkSamplerCreateInfo sampler_info = {};
 	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -662,8 +672,9 @@ bool Renderer::create_texture_array() {
 	VK_CHECK_BOOL(vkCreateSampler(device, &sampler_info, nullptr, &texture_array_sampler));
 
 	deletion_queue.push_back([=, this]() {
-		vkDestroyImageView(device, texture_array_view, nullptr);
 		vkDestroySampler(device, texture_array_sampler, nullptr);
+		vkDestroyImageView(device, texture_array_view, nullptr);
+		texture_array.destroy();
 	});
 
 	return true;

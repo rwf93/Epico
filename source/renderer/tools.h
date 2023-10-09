@@ -1,10 +1,8 @@
 #pragma once
 
 template<>
-struct fmt::formatter<VkResult> : fmt::formatter<std::string>
-{
-	auto format(VkResult my, format_context &ctx) const -> decltype(ctx.out())
-	{
+struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
+	auto format(VkResult my, format_context &ctx) const -> decltype(ctx.out()) {
 		return fmt::format_to(ctx.out(), "{}", magic_enum::enum_name(my));
 	}
 };
