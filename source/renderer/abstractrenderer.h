@@ -2,8 +2,7 @@
 
 class AbstractRenderer {
 public:
-    virtual void create() = 0;
-    virtual void destroy() = 0;
+    virtual ~AbstractRenderer() {};
 
     virtual void begin() = 0;
     virtual void end() = 0;

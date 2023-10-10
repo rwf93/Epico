@@ -13,7 +13,7 @@
 #endif
 
 #ifdef EAPI_EXPORT
-#define EAPI SHARED_EXPORT
+    #define EAPI SHARED_EXPORT
 #else
-#define EAPI SHARED_IMPORT
+    #define EAPI SHARED_IMPORT
 #endif

@@ -6,12 +6,12 @@
 
 #include <spdlog/spdlog.h>
 
-void VulkanRenderer::create() {
-    spdlog::info("Vulkan Rendering Implementation");
+VulkanRenderer::VulkanRenderer() {
+    spdlog::info("Vulkan Renderer Instantiated");
 }
 
-void VulkanRenderer::destroy() {
-    delete this;
+VulkanRenderer::~VulkanRenderer() {
+    spdlog::info("Vulkan Renderer Destroyed");
 }
 
 void VulkanRenderer::begin() {

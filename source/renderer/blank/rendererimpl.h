@@ -2,12 +2,12 @@
 
 class BlankRenderer: public AbstractRenderer {
 public:
-    void create();
-    void destroy();
+    BlankRenderer();
+    ~BlankRenderer() override;
 
-    void begin();
-    void end();
+    void begin() override;
+    void end() override;
 
-    void begin_pass();
-    void end_pass();
+    void begin_pass() override;
+    void end_pass() override;
 };

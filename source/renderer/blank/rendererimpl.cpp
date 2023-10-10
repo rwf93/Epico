@@ -6,12 +6,12 @@
 
 #include <spdlog/spdlog.h>
 
-void BlankRenderer::create() {
-    spdlog::info("Blank Rendering Implementation");
+BlankRenderer::BlankRenderer() {
+    spdlog::info("Unused Renderer... What are you doing??");
 }
 
-void BlankRenderer::destroy() {
-    delete this;
+BlankRenderer::~BlankRenderer() {
+    spdlog::info("Okay bro...");
 }
 
 void BlankRenderer::begin() {

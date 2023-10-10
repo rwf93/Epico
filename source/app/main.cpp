@@ -6,8 +6,10 @@
 int main(int argc, const char *argv[]) {
     AbstractRenderer *renderer = create_vulkan_renderer();
 
-    renderer->create();
-    renderer->destroy();
+    renderer->begin();
+    renderer->end();
+
+    delete renderer;
 
     return 0;
 }
