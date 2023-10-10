@@ -1,10 +1,6 @@
 #pragma once
 
-#ifdef EAPI_EXPORT
-#define EAPI __declspec(dllexport)
-#else
-#define EAPI __declspec(dllimport)
-#endif
+#include <platform/platform.h>
 
 class AbstractRenderer;
 extern "C" EAPI AbstractRenderer *create_blank_renderer();
