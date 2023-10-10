@@ -1,15 +1,11 @@
 #pragma once
 
-#if defined(_MSC_VER)
-    #define SHARED_EXPORT __declspec(dllexport)
-    #define SHARED_IMPORT __declspec(dllimport)
-#elif defined(__GNUC__)
-    #define SHARED_EXPORT __attribute__((visibility("default")))
-    #define SHARED_IMPORT
+#if defined(_WIN32) && !defined(__CYGWIN__)
+    #include <platform/platform_win32.h>
+#elif defined(__linux__)
+    #include <platform/platform_linux.h>
 #else
-    #define SHARED_EXPORT
-    #define SHARED_IMPORT
-    #error "Unsupported Compiler for shared library exporting"
+    #error "Unsupported Platform"
 #endif
 
 #ifdef EAPI_EXPORT
