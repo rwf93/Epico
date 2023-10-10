@@ -30,6 +30,6 @@ void BlankRenderer::end_pass() {
 
 }
 
-AbstractRenderer *create_blank_renderer() {
-    return new BlankRenderer();
+std::shared_ptr<AbstractRenderer> create_blank_renderer() {
+    return std::make_shared<BlankRenderer>();
 }

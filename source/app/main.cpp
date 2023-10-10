@@ -4,12 +4,16 @@
 #include <spdlog/spdlog.h>
 
 int main(int argc, const char *argv[]) {
-    AbstractRenderer *renderer = create_vulkan_renderer();
+    auto renderer = create_vulkan_renderer();
 
-    renderer->begin();
-    renderer->end();
+    while(true) {
+        renderer->begin();
 
-    delete renderer;
+        renderer->begin_pass();
+        renderer->end_pass();
+
+        renderer->end();
+    }
 
     return 0;
 }
