@@ -10,7 +10,8 @@ public:
 
     void begin_pass() override;
     void end_pass() override;
-
 private:
     VulkanInstance instance = {};
+    VulkanSurface surface = { &instance };
+    VulkanDevice device = { &instance, &surface };
 };

@@ -3,14 +3,15 @@
 #include <abstractrenderer.h>
 
 #include "vkinstance.h"
+#include "vksurface.h"
+#include "vkdevice.h"
+
 #include "rendererimpl.h"
 
 VulkanRenderer::VulkanRenderer() {
-    spdlog::info("Created Vulkan Renderer");
 }
 
 VulkanRenderer::~VulkanRenderer() {
-
 }
 
 void VulkanRenderer::begin() {
