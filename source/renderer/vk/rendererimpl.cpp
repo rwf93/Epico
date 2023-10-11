@@ -1,5 +1,5 @@
 #define EAPI_EXPORT
-#include <factory.h>
+#include <platform/platform.h>
 #include <abstractrenderer.h>
 
 #include "info.h"
@@ -32,6 +32,6 @@ void VulkanRenderer::end_pass() {
 
 }
 
-std::shared_ptr<AbstractRenderer> create_vulkan_renderer() {
-    return std::make_shared<VulkanRenderer>();
+extern "C" EAPI AbstractRenderer *create_factory() {
+    return new VulkanRenderer();
 }

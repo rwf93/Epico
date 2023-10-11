@@ -1,5 +1,5 @@
 #define EAPI_EXPORT
-#include <factory.h>
+#include <platform/platform.h>
 
 #include <abstractrenderer.h>
 #include "rendererimpl.h"
@@ -30,6 +30,6 @@ void BlankRenderer::end_pass() {
 
 }
 
-std::shared_ptr<AbstractRenderer> create_blank_renderer() {
-    return std::make_shared<BlankRenderer>();
+extern "C" EAPI AbstractRenderer *create_factory() {
+    return new BlankRenderer();
 }

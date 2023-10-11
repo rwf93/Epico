@@ -1,15 +1,21 @@
 #pragma once
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    #include <platform/platform_win32.h>
-#elif defined(__linux__)
+#include <string>
+
+#if defined(_WIN32) || defined(_WIN64)
+    #define PLATFORM_WINDOWS
+    #define WIN_LINUX(win, linux) win
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(_LINUX)
+    #define PLATFORM_LINUX
+    #define WIN_LINUX(win, linux) linux
+#endif
+
+#if defined(PLATFORM_WINDOWS)
+    #include <platform/platform_windows.h>
+#elif defined(PLATFORM_LINUX)
     #include <platform/platform_linux.h>
 #else
     #error "Unsupported Platform"
 #endif
 
-#ifdef EAPI_EXPORT
-    #define EAPI SHARED_EXPORT
-#else
-    #define EAPI SHARED_IMPORT
-#endif
+#include <platform/platform_shared.h>

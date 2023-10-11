@@ -1,4 +1,5 @@
-#include <factory.h>
+#include <platform/platform.h>
+
 #include <renderer/abstractrenderer.h>
 
 #include <spdlog/spdlog.h>
@@ -6,11 +7,15 @@
 
 int main(int argc, char *args[]) {
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-        spdlog::info("Couldn't init SDL: {}", SDL_GetError());
+        spdlog::error("Couldn't init SDL: {}", SDL_GetError());
         return 0;
     };
 
-    auto renderer = create_vulkan_renderer();
+    auto renderer = get_factory<AbstractRenderer*>("VulkanRenderer");
+    if(!renderer.good) {
+        spdlog::error("Could not load renderer binary...");
+        return 0;
+    }
 
     static bool quit = false;
     while(!quit) {
@@ -27,6 +32,7 @@ int main(int argc, char *args[]) {
         renderer->end();
     }
 
+    renderer.release();
     SDL_Quit();
 
     return 0;
