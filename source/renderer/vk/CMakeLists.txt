@@ -1,4 +1,7 @@
 add_library(${PROJECT}_VulkanRenderer SHARED
+    vma.cpp
+    info.cpp
+
     vkinstance.cpp
     vksurface.cpp
     vkdevice.cpp

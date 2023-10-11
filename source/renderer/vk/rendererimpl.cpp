@@ -2,6 +2,8 @@
 #include <factory.h>
 #include <abstractrenderer.h>
 
+#include "info.h"
+
 #include "vkinstance.h"
 #include "vksurface.h"
 #include "vkdevice.h"
