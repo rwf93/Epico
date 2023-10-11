@@ -2,6 +2,7 @@ add_library(${PROJECT}_VulkanRenderer SHARED
     vkinstance.cpp
     vksurface.cpp
     vkdevice.cpp
+    vkswapchain.cpp
 
     rendererimpl.cpp
 )

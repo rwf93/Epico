@@ -5,6 +5,7 @@
 #include "vkinstance.h"
 #include "vksurface.h"
 #include "vkdevice.h"
+#include "vkswapchain.h"
 
 #include "rendererimpl.h"
 
