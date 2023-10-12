@@ -14,7 +14,6 @@
 #include "rendererimpl.h"
 
 VulkanRenderer::VulkanRenderer() {
-
 }
 
 VulkanRenderer::~VulkanRenderer() {

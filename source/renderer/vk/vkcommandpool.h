@@ -15,8 +15,14 @@ public:
     VkCommandBuffer &get_command(uint32_t index) { return command_buffers[index]; }
     VkCommandBuffer &get_command() { return get_command(current_frame); };
 
+    // onetime command submitting
     using SubmitCommandFunction = std::function<void(VkCommandBuffer command)>;
-    static void submit_command(SubmitCommandFunction &&command_function);
+    void submit_command(SubmitCommandFunction &&command_function);
+
+private:
+    void create_command_pool();
+    void create_sync_objects();
+
 private:
     VulkanDevice *device = nullptr;
     VulkanSwapchain *swapchain = nullptr;

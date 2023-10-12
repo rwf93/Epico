@@ -12,11 +12,8 @@ VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swap
     max_flying_frames = swapchain->get_swapchain_images().size();
     command_buffers.resize(max_flying_frames);
 
-    auto command_pool_info = info::command_pool_create_info(device->get_graphics_queue_index(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-    VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &command_pool));
-
-    auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
-    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, command_buffers.data()));
+    create_command_pool();
+    create_sync_objects();
 }
 
 VulkanCommandPool::~VulkanCommandPool() {
@@ -25,12 +22,7 @@ VulkanCommandPool::~VulkanCommandPool() {
 
 void VulkanCommandPool::rebuild() {
     vkDestroyCommandPool(device->get_device(), command_pool, nullptr);
-
-    auto command_pool_info = info::command_pool_create_info(device->get_graphics_queue_index(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-    VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &command_pool));
-
-    auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
-    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, command_buffers.data()));
+    create_command_pool();
 }
 
 void VulkanCommandPool::begin_recording() {
@@ -42,5 +34,40 @@ void VulkanCommandPool::end_recording() {
 }
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
+    VkCommandBuffer command = {};
+
+    auto command_buffer_info = info::command_buffer_allocate_info(command_pool);
+    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_buffer_info, &command));
+
+    VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    VK_CHECK(vkBeginCommandBuffer(command, &begin_info));
+
+    command_function(command);
+
+    VK_CHECK(vkEndCommandBuffer(command));
+
+    VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command;
+
+    VK_CHECK(vkQueueSubmit(device->get_graphics_queue(), 1, &submit_info, VK_NULL_HANDLE));
+	VK_CHECK(vkQueueWaitIdle(device->get_graphics_queue()));
+
+    vkFreeCommandBuffers(device->get_device(), command_pool, 1, &command);
+}
+
+void VulkanCommandPool::create_command_pool() {
+    auto command_pool_info = info::command_pool_create_info(device->get_graphics_queue_index(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &command_pool));
+
+    auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
+    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, command_buffers.data()));
+}
+
+void VulkanCommandPool::create_sync_objects() {
 
 }
