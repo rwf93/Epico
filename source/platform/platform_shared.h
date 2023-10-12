@@ -26,7 +26,7 @@ symbol_t platform_get_symbol(handle_t handle, const char *symbol_name) {
 }
 
 template<typename T>
-T* platform_get_function(handle_t handle, const char *symbol_name) {
+T *platform_get_function(handle_t handle, const char *symbol_name) {
     return reinterpret_cast<T*>(platform_get_symbol(handle, symbol_name));
 }
 

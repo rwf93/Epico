@@ -30,7 +30,7 @@ void VulkanCommandPool::begin_recording() {
 }
 
 void VulkanCommandPool::end_recording() {
-
+    current_frame = (current_frame + 1) % max_flying_frames;
 }
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
