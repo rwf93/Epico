@@ -1,5 +1,4 @@
 #include <platform/platform.h>
-
 #include <renderer/abstractrenderer.h>
 
 #include <spdlog/spdlog.h>

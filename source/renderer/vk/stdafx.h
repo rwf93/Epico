@@ -1,5 +1,8 @@
 #pragma once
 
+#include <deque>
+#include <functional>
+
 #include <vulkan/vulkan_core.h>
 #include <VkBootstrap.h>
 

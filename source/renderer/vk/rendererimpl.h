@@ -15,4 +15,5 @@ private:
     VulkanSurface surface = { &instance };
     VulkanDevice device = { &instance, &surface };
     VulkanSwapchain swapchain = { &device };
+    VulkanCommandPool command_pool = { &device, &swapchain };
 };
