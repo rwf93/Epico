@@ -15,6 +15,7 @@ VulkanRenderer::VulkanRenderer() {
 }
 
 VulkanRenderer::~VulkanRenderer() {
+    spdlog::info("Killing VK");
 }
 
 void VulkanRenderer::begin() {

@@ -14,12 +14,7 @@ handle_t platform_loadlibrary(const char *name, const char *dir = WIN_LINUX(".\\
     std::string suffix = WIN_LINUX(".dll", ".so");
     std::string fullpath = dir + prefix + name + suffix;
 
-#if defined(PLATFORM_WINDOWS)
-    handle_t handle = ::LoadLibraryA(fullpath.c_str());
-#else
-    handle_t handle = dlopen(fullpath.c_str(), RTLD_NOW | RTLD_LOCAL);
-#endif
-
+    handle_t handle = WIN_LINUX(::LoadLibraryA(fullpath.c_str()), dlopen(fullpath.c_str(), RTLD_NOW | RTLD_LOCAL));
     if(handle)
         return handle;
 
@@ -51,11 +46,11 @@ struct FactoryHandle {
             platform_freelibrary(handle);
     }
 
-    T operator->() {
-        return interface;
-    }
+    // abuse some operator overloading
+    T operator->() { return interface; }
 };
 
+// Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.
 template<typename T>
 FactoryHandle<T> get_factory(const char *binary, const char *factory_function = "create_factory", const char *dir = WIN_LINUX(".\\", "./")) {
     handle_t handle = platform_loadlibrary(binary);
