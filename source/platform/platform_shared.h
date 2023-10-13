@@ -43,9 +43,10 @@ struct FactoryHandle {
     bool good = false; // Determines if the result of get_factory is successful
     // Free the instantiated interface, and free the loaded library.
     void release() {
-        if(good)
+        if(good) {
             delete interface;
             platform_freelibrary(handle);
+        }
     }
 
     T operator->() { return interface; }
