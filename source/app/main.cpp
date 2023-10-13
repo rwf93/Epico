@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
 
     auto renderer = get_factory<AbstractRenderer*>("VulkanRenderer", &context);
     if(!renderer.good) {
+        spdlog::error("Couldn't load renderer");
         return 0;
     }
 
