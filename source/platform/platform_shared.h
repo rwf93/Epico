@@ -1,5 +1,7 @@
 #pragma once
 
+#define UNUSED(arg) (void)(arg);
+
 #ifdef EAPI_EXPORT
     #define EAPI SHARED_EXPORT
 #else
@@ -9,10 +11,10 @@
 typedef WIN_LINUX(HINSTANCE, void*) handle_t;
 typedef WIN_LINUX(FARPROC, void*) symbol_t;
 
-handle_t platform_loadlibrary(const char *name, const char *dir = WIN_LINUX(".\\", "./")) {
+handle_t platform_loadlibrary(const char *name, std::filesystem::path dir = "./") {
     std::string prefix = WIN_LINUX("", "lib");
     std::string suffix = WIN_LINUX(".dll", ".so");
-    std::string fullpath = dir + prefix + name + suffix;
+    std::string fullpath = dir.make_preferred().string() + prefix + name + suffix;
 
     handle_t handle = WIN_LINUX(::LoadLibraryA(fullpath.c_str()), dlopen(fullpath.c_str(), RTLD_NOW | RTLD_LOCAL));
     if(handle)
@@ -51,8 +53,8 @@ struct FactoryHandle {
 
 // Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.
 template<typename T>
-FactoryHandle<T> get_factory(const char *binary, void *user_data = nullptr, const char *factory_function = "create_factory", const char *dir = WIN_LINUX(".\\", "./")) {
-    handle_t handle = platform_loadlibrary(binary);
+FactoryHandle<T> get_factory(const char *binary, void *user_data = nullptr, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
+    handle_t handle = platform_loadlibrary(binary, dir);
 
     if(!handle)
         return {nullptr, nullptr, false};

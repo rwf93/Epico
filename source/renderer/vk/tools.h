@@ -18,3 +18,8 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
         std::abort();                                               \
     }                                                               \
 }
+
+#define VK_ALIGN(size, alignment) ( (size + alignment - 1) & ~(alignment - 1) )
+#define VK_ALIGN_BOUNDS(size, alignment) ( alignment > 0 ? VK_ALIGN(size, alignment) : size )
+static_assert(VK_ALIGN(1024, 0) != 1024);
+static_assert(VK_ALIGN_BOUNDS(1024, 0) == 1024);

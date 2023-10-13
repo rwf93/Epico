@@ -34,3 +34,8 @@ target_link_libraries(VulkanRenderer
 	$<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 target_link_libraries(VulkanRenderer PRIVATE magic_enum::magic_enum)
+
+target_compile_options(VulkanRenderer PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+)

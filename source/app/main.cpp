@@ -6,7 +6,10 @@
 
 #include "appcontext.h"
 
-int main(int argc, char *args[]) {
+int main(int argc, char *argv[]) {
+    UNUSED(argc);
+    UNUSED(argv);
+
     AppContext context;
 
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {

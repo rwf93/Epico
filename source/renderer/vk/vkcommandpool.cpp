@@ -9,7 +9,7 @@ VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swap
     this->device = device;
     this->swapchain = swapchain;
 
-    max_flying_frames = swapchain->get_swapchain_images().size();
+    max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
     command_buffers.resize(max_flying_frames);
 
     create_command_pool();
