@@ -27,7 +27,9 @@ void VulkanCommandPool::rebuild() {
 void VulkanCommandPool::begin_recording() {
     vkResetCommandBuffer(get_command(), 0);
 
-    static VkCommandBufferBeginInfo begin_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    static VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
     VK_CHECK(vkBeginCommandBuffer(get_command(), &begin_info));
 }
 
