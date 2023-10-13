@@ -2,7 +2,7 @@
 
 class VulkanRenderer: public AbstractRenderer {
 public:
-    VulkanRenderer();
+    VulkanRenderer(AppContext *app_context);
     ~VulkanRenderer() override;
 
     void begin() override;
@@ -11,6 +11,8 @@ public:
     void begin_pass() override;
     void end_pass() override;
 private:
+    AppContext *app_context = nullptr;
+
     VulkanInstance instance = {};
     VulkanSurface surface = { &instance };
     VulkanDevice device = { &instance, &surface };

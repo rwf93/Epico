@@ -38,32 +38,31 @@ template<typename T>
 struct FactoryHandle {
     handle_t handle = nullptr;
     T interface = nullptr;
-    bool good = false;
-
+    bool good = false; // Determines if the result of get_factory is successful
+    // Free the instantiated interface, and free the loaded library.
     void release() {
         if(good)
             delete interface;
             platform_freelibrary(handle);
     }
 
-    // abuse some operator overloading
     T operator->() { return interface; }
 };
 
 // Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.
 template<typename T>
-FactoryHandle<T> get_factory(const char *binary, const char *factory_function = "create_factory", const char *dir = WIN_LINUX(".\\", "./")) {
+FactoryHandle<T> get_factory(const char *binary, void *user_data = nullptr, const char *factory_function = "create_factory", const char *dir = WIN_LINUX(".\\", "./")) {
     handle_t handle = platform_loadlibrary(binary);
 
     if(!handle)
         return {nullptr, nullptr, false};
 
-    auto create_factory = platform_get_function<T()>(handle, factory_function);
+    auto create_factory = platform_get_function<T(void*)>(handle, factory_function);
 
     if(!create_factory) {
         platform_freelibrary(handle);
         return {nullptr, nullptr, false};
     }
 
-    return {handle, create_factory(), true};
+    return {handle, create_factory(user_data), true};
 };

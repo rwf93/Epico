@@ -4,15 +4,18 @@
 #include <spdlog/spdlog.h>
 #include <SDL2/SDL.h>
 
+#include "appcontext.h"
+
 int main(int argc, char *args[]) {
+    AppContext context;
+
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         spdlog::error("Couldn't init SDL: {}", SDL_GetError());
         return 0;
     };
 
-    auto renderer = get_factory<AbstractRenderer*>("VulkanRenderer");
+    auto renderer = get_factory<AbstractRenderer*>("VulkanRenderer", &context);
     if(!renderer.good) {
-        spdlog::error("Could not load renderer binary...");
         return 0;
     }
 

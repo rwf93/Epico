@@ -13,7 +13,6 @@ VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swap
     command_buffers.resize(max_flying_frames);
 
     create_command_pool();
-    create_sync_objects();
 }
 
 VulkanCommandPool::~VulkanCommandPool() {
@@ -26,10 +25,14 @@ void VulkanCommandPool::rebuild() {
 }
 
 void VulkanCommandPool::begin_recording() {
+    vkResetCommandBuffer(get_command(), 0);
 
+    static VkCommandBufferBeginInfo begin_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    VK_CHECK(vkBeginCommandBuffer(get_command(), &begin_info));
 }
 
 void VulkanCommandPool::end_recording() {
+    VK_CHECK(vkEndCommandBuffer(get_command()));
     current_frame = (current_frame + 1) % max_flying_frames;
 }
 
@@ -66,8 +69,4 @@ void VulkanCommandPool::create_command_pool() {
 
     auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
     VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, command_buffers.data()));
-}
-
-void VulkanCommandPool::create_sync_objects() {
-
 }

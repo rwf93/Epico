@@ -2,6 +2,8 @@
 #include <platform/platform.h>
 #include <abstractrenderer.h>
 
+#include <app/appcontext.h>
+
 #include "tools.h"
 #include "info.h"
 
@@ -13,7 +15,9 @@
 
 #include "rendererimpl.h"
 
-VulkanRenderer::VulkanRenderer() {
+VulkanRenderer::VulkanRenderer(AppContext *app_context) {
+    this->app_context = app_context;
+    app_context->current_window = surface.get_window();
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -36,6 +40,6 @@ void VulkanRenderer::end_pass() {
 
 }
 
-extern "C" EAPI AbstractRenderer *create_factory() {
-    return new VulkanRenderer();
+extern "C" EAPI AbstractRenderer *create_factory(void *user_data) {
+    return new VulkanRenderer(reinterpret_cast<AppContext*>(user_data));
 }
