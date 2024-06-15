@@ -8,11 +8,18 @@ file(GLOB SHADER_FILES
     shaders/*.rgen
 )
 
-add_custom_command(
-	OUTPUT ${OUTPUT}/assets/shaders
-	COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT}/assets/shaders
-	COMMENT "Creating shader folder"
-)
+macro(populate_build DIRNAME)
+    add_custom_command(
+    	OUTPUT ${OUTPUT}/${DIRNAME}
+    	COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT}/${DIRNAME}
+    	COMMENT "Populating ${DIRNAME} folder"
+    )
+
+    list(APPEND POPULATED_FOLDERS ${OUTPUT}/${DIRNAME})
+endmacro()
+
+populate_build(assets)
+populate_build(assets/shaders)
 
 foreach(SHADER ${SHADER_FILES})
     get_filename_component(FILENAME ${SHADER} NAME)
@@ -27,5 +34,8 @@ foreach(SHADER ${SHADER_FILES})
     list(APPEND COMPILED_SHADERS ${OUTPUT}/assets/shaders/${FILENAME}.spv)
 endforeach()
 
-add_custom_target(shader_compile ALL DEPENDS ${OUTPUT}/assets/shaders ${COMPILED_SHADERS})
-add_dependencies(${PROJECT} shader_compile)
+add_custom_target(asset_preprocess ALL DEPENDS
+    ${POPULATED_FOLDERS}
+    ${COMPILED_SHADERS}
+)
+add_dependencies(${PROJECT} asset_preprocess)
