@@ -36,9 +36,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    renderer->get_pass_builder()
-        ->build();
-
     static bool quit = false;
     while(!quit) {
         SDL_Event event;

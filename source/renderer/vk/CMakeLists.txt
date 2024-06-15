@@ -7,8 +7,6 @@ add_library(renderer_vk SHARED
     vkdevice.cpp
     vkswapchain.cpp
     vkcommandpool.cpp
-    vkattachment.cpp
-    vkpassbuilder.cpp
 
     rendererimpl.cpp
 )

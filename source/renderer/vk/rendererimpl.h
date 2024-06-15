@@ -13,7 +13,6 @@ public:
 
     void rebuild();
 
-    AbstractPassBuilder *get_pass_builder() { return &pass_builder; }
 private:
     AppContext *app_context = nullptr;
 
@@ -22,6 +21,4 @@ private:
     VulkanDevice device = { &instance, &surface };
     VulkanSwapchain swapchain = { &device };
     VulkanCommandPool command_pool = { &device, &swapchain };
-
-    VulkanPassBuilder pass_builder = { &device };
 };

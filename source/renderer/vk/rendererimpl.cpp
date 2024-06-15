@@ -6,8 +6,6 @@
 #include "vkdevice.h"
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
-#include "vkattachment.h"
-#include "vkpassbuilder.h"
 
 #include "rendererimpl.h"
 
