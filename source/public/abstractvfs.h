@@ -3,6 +3,7 @@
 #include <string>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 class AbstractVFS {
 public:
@@ -28,5 +29,5 @@ public:
         file.close();
 
         return buffer;
-    };
+    }
 };
