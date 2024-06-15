@@ -1,7 +1,8 @@
 #define EAPI_EXPORT
 #include <platform/platform.h>
 
-#include <abstractrenderer.h>
+#include <public/abstractrenderer.h>
+
 #include "rendererimpl.h"
 
 #include <spdlog/spdlog.h>

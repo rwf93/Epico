@@ -1,9 +1,3 @@
-#define EAPI_EXPORT
-#include <platform/platform.h>
-#include <abstractrenderer.h>
-
-#include <app/appcontext.h>
-
 #include "tools.h"
 #include "info.h"
 
@@ -40,6 +34,10 @@ void VulkanRenderer::end_pass() {
 
 }
 
+static VulkanRenderer *singleton;
+
 extern "C" EAPI AbstractRenderer *create_factory(void *user_data) {
-    return new VulkanRenderer(reinterpret_cast<AppContext*>(user_data));
+    if(!singleton)
+        singleton = new VulkanRenderer(reinterpret_cast<AppContext*>(user_data));
+    return singleton;
 }

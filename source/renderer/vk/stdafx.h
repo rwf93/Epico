@@ -12,3 +12,9 @@
 #include <SDL2/SDL_vulkan.h>
 
 #include <vk_mem_alloc.h>
+
+#define EAPI_EXPORT
+#include <platform/platform.h>
+
+#include <public/abstractrenderer.h>
+#include <public/appcontext.h>

@@ -27,9 +27,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
-set(PROJECT Epico)
+set(PROJECT epico)
 project(${PROJECT})
 
 add_subdirectory(thirdparty)
 add_subdirectory(source)
-#add_subdirectory(assets)
+add_subdirectory(assets)
