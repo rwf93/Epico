@@ -11,7 +11,7 @@
 typedef WIN_LINUX(HINSTANCE, void*) handle_t;
 typedef WIN_LINUX(FARPROC, void*) symbol_t;
 
-handle_t platform_loadlibrary(const char *name, std::filesystem::path dir = "./") {
+inline handle_t platform_loadlibrary(const char *name, std::filesystem::path dir = "./") {
     std::string prefix = WIN_LINUX("", "lib");
     std::string suffix = WIN_LINUX(".dll", ".so");
     std::string fullpath = dir.make_preferred().string() + prefix + name + suffix;
@@ -23,16 +23,16 @@ handle_t platform_loadlibrary(const char *name, std::filesystem::path dir = "./"
     return nullptr;
 }
 
-symbol_t platform_get_symbol(handle_t handle, const char *symbol_name) {
+inline symbol_t platform_get_symbol(handle_t handle, const char *symbol_name) {
     return WIN_LINUX(GetProcAddress, dlsym)(handle, symbol_name);
 }
 
 template<typename T>
-T *platform_get_function(handle_t handle, const char *symbol_name) {
+inline T *platform_get_function(handle_t handle, const char *symbol_name) {
     return reinterpret_cast<T*>(platform_get_symbol(handle, symbol_name));
 }
 
-void platform_freelibrary(handle_t handle) {
+inline void platform_freelibrary(handle_t handle) {
     WIN_LINUX(FreeLibrary, dlclose)(handle);
 }
 
@@ -54,7 +54,7 @@ struct FactoryHandle {
 
 // Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.
 template<typename T>
-FactoryHandle<T> get_factory(const char *binary, void *user_data = nullptr, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
+inline FactoryHandle<T> get_factory(const char *binary, void *user_data = nullptr, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
     handle_t handle = platform_loadlibrary(binary, dir);
 
     if(!handle)
