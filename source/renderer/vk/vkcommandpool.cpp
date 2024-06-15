@@ -13,9 +13,16 @@ VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swap
     command_buffers.resize(max_flying_frames);
 
     create_command_pool();
+    create_sync_objects();
 }
 
 VulkanCommandPool::~VulkanCommandPool() {
+    for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
+        vkDestroySemaphore(device->get_device(), finished_semaphores[i], nullptr);
+		vkDestroySemaphore(device->get_device(), available_semaphores[i], nullptr);
+		vkDestroyFence(device->get_device(), in_flight_fences[i], nullptr);
+    }
+
     vkDestroyCommandPool(device->get_device(), command_pool, nullptr);
 }
 
@@ -25,7 +32,8 @@ void VulkanCommandPool::rebuild() {
 }
 
 void VulkanCommandPool::begin_recording() {
-    vkResetCommandBuffer(get_command(), 0);
+    VK_CHECK(vkWaitForFences(device->get_device(), 1, &get_fence(), VK_TRUE, UINT64_MAX));
+    VK_CHECK(vkResetCommandBuffer(get_command(), 0));
 
     static VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -71,4 +79,23 @@ void VulkanCommandPool::create_command_pool() {
 
     auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
     VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, command_buffers.data()));
+}
+
+void VulkanCommandPool::create_sync_objects() {
+    available_semaphores.resize(get_max_flying_frames());
+    finished_semaphores.resize(get_max_flying_frames());
+    in_flight_fences.resize(get_max_flying_frames());
+
+    VkSemaphoreCreateInfo semaphore_info = {};
+	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fence_info = {};
+	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
+        VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &available_semaphores[i]));
+		VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &finished_semaphores[i]));
+		VK_CHECK(vkCreateFence(device->get_device(), &fence_info, nullptr, &in_flight_fences[i]));
+    }
 }
