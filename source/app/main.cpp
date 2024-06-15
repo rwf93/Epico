@@ -24,8 +24,11 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    filesystem->mount("assets", "../assets/");
-    filesystem->mount("shaders", "./assets/shaders/");
+    filesystem->mount("assets/", "../assets/");
+    filesystem->mount("assets/models/", "../assets/models/");
+    filesystem->mount("assets/fonts/", "../assets/fonts/");
+    filesystem->mount("assets/textures/", "../assets/textures/");
+    filesystem->mount("shaders/", "./assets/shaders/");
 
     auto renderer = get_factory<AbstractRenderer*>("renderer_vk", &context);
     if(!renderer.good) {
