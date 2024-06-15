@@ -31,8 +31,15 @@ void VulkanCommandPool::rebuild() {
     create_command_pool();
 }
 
-void VulkanCommandPool::begin_recording() {
+void VulkanCommandPool::wait_fences() {
     VK_CHECK(vkWaitForFences(device->get_device(), 1, &get_fence(), VK_TRUE, UINT64_MAX));
+}
+
+void VulkanCommandPool::reset_fences() {
+    VK_CHECK(vkResetFences(device->get_device(), 1, &get_fence()));
+}
+
+void VulkanCommandPool::begin_recording() {
     VK_CHECK(vkResetCommandBuffer(get_command(), 0));
 
     static VkCommandBufferBeginInfo begin_info = {};
@@ -43,7 +50,6 @@ void VulkanCommandPool::begin_recording() {
 
 void VulkanCommandPool::end_recording() {
     VK_CHECK(vkEndCommandBuffer(get_command()));
-    current_frame = (current_frame + 1) % max_flying_frames;
 }
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
