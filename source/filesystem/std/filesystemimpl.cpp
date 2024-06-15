@@ -1,15 +1,16 @@
 #include "filesystemimpl.h"
 
-void StandardFilesystem::mount(std::string virtual_dir, std::string physical_dir) {
-    spdlog::info("Mounting {} to {}", virtual_dir, physical_dir);
+void StandardFilesystem::mount(std::filesystem::path virtual_dir, std::filesystem::path physical_dir) {
+    spdlog::info("Mounting {} to {}", virtual_dir.string(), physical_dir.string());
     mounts[virtual_dir].push_back(physical_dir);
 }
 
-void StandardFilesystem::unmount(std::string virtual_dir) {
+void StandardFilesystem::unmount(std::filesystem::path virtual_dir) {
     mounts[virtual_dir].clear();
 }
 
-std::string StandardFilesystem::resolve_physical_dir(std::string virtual_dir) {
+std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::path virtual_path) {
+    std::string virtual_dir = virtual_path.string();
     int path_index = 0;
 
     for(int i = 0; i < virtual_dir.size(); i++)
@@ -19,17 +20,17 @@ std::string StandardFilesystem::resolve_physical_dir(std::string virtual_dir) {
     std::string path = virtual_dir.substr(0, path_index + 1);
     std::string name = virtual_dir.substr(path.length(), virtual_dir.length());
 
-    std::string physical_dir = "";
+    std::filesystem::path physical_dir = "";
 
     for(auto &item: mounts[path]) {
-        auto path_name = item + name;
+        auto path_name = item.append(name);
 
         std::ifstream check(path_name);
         if(check.good())
             physical_dir = path_name;
     }
 
-    return physical_dir;
+    return std::filesystem::canonical(physical_dir);
 }
 
 static StandardFilesystem *singleton;
