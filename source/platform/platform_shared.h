@@ -55,17 +55,28 @@ struct FactoryHandle {
 // Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.
 template<typename T>
 inline FactoryHandle<T> get_factory(const char *binary, void *user_data = nullptr, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
+    using CreateFactoryType = T(void*);
+    CreateFactoryType *create_factory;
+    T factory_result;
+
     handle_t handle = platform_loadlibrary(binary, dir);
 
     if(!handle)
-        return {nullptr, nullptr, false};
+        goto fail;
 
-    auto create_factory = platform_get_function<T(void*)>(handle, factory_function);
+    create_factory = platform_get_function<CreateFactoryType>(handle, factory_function);
 
-    if(!create_factory) {
-        platform_freelibrary(handle);
-        return {nullptr, nullptr, false};
-    }
+    if(!create_factory)
+        goto fail_factory;
 
-    return {handle, create_factory(user_data), true};
+    factory_result = create_factory(user_data);
+    if(!factory_result)
+        goto fail_factory;
+
+    return {handle, factory_result, true};
+
+fail_factory:
+    platform_freelibrary(handle);
+fail:
+    return {nullptr, nullptr, false};
 };
