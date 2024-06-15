@@ -30,6 +30,9 @@ int main(int argc, char *argv[]) {
     filesystem->mount("assets/textures/", "../assets/textures/");
     filesystem->mount("assets/shaders/", "./assets/shaders/");
 
+    auto char_vec = filesystem->read_file<char>("assets/textures/really_cool_text_file.txt");
+    spdlog::info("{}", fmt::join(char_vec, ""));
+
     auto renderer = get_factory<AbstractRenderer*>("renderer_vk", &context);
     if(!renderer.good) {
         spdlog::error("Couldn't load renderer");
