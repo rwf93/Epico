@@ -13,7 +13,17 @@ VulkanSwapchain::~VulkanSwapchain() {
 
 void VulkanSwapchain::create_swapchain(bool rebuild) {
     vkb::SwapchainBuilder builder(device->get_device());
-    auto builder_ret = rebuild ? builder.set_old_swapchain(swapchain).build() : builder.build();
+    builder = rebuild ? builder.set_old_swapchain(swapchain) : builder;
+
+    VkSurfaceFormatKHR swapchain_format = {};
+    swapchain_format.format = VK_FORMAT_B8G8R8A8_UNORM;
+    swapchain_format.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+    auto builder_ret = builder
+        .set_desired_format(swapchain_format)
+        .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+        .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+        .build();
 
     if(!builder_ret.has_value()) {
         spdlog::error("Couldn't create Vulkan Swapchain: {}", builder_ret.error().message());

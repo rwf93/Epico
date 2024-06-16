@@ -6,10 +6,31 @@ VulkanDevice::VulkanDevice(VulkanInstance *instance, VulkanSurface *surface) {
     this->instance = instance;
     this->surface = surface;
 
+    retreive_device();
+    retreive_queues();
+}
+
+VulkanDevice::~VulkanDevice() {
+    vkb::destroy_device(device);
+}
+
+void VulkanDevice::retreive_device() {
+	VkPhysicalDeviceVulkan13Features features_13 = {};
+	features_13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    features_13.dynamicRendering = true;
+	features_13.synchronization2 = true;
+
+	VkPhysicalDeviceVulkan12Features features_12 = {};
+    features_12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+	features_12.bufferDeviceAddress = true;
+	features_12.descriptorIndexing = true;
+
     vkb::PhysicalDeviceSelector selector(instance->get_instance());
     auto selector_ret = selector
                             .set_surface(surface->get_surface())
                             .set_minimum_version(1, 3)
+                            .set_required_features_13(features_13)
+                            .set_required_features_12(features_12)
                             .select();
 
     if(!selector_ret.has_value()) {
@@ -18,18 +39,20 @@ VulkanDevice::VulkanDevice(VulkanInstance *instance, VulkanSurface *surface) {
     }
 
     vkb::DeviceBuilder builder(selector_ret.value());
-    auto builder_ret = builder
-                        .build();
+    auto builder_ret = builder.build();
 
     if(!builder_ret.has_value()) {
         spdlog::error("Couldn't create Device Builder", builder_ret.error().message());
         std::abort();
     }
 
-    device = builder_ret.value();
+    this->device = builder_ret.value();
 
     spdlog::info("Found capable render device: {}", device.physical_device.name);
+}
 
+void VulkanDevice::retreive_queues() {
+    // Yes, I am acutely aware the naming scheme here is bad.
     auto gq = device.get_queue(vkb::QueueType::graphics);
 	auto pq = device.get_queue(vkb::QueueType::present);
 	auto gqi = device.get_queue_index(vkb::QueueType::graphics);
@@ -52,8 +75,4 @@ VulkanDevice::VulkanDevice(VulkanInstance *instance, VulkanSurface *surface) {
 	graphics_queue = gq.value();
 	present_queue = pq.value();
 	graphics_queue_index = gqi.value();
-}
-
-VulkanDevice::~VulkanDevice() {
-    vkb::destroy_device(device);
 }

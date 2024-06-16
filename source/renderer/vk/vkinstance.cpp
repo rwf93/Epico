@@ -5,8 +5,9 @@ VulkanInstance::VulkanInstance() {
     auto builder_ret = builder
                         .set_app_name("Epico")
                         .set_engine_name("Epico Engine")
-                        .require_api_version(VK_API_VERSION_1_1)
+                        .require_api_version(VK_API_VERSION_1_3)
                         .request_validation_layers()
+                        .use_default_debug_messenger()
                         .enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
                         .build();
 
