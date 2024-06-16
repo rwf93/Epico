@@ -12,7 +12,11 @@ VkCommandPoolCreateInfo info::command_pool_create_info(uint32_t queue_family_ind
 	return command_pool_info;
 }
 
-VkCommandBufferAllocateInfo info::command_buffer_allocate_info(VkCommandPool command_pool, uint32_t count, VkCommandBufferLevel level) {
+VkCommandBufferAllocateInfo info::command_buffer_allocate_info(
+	VkCommandPool command_pool,
+	uint32_t count,
+	VkCommandBufferLevel level
+) {
 	VkCommandBufferAllocateInfo command_allocate_info = {};
 
 	command_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -34,7 +38,12 @@ VkBufferCreateInfo info::buffer_create_info(VkDeviceSize size, VkBufferUsageFlag
 	return buffer_info;
 }
 
-VmaAllocationCreateInfo info::allocation_create_info(VmaAllocationCreateFlags flags, VkMemoryPropertyFlags preferred_flags, VmaMemoryUsage usage, float priority) {
+VmaAllocationCreateInfo info::allocation_create_info(
+	VmaAllocationCreateFlags flags,
+	VkMemoryPropertyFlags preferred_flags,
+	VmaMemoryUsage usage,
+	float priority
+) {
 	VmaAllocationCreateInfo allocation_create_info = {};
 
 	allocation_create_info.flags = flags;
@@ -45,7 +54,12 @@ VmaAllocationCreateInfo info::allocation_create_info(VmaAllocationCreateFlags fl
 	return allocation_create_info;
 }
 
-VkDescriptorSetLayoutBinding info::descriptor_set_layout_binding(VkDescriptorType type, VkShaderStageFlags stage_flags, uint32_t binding, uint32_t count) {
+VkDescriptorSetLayoutBinding info::descriptor_set_layout_binding(
+	VkDescriptorType type,
+	VkShaderStageFlags stage_flags,
+	uint32_t binding,
+	uint32_t count
+) {
 	VkDescriptorSetLayoutBinding set_layout_binding = {};
 
 	set_layout_binding.descriptorType = type;
@@ -56,7 +70,10 @@ VkDescriptorSetLayoutBinding info::descriptor_set_layout_binding(VkDescriptorTyp
 	return set_layout_binding;
 }
 
-VkDescriptorSetAllocateInfo info::descriptor_set_allocate_info(std::vector<VkDescriptorSetLayout> &allocate_info, VkDescriptorPool descriptor_pool) {
+VkDescriptorSetAllocateInfo info::descriptor_set_allocate_info(
+	std::vector<VkDescriptorSetLayout> &allocate_info,
+	VkDescriptorPool descriptor_pool
+) {
 	VkDescriptorSetAllocateInfo set_allocate_info = {};
 
 	set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -67,7 +84,10 @@ VkDescriptorSetAllocateInfo info::descriptor_set_allocate_info(std::vector<VkDes
 	return set_allocate_info;
 }
 
-VkDescriptorSetLayoutCreateInfo info::descriptor_set_layout_info(std::vector<VkDescriptorSetLayoutBinding> &layout_info, VkDescriptorSetLayoutCreateFlags flags) {
+VkDescriptorSetLayoutCreateInfo info::descriptor_set_layout_info(
+	std::vector<VkDescriptorSetLayoutBinding> &layout_info,
+	VkDescriptorSetLayoutCreateFlags flags
+) {
 	VkDescriptorSetLayoutCreateInfo set_layout_info = {};
 
 	set_layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -121,7 +141,11 @@ VkPipelineVertexInputStateCreateInfo info::input_vertex_info(
 	return input_vertex_info;
 }
 
-VkPipelineRenderingCreateInfoKHR info::rendering_create_info(std::vector<VkFormat> &color_attachment_formats, VkFormat depth_format, VkFormat stencil_format) {
+VkPipelineRenderingCreateInfoKHR info::rendering_create_info(
+	std::vector<VkFormat> &color_attachment_formats,
+	VkFormat depth_format,
+	VkFormat stencil_format
+) {
 	VkPipelineRenderingCreateInfoKHR rendering_create_info = {};
 
 	rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
@@ -135,6 +159,7 @@ VkPipelineRenderingCreateInfoKHR info::rendering_create_info(std::vector<VkForma
 
 VkImageCreateInfo info::image_create_info(int width, int height) {
 	VkImageCreateInfo image_create_info = {};
+
 	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image_create_info.extent.width = width;
 	image_create_info.extent.height = height;
@@ -145,4 +170,49 @@ VkImageCreateInfo info::image_create_info(int width, int height) {
 
 VkImageCreateInfo info::image_create_info(VkExtent2D extent) {
 	return image_create_info(extent.width, extent.height);
+}
+
+VkImageSubresourceRange info::image_subresource_range(VkImageAspectFlags aspect_mask) {
+	VkImageSubresourceRange subresource_range = {};
+
+	subresource_range.aspectMask = aspect_mask;
+	subresource_range.baseMipLevel = 0;
+    subresource_range.levelCount = VK_REMAINING_MIP_LEVELS;
+    subresource_range.baseArrayLayer = 0;
+    subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+	return subresource_range;
+}
+
+VkSemaphoreSubmitInfo info::semaphore_submit_info(VkPipelineStageFlags2 stage_mask, VkSemaphore semaphore) {
+	VkSemaphoreSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	submit_info.semaphore = semaphore;
+	submit_info.stageMask = stage_mask;
+	submit_info.deviceIndex = 0;
+	submit_info.value = 1;
+
+	return submit_info;
+}
+
+VkCommandBufferSubmitInfo info::command_buffer_submit_info(VkCommandBuffer command) {
+	VkCommandBufferSubmitInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+	info.commandBuffer = command;
+	info.deviceMask = 0;
+
+	return info;
+}
+
+VkSubmitInfo2 info::submit_info(VkCommandBufferSubmitInfo *command, VkSemaphoreSubmitInfo *signal_semaphore_info, VkSemaphoreSubmitInfo *wait_semaphore_info) {
+	VkSubmitInfo2 info = {};
+	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    info.waitSemaphoreInfoCount = wait_semaphore_info == nullptr ? 0 : 1;
+    info.pWaitSemaphoreInfos = wait_semaphore_info;
+    info.signalSemaphoreInfoCount = signal_semaphore_info == nullptr ? 0 : 1;
+    info.pSignalSemaphoreInfos = signal_semaphore_info;
+    info.commandBufferInfoCount = 1;
+    info.pCommandBufferInfos = command;
+
+	return info;
 }

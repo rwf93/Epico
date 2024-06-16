@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
         renderer->begin();
 
         renderer->begin_pass();
+        renderer->clear(0, 1, 0, 0);
         renderer->end_pass();
 
         renderer->end();

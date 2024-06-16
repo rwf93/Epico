@@ -12,6 +12,14 @@ public:
     std::vector<VkImage> &get_swapchain_images() { return swapchain_images; }
     std::vector<VkImageView> &get_swapchain_image_views() { return swapchain_image_views; }
 
+    VkImage &get_swapchain_image(uint32_t index) { return get_swapchain_images()[index]; }
+    VkImage &get_swapchain_image() { return get_swapchain_image(image_index); }
+
+    VkImageView &get_swapchain_image_view(uint32_t index) { return get_swapchain_image_views()[index]; }
+    VkImageView &get_swapchain_image_view() { return get_swapchain_image_view(image_index); }
+
+    void transition_image(VkCommandBuffer command, VkImage image, VkImageLayout current_layout, VkImageLayout new_layout);
+
     uint32_t &get_image_index() { return image_index; }
 private:
     void create_swapchain(bool rebuild = false);

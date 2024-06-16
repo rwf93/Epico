@@ -10,4 +10,6 @@ public:
 
     void begin_pass() override;
     void end_pass() override;
+
+    void clear(float,float,float,float) override {}
 };

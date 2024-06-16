@@ -10,24 +10,30 @@ VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swap
     this->swapchain = swapchain;
 
     max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
-    command_buffers.resize(max_flying_frames);
+    frame_contexts.resize(max_flying_frames);
 
     create_command_pool();
     create_sync_objects();
 }
 
 VulkanCommandPool::~VulkanCommandPool() {
-    for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
-        vkDestroySemaphore(device->get_device(), finished_semaphores[i], nullptr);
-		vkDestroySemaphore(device->get_device(), available_semaphores[i], nullptr);
-		vkDestroyFence(device->get_device(), in_flight_fences[i], nullptr);
-    }
+    vkDeviceWaitIdle(device->get_device());
 
-    vkDestroyCommandPool(device->get_device(), command_pool, nullptr);
+    for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
+        VulkanFrameContext &context = get_frame_context(i);
+
+		vkDestroyFence(device->get_device(), context.fence,               nullptr);
+		vkDestroySemaphore(device->get_device(), context.finished_semaphore,  nullptr);
+        vkDestroySemaphore(device->get_device(), context.available_semaphore, nullptr);
+        vkDestroyCommandPool(device->get_device(), context.command_pool,        nullptr);
+    }
 }
 
 void VulkanCommandPool::rebuild() {
-    vkDestroyCommandPool(device->get_device(), command_pool, nullptr);
+    vkDeviceWaitIdle(device->get_device());
+
+    for(uint32_t i = 0; i < get_max_flying_frames(); i++)
+        vkDestroyCommandPool(device->get_device(), get_frame_context(i).command_pool, nullptr);
     create_command_pool();
 }
 
@@ -44,6 +50,7 @@ void VulkanCommandPool::begin_recording() {
 
     static VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     VK_CHECK(vkBeginCommandBuffer(get_command(), &begin_info));
 }
@@ -53,6 +60,8 @@ void VulkanCommandPool::end_recording() {
 }
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
+    UNUSED(command_function);
+    /*
     VkCommandBuffer command = {};
 
     auto command_buffer_info = info::command_buffer_allocate_info(command_pool);
@@ -77,21 +86,25 @@ void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function)
 	VK_CHECK(vkQueueWaitIdle(device->get_graphics_queue()));
 
     vkFreeCommandBuffers(device->get_device(), command_pool, 1, &command);
+    */
 }
 
 void VulkanCommandPool::create_command_pool() {
-    auto command_pool_info = info::command_pool_create_info(device->get_graphics_queue_index(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-    VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &command_pool));
+    auto command_pool_info = info::command_pool_create_info(
+        device->get_graphics_queue_index(),
+        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+    );
 
-    auto command_allocate_info = info::command_buffer_allocate_info(command_pool, static_cast<uint32_t>(command_buffers.size()));
-    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, command_buffers.data()));
+    for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
+        VulkanFrameContext &context = get_frame_context(i);
+
+        VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &context.command_pool));
+        auto command_allocate_info = info::command_buffer_allocate_info(context.command_pool);
+        VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, &context.command_buffer));
+    }
 }
 
 void VulkanCommandPool::create_sync_objects() {
-    available_semaphores.resize(get_max_flying_frames());
-    finished_semaphores.resize(get_max_flying_frames());
-    in_flight_fences.resize(get_max_flying_frames());
-
     VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -100,8 +113,10 @@ void VulkanCommandPool::create_sync_objects() {
 	fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
-        VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &available_semaphores[i]));
-		VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &finished_semaphores[i]));
-		VK_CHECK(vkCreateFence(device->get_device(), &fence_info, nullptr, &in_flight_fences[i]));
+        VulkanFrameContext &context = get_frame_context(i);
+
+		VK_CHECK(vkCreateFence(device->get_device(), &fence_info, nullptr, &context.fence));
+        VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &context.available_semaphore));
+		VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &context.finished_semaphore));
     }
 }

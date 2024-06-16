@@ -11,6 +11,8 @@ public:
     void begin_pass() override;
     void end_pass() override;
 
+    void clear(float r, float g, float b, float a) override;
+
     void rebuild();
 
 private:
