@@ -2,6 +2,7 @@
 
 #include <public/appcontext.h>
 #include <public/abstractrenderer.h>
+#include <public/abstractui.h>
 #include <public/abstractvfs.h>
 
 #include <spdlog/spdlog.h>
@@ -41,13 +42,13 @@ int main(int argc, char *argv[]) {
         SDL_Event event;
         while(SDL_PollEvent(&event)) {
             if(event.type == SDL_QUIT) quit = true;
+
+            renderer->ui()->process_event(&event);
         }
 
         renderer->begin();
 
-        renderer->begin_pass();
         renderer->clear(0, 1, 0, 0);
-        renderer->end_pass();
 
         renderer->end();
     }

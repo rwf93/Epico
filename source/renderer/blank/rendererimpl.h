@@ -8,8 +8,6 @@ public:
     void begin() override;
     void end() override;
 
-    void begin_pass() override;
-    void end_pass() override;
-
     void clear(float,float,float,float) override {}
+    AbstractUI *ui() override { return nullptr; };
 };

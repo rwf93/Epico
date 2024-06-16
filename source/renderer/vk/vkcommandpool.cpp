@@ -27,6 +27,9 @@ VulkanCommandPool::~VulkanCommandPool() {
         vkDestroySemaphore(device->get_device(), context.available_semaphore, nullptr);
         vkDestroyCommandPool(device->get_device(), context.command_pool,        nullptr);
     }
+
+    vkDestroyFence(device->get_device(), immediate_fence, nullptr);
+    vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
 }
 
 void VulkanCommandPool::rebuild() {
@@ -60,33 +63,24 @@ void VulkanCommandPool::end_recording() {
 }
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
-    UNUSED(command_function);
-    /*
-    VkCommandBuffer command = {};
-
-    auto command_buffer_info = info::command_buffer_allocate_info(command_pool);
-    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_buffer_info, &command));
+    VK_CHECK(vkResetFences(device->get_device(), 1, &immediate_fence));
+    VK_CHECK(vkResetCommandBuffer(immediate_command_buffer, 0));
 
     VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    VK_CHECK(vkBeginCommandBuffer(command, &begin_info));
+    VK_CHECK(vkBeginCommandBuffer(immediate_command_buffer, &begin_info));
 
-    command_function(command);
+    command_function(this, immediate_command_buffer);
 
-    VK_CHECK(vkEndCommandBuffer(command));
+    VK_CHECK(vkEndCommandBuffer(immediate_command_buffer));
 
-    VkSubmitInfo submit_info = {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &command;
+    auto command_info = info::command_buffer_submit_info(immediate_command_buffer);
+    auto submit_info = info::submit_info(&command_info, nullptr, nullptr);
 
-    VK_CHECK(vkQueueSubmit(device->get_graphics_queue(), 1, &submit_info, VK_NULL_HANDLE));
-	VK_CHECK(vkQueueWaitIdle(device->get_graphics_queue()));
-
-    vkFreeCommandBuffers(device->get_device(), command_pool, 1, &command);
-    */
+    VK_CHECK(vkQueueSubmit2(device->get_graphics_queue(), 1, &submit_info, immediate_fence));
+    VK_CHECK(vkWaitForFences(device->get_device(), 1, &immediate_fence, true, UINT32_MAX));
 }
 
 void VulkanCommandPool::create_command_pool() {
@@ -102,6 +96,10 @@ void VulkanCommandPool::create_command_pool() {
         auto command_allocate_info = info::command_buffer_allocate_info(context.command_pool);
         VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, &context.command_buffer));
     }
+
+    VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &immediate_command_pool));
+    auto immediate_command_buffer_info = info::command_buffer_allocate_info(immediate_command_pool);
+    VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &immediate_command_buffer_info, &immediate_command_buffer));
 }
 
 void VulkanCommandPool::create_sync_objects() {
@@ -119,4 +117,6 @@ void VulkanCommandPool::create_sync_objects() {
         VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &context.available_semaphore));
 		VK_CHECK(vkCreateSemaphore(device->get_device(), &semaphore_info, nullptr, &context.finished_semaphore));
     }
+
+    VK_CHECK(vkCreateFence(device->get_device(), &fence_info, nullptr, &immediate_fence));
 }

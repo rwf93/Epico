@@ -7,6 +7,7 @@ add_library(renderer_vk SHARED
     vkdevice.cpp
     vkswapchain.cpp
     vkcommandpool.cpp
+    vkimgui.cpp
 
     rendererimpl.cpp
 )
@@ -34,6 +35,9 @@ target_link_libraries(renderer_vk
 	$<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 target_link_libraries(renderer_vk PRIVATE magic_enum::magic_enum)
+
+target_include_directories(renderer_vk PRIVATE ${THIRDPARTY}/imgui)
+target_link_libraries(renderer_vk PRIVATE imgui)
 
 target_compile_options(renderer_vk PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>

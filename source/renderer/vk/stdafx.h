@@ -17,4 +17,10 @@
 #include <platform/platform.h>
 
 #include <public/abstractrenderer.h>
+#include <public/abstractui.h>
+
 #include <public/appcontext.h>
+
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_vulkan.h>

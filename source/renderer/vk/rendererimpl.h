@@ -8,11 +8,11 @@ public:
     void begin() override;
     void end() override;
 
-    void begin_pass() override;
-    void end_pass() override;
-
     void clear(float r, float g, float b, float a) override;
 
+    AbstractUI *ui() { return &ui_imgui; };
+
+protected:
     void rebuild();
 
 private:
@@ -23,4 +23,5 @@ private:
     VulkanDevice device = { &instance, &surface };
     VulkanSwapchain swapchain = { &device };
     VulkanCommandPool command_pool = { &device, &swapchain };
+    VulkanImGUI ui_imgui = { &command_pool };
 };

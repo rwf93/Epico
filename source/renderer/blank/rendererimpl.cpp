@@ -23,14 +23,6 @@ void BlankRenderer::end() {
 
 }
 
-void BlankRenderer::begin_pass() {
-
-}
-
-void BlankRenderer::end_pass() {
-
-}
-
 extern "C" EAPI AbstractRenderer *create_factory() {
     return new BlankRenderer();
 }

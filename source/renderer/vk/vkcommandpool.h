@@ -44,8 +44,8 @@ public:
     // Flips the frame for the backbuffer.
     void advance() { current_frame = (current_frame + 1) % max_flying_frames; }
 
-    // onetime command submitting
-    using SubmitCommandFunction = std::function<void(VkCommandBuffer command)>;
+    // Submits a single command to the gpu (useful for doing memory transfers cpu <-> gpu).
+    using SubmitCommandFunction = std::function<void(VulkanCommandPool *command_pool, VkCommandBuffer command)>;
     void submit_command(SubmitCommandFunction &&command_function);
 private:
     void create_command_pool();
@@ -55,6 +55,10 @@ private:
     VulkanSwapchain *swapchain = nullptr;
 
     std::vector<VulkanFrameContext> frame_contexts;
+
+    VkFence immediate_fence;
+    VkCommandBuffer immediate_command_buffer;
+    VkCommandPool immediate_command_pool;
 
     uint32_t max_flying_frames = 0;
     uint32_t current_frame = 0;
