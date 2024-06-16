@@ -28,7 +28,7 @@ public:
     void begin_recording();
     void end_recording();
 
-    VulkanFrameContext &get_frame_context(uint32_t index) { return frame_contexts[index]; }
+    VulkanFrameContext &get_frame_context(uint32_t index) { return frame_contexts.at(index); }
     VulkanFrameContext &get_frame_context() { return get_frame_context(current_frame); }
 
     VkCommandBuffer &get_command(uint32_t index) { return get_frame_context(index).command_buffer; }
