@@ -7,6 +7,7 @@ add_library(renderer_vk SHARED
     vkdevice.cpp
     vkswapchain.cpp
     vkcommandpool.cpp
+    vkimage.cpp
     vkimgui.cpp
 
     rendererimpl.cpp
