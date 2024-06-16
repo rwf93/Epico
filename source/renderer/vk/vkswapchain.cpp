@@ -1,14 +1,19 @@
-#include "info.h"
+#include "vkinfo.h"
 
 #include "vkswapchain.h"
 #include "vkdevice.h"
 
-VulkanSwapchain::VulkanSwapchain(VulkanDevice *device) {
-    this->device = device;
+VulkanSwapchain::VulkanSwapchain() {}
+VulkanSwapchain::~VulkanSwapchain() {}
+
+void VulkanSwapchain::init(FunctorQueue<> &queue, VulkanDevice *vkdevice) {
+    this->device = vkdevice;
     create_swapchain();
+
+    queue.push([&] { fini(); });
 }
 
-VulkanSwapchain::~VulkanSwapchain() {
+void VulkanSwapchain::fini() {
     swapchain.destroy_image_views(swapchain_image_views);
     vkb::destroy_swapchain(swapchain);
 }

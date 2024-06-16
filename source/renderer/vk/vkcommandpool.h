@@ -13,8 +13,12 @@ class VulkanDevice;
 class VulkanSwapchain;
 class VulkanCommandPool {
 public:
-    VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swapchain);
+    VulkanCommandPool();
     ~VulkanCommandPool();
+
+    void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
+    void fini();
+
     // basically same as the destructor
     void rebuild();
 

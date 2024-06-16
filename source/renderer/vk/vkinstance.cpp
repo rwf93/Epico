@@ -1,7 +1,10 @@
 #include "vkinstance.h"
 
-VulkanInstance::VulkanInstance() {
-    vkb::InstanceBuilder builder;
+VulkanInstance::VulkanInstance() {}
+VulkanInstance::~VulkanInstance() {};
+
+void VulkanInstance::init(FunctorQueue<> &queue) {
+     vkb::InstanceBuilder builder;
     auto builder_ret = builder
                         .set_app_name("Epico")
                         .set_engine_name("Epico Engine")
@@ -17,8 +20,11 @@ VulkanInstance::VulkanInstance() {
     }
 
     instance = builder_ret.value();
-};
 
-VulkanInstance::~VulkanInstance() {
+    queue.push([&] { fini(); });
+}
+
+void VulkanInstance::fini() {
     vkb::destroy_instance(instance);
-};
+}
+

@@ -18,10 +18,12 @@ protected:
 private:
     AppContext *app_context = nullptr;
 
+    FunctorQueue<> cleanup_queue;
+
     VulkanInstance instance = {};
-    VulkanSurface surface = { &instance };
-    VulkanDevice device = { &instance, &surface };
-    VulkanSwapchain swapchain = { &device };
-    VulkanCommandPool command_pool = { &device, &swapchain };
+    VulkanSurface surface = {};
+    VulkanDevice device = {};
+    VulkanSwapchain swapchain = {};
+    VulkanCommandPool command_pool = {};
     VulkanImGUI ui_imgui = { &command_pool };
 };

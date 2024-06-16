@@ -1,6 +1,3 @@
-#include "tools.h"
-#include "info.h"
-
 #include "vkinstance.h"
 #include "vksurface.h"
 #include "vkdevice.h"
@@ -12,11 +9,16 @@
 
 VulkanRenderer::VulkanRenderer(AppContext *app_context) {
     this->app_context = app_context;
-    app_context->current_window = surface.get_window();
+
+    instance.init(cleanup_queue);
+    surface.init(cleanup_queue, app_context, &instance);
+    device.init(cleanup_queue, &instance, &surface);
+    swapchain.init(cleanup_queue, &device);
+    command_pool.init(cleanup_queue, &device, &swapchain);
 }
 
 VulkanRenderer::~VulkanRenderer() {
-
+    cleanup_queue.destroy();
 }
 
 void VulkanRenderer::begin() {

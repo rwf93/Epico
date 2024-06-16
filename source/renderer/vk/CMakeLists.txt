@@ -1,7 +1,7 @@
 add_library(renderer_vk SHARED
     vma.cpp
-    info.cpp
 
+    vkinfo.cpp
     vkinstance.cpp
     vksurface.cpp
     vkdevice.cpp

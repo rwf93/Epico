@@ -3,8 +3,11 @@
 class VulkanDevice;
 class VulkanSwapchain {
 public:
-    VulkanSwapchain(VulkanDevice *device);
+    VulkanSwapchain();
     ~VulkanSwapchain();
+
+    void init(FunctorQueue<> &queue, VulkanDevice *vkdevice);
+    void fini();
 
     void rebuild() { create_swapchain(true); }
 

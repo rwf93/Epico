@@ -2,6 +2,23 @@
 
 #include <magic_enum.hpp>
 
+template<typename T = void()>
+class FunctorQueue {
+    using Functor = std::function<T>;
+public:
+    void push(Functor &&f) {
+        functors.push_back(f);
+    }
+
+    void destroy() {
+        for(auto it = functors.rbegin(); it != functors.rend(); it++)
+            (*it)();
+    }
+
+private:
+    std::deque<Functor> functors;
+};
+
 template<>
 struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
 	auto format(VkResult my, format_context &ctx) const -> decltype(ctx.out()) {

@@ -4,8 +4,11 @@ class VulkanInstance;
 class VulkanSurface;
 class VulkanDevice {
 public:
-    VulkanDevice(VulkanInstance *instance, VulkanSurface *surface);
+    VulkanDevice();
     ~VulkanDevice();
+
+    void init(FunctorQueue<> &queue, VulkanInstance *instance, VulkanSurface *surface);
+    void fini();
 
     vkb::Device &get_device() { return device; }
     VkQueue &get_graphics_queue() { return graphics_queue; }

@@ -1,4 +1,4 @@
-#include "info.h"
+#include "vkinfo.h"
 
 VkCommandPoolCreateInfo info::command_pool_create_info(uint32_t queue_family_index, VkCommandPoolCreateFlags flags)
 {

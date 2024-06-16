@@ -2,15 +2,20 @@
 #include "vkinstance.h"
 #include "vksurface.h"
 
-VulkanDevice::VulkanDevice(VulkanInstance *instance, VulkanSurface *surface) {
-    this->instance = instance;
-    this->surface = surface;
+VulkanDevice::VulkanDevice() {}
+VulkanDevice::~VulkanDevice() {}
+
+void VulkanDevice::init(FunctorQueue<> &queue, VulkanInstance *vkinstance, VulkanSurface *vksurface) {
+    this->instance = vkinstance;
+    this->surface = vksurface;
 
     retreive_device();
     retreive_queues();
+
+    queue.push([&] { fini(); });
 }
 
-VulkanDevice::~VulkanDevice() {
+void VulkanDevice::fini() {
     vkb::destroy_device(device);
 }
 

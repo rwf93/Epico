@@ -1,22 +1,26 @@
-#include "tools.h"
-#include "info.h"
 
+#include "vkinfo.h"
 #include "vkcommandpool.h"
 #include "vkdevice.h"
 #include "vkswapchain.h"
 
-VulkanCommandPool::VulkanCommandPool(VulkanDevice *device, VulkanSwapchain *swapchain) {
-    this->device = device;
-    this->swapchain = swapchain;
+VulkanCommandPool::VulkanCommandPool() {}
+VulkanCommandPool::~VulkanCommandPool() {}
+
+void VulkanCommandPool::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain) {
+    this->device = vkdevice;
+    this->swapchain = vkswapchain;
 
     max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
     frame_contexts.resize(max_flying_frames);
 
     create_command_pool();
     create_sync_objects();
+
+    queue.push([&] { fini(); });
 }
 
-VulkanCommandPool::~VulkanCommandPool() {
+void VulkanCommandPool::fini() {
     vkDeviceWaitIdle(device->get_device());
 
     for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
@@ -37,6 +41,7 @@ void VulkanCommandPool::rebuild() {
 
     for(uint32_t i = 0; i < get_max_flying_frames(); i++)
         vkDestroyCommandPool(device->get_device(), get_frame_context(i).command_pool, nullptr);
+
     create_command_pool();
 }
 
