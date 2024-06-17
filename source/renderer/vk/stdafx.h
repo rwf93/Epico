@@ -3,6 +3,8 @@
 #include <deque>
 #include <functional>
 
+#define VK_NO_PROTOTYPES
+
 #include <volk.h>
 #include <VkBootstrap.h>
 
