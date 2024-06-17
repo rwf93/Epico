@@ -6,7 +6,6 @@ target_precompile_headers(${PROJECT} PRIVATE stdafx.h)
 target_include_directories(${PROJECT} PRIVATE ${SOURCE})
 target_include_directories(${PROJECT} PRIVATE ${THIRDPARTY}/dynalo)
 
-
 find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)

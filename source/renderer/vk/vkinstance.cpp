@@ -21,6 +21,8 @@ void VulkanInstance::init(FunctorQueue<> &queue) {
 
     instance = builder_ret.value();
 
+    volkLoadInstance(instance);
+
     queue.push([&] { fini(); });
 }
 

@@ -53,6 +53,8 @@ void VulkanDevice::retreive_device() {
 
     this->device = builder_ret.value();
 
+    volkLoadDevice(this->device);
+
     spdlog::info("Found capable render device: {}", device.physical_device.name);
 }
 

@@ -10,6 +10,8 @@
 VulkanRenderer::VulkanRenderer(AppContext *app_context) {
     this->app_context = app_context;
 
+    VK_CHECK(volkInitialize());
+
     instance.init(cleanup_queue);
     surface.init(cleanup_queue, app_context, &instance);
     device.init(cleanup_queue, &instance, &surface);

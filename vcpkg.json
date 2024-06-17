@@ -5,7 +5,7 @@
         "fmt",
         "spdlog",
         "magic-enum",
-        "vulkan",
+        "volk",
         "vk-bootstrap",
         "vulkan-memory-allocator",
         "glm",
