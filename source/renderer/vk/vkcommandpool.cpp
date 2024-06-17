@@ -42,6 +42,8 @@ void VulkanCommandPool::rebuild() {
     for(uint32_t i = 0; i < get_max_flying_frames(); i++)
         vkDestroyCommandPool(device->get_device(), get_frame_context(i).command_pool, nullptr);
 
+    vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
+
     create_command_pool();
 }
 
@@ -99,7 +101,7 @@ void VulkanCommandPool::create_command_pool() {
 
         VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &context.command_pool));
         auto command_allocate_info = info::command_buffer_allocate_info(context.command_pool);
-        VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &command_allocate_info, &context.command_buffer));
+        VK_CHECK(vkAllocateCommandBuffers(device->get_device(),  &command_allocate_info, &context.command_buffer));
     }
 
     VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &immediate_command_pool));

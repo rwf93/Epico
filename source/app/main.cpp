@@ -13,6 +13,8 @@ int main(int argc, char *argv[]) {
     UNUSED(argv);
 
     AppContext context;
+    context.width = 1280;
+    context.height = 762;
 
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         spdlog::error("Couldn't init SDL: {}", SDL_GetError());

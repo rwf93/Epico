@@ -2,5 +2,7 @@
 
 struct SDL_Window;
 struct AppContext {
-    SDL_Window *current_window = nullptr;
+    SDL_Window *window = nullptr;
+    int width = 0;
+    int height = 0;
 };
