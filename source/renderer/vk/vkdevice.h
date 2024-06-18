@@ -10,6 +10,8 @@ public:
     void init(FunctorQueue<> &queue, VulkanInstance *instance, VulkanSurface *surface);
     void fini();
 
+    void wait() { vkDeviceWaitIdle(device); };
+
     vkb::Device &get_device() { return device; }
     VkQueue &get_graphics_queue() { return graphics_queue; }
     VkQueue &get_present_queue() { return present_queue; }

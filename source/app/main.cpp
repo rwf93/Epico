@@ -1,3 +1,5 @@
+#include <math.h>
+
 int main(int argc, char *argv[]) {
     UNUSED(argc);
     UNUSED(argv);
@@ -30,17 +32,29 @@ int main(int argc, char *argv[]) {
     }
 
     static bool quit = false;
+    static bool minimized = false;
     while(!quit) {
         SDL_Event event;
         while(SDL_PollEvent(&event)) {
             if(event.type == SDL_QUIT) quit = true;
 
+            if(event.window.event == SDL_WINDOWEVENT_MINIMIZED)
+                minimized = true;
+
+            if(event.window.event == SDL_WINDOWEVENT_RESTORED)
+                minimized = false;
+
             renderer->ui()->process_event(&event);
+        }
+
+        if(minimized) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
         }
 
         renderer->begin();
 
-        renderer->clear(0, 1, 0, 0);
+        renderer->clear(0, (float)rand()/(float)(RAND_MAX/1), 0, 0);
 
         renderer->end();
     }

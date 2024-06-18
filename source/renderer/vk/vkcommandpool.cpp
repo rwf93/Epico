@@ -21,7 +21,7 @@ void VulkanCommandPool::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, Vulk
 }
 
 void VulkanCommandPool::fini() {
-    vkDeviceWaitIdle(device->get_device());
+    device->wait();
 
     for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
         VulkanFrameContext &context = get_frame_context(i);
@@ -37,8 +37,6 @@ void VulkanCommandPool::fini() {
 }
 
 void VulkanCommandPool::rebuild() {
-    vkDeviceWaitIdle(device->get_device());
-
     for(uint32_t i = 0; i < get_max_flying_frames(); i++)
         vkDestroyCommandPool(device->get_device(), get_frame_context(i).command_pool, nullptr);
 

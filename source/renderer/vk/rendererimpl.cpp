@@ -77,10 +77,8 @@ void VulkanRenderer::end() {
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.pSwapchains = &swapchain.get_swapchain().swapchain;
 	present_info.swapchainCount = 1;
-
 	present_info.pWaitSemaphores = &command_pool.get_finished_semaphore();
 	present_info.waitSemaphoreCount = 1;
-
 	present_info.pImageIndices = &swapchain.get_image_index();
 
     VkResult present_result = vkQueuePresentKHR(device.get_graphics_queue(), &present_info);
@@ -106,6 +104,7 @@ void VulkanRenderer::clear(float r, float g, float b, float a) {
 }
 
 void VulkanRenderer::rebuild() {
+    device.wait();
     swapchain.rebuild();
     command_pool.rebuild();
 }
