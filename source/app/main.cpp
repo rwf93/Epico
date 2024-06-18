@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
         return 0;
     };
 
-    auto filesystem = get_factory<AbstractVFS*>("filesystem_std");
+    auto filesystem = get_factory<AbstractFilesystem*>("filesystem_std");
     if(!filesystem.good) {
         spdlog::error("Couldn't load VFS");
         return 0;

@@ -1,6 +1,6 @@
 #pragma once
 
-class StandardFilesystem: public AbstractVFS {
+class StandardFilesystem: public AbstractFilesystem {
 public:
     void mount(std::filesystem::path virtual_path, std::filesystem::path physical_dir) override;
     void unmount(std::filesystem::path virtual_path) override;

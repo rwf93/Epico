@@ -1,7 +1,7 @@
 #define EAPI_EXPORT
 #include <platform/platform.h>
 
-#include <public/abstractrenderer.h>
+#include <public/render/abstractrenderer.h>
 
 #include "rendererimpl.h"
 

@@ -18,8 +18,8 @@
 #define EAPI_EXPORT
 #include <platform/platform.h>
 
-#include <public/abstractrenderer.h>
-#include <public/abstractui.h>
+#include <public/render/abstractrenderer.h>
+#include <public/render/abstractui.h>
 
 #include <public/appcontext.h>
 

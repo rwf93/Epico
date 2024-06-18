@@ -5,9 +5,9 @@
 #include <fstream>
 #include <vector>
 
-class AbstractVFS {
+class AbstractFilesystem {
 public:
-    virtual ~AbstractVFS() {};
+    virtual ~AbstractFilesystem() {};
     virtual void mount(std::filesystem::path virtual_path, std::filesystem::path physical_path) = 0;
     virtual void unmount(std::filesystem::path virtual_path) = 0;
     virtual std::filesystem::path resolve_physical_dir(std::filesystem::path virtual_path) = 0;
