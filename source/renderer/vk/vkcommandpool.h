@@ -46,7 +46,7 @@ public:
     uint32_t get_max_flying_frames() { return max_flying_frames; }
 
     // Flips the frame for the backbuffer.
-    void advance() { current_frame = (current_frame + 1) % max_flying_frames; }
+    void advance() { current_frame = (current_frame + 1) % get_max_flying_frames(); }
 
     // Submits a single command to the gpu (useful for doing memory transfers cpu <-> gpu).
     using SubmitCommandFunction = std::function<void(VulkanCommandPool *command_pool, VkCommandBuffer command)>;

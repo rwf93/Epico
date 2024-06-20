@@ -13,7 +13,7 @@
             "stopAtEntry": false,
             "cwd": "${command:cmake.launchTargetDirectory}",
             "environment": [],
-            "console": "integratedTerminal"
+            "console": "newExternalWindow"
         }
     ]
 }

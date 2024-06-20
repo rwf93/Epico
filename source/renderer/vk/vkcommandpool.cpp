@@ -26,10 +26,10 @@ void VulkanCommandPool::fini() {
     for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
         VulkanFrameContext &context = get_frame_context(i);
 
-		vkDestroyFence(device->get_device(), context.fence,               nullptr);
+		vkDestroyFence(device->get_device(), context.fence, nullptr);
 		vkDestroySemaphore(device->get_device(), context.finished_semaphore,  nullptr);
         vkDestroySemaphore(device->get_device(), context.available_semaphore, nullptr);
-        vkDestroyCommandPool(device->get_device(), context.command_pool,        nullptr);
+        vkDestroyCommandPool(device->get_device(), context.command_pool, nullptr);
     }
 
     vkDestroyFence(device->get_device(), immediate_fence, nullptr);

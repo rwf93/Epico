@@ -7,6 +7,8 @@
 
 #include "rendererimpl.h"
 
+#include <public/filesystem/abstractvfs.h>
+
 VulkanRenderer::VulkanRenderer(AppContext *app_context) {
     this->app_context = app_context;
 
@@ -25,7 +27,6 @@ VulkanRenderer::~VulkanRenderer() {
 
 void VulkanRenderer::begin() {
     command_pool.wait_fences();
-    command_pool.reset_fences();
 
     VkResult aquire_result = vkAcquireNextImageKHR(
         device.get_device(),
@@ -38,6 +39,8 @@ void VulkanRenderer::begin() {
     if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
         rebuild();
     }
+
+    command_pool.reset_fences();
 
     command_pool.begin_recording();
 
