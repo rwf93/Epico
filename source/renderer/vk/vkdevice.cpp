@@ -30,19 +30,12 @@ void VulkanDevice::retreive_device() {
 	features_12.bufferDeviceAddress = true;
 	features_12.descriptorIndexing = true;
 
-    VkPhysicalDeviceShaderObjectFeaturesEXT features_shaderobject_ext = {};
-    features_shaderobject_ext.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
-    features_shaderobject_ext.shaderObject = true;
-
     vkb::PhysicalDeviceSelector selector(instance->get_instance());
     auto selector_ret = selector
                             .set_surface(surface->get_surface())
                             .set_minimum_version(1, 3)
                             .set_required_features_13(features_13)
                             .set_required_features_12(features_12)
-                            .add_required_extension(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
-                            .add_required_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
-                            .add_required_extension(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME)
                             .select();
 
     if(!selector_ret.has_value()) {
@@ -52,7 +45,6 @@ void VulkanDevice::retreive_device() {
 
     vkb::DeviceBuilder builder(selector_ret.value());
     auto builder_ret = builder
-        .add_pNext(&features_shaderobject_ext)
         .build();
 
     if(!builder_ret.has_value()) {
