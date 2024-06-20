@@ -23,7 +23,7 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
     std::filesystem::path physical_dir = "";
 
     for(auto &item: mounts[path]) {
-        auto path_name = item.append(name);
+        auto path_name = item.string() + name;
 
         std::ifstream check(path_name);
         if(check.good())
