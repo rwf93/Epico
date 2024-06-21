@@ -27,20 +27,10 @@ VulkanRenderer::~VulkanRenderer() {
 
 void VulkanRenderer::begin() {
     command_pool.wait_fences();
-
-    VkResult aquire_result = vkAcquireNextImageKHR(
-        device.get_device(),
-        swapchain.get_swapchain(),
-        UINT64_MAX,
-        command_pool.get_available_semaphore(),
-        VK_NULL_HANDLE,
-        &swapchain.get_image_index()
-    );
-    if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
-        rebuild();
-    }
-
     command_pool.reset_fences();
+
+    if(swapchain.aquire_next_image(&command_pool))
+        rebuild();
 
     command_pool.begin_recording();
 

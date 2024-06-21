@@ -2,6 +2,7 @@
 
 #include "vkswapchain.h"
 #include "vkdevice.h"
+#include "vkcommandpool.h"
 
 VulkanSwapchain::VulkanSwapchain() {}
 VulkanSwapchain::~VulkanSwapchain() {}
@@ -74,4 +75,21 @@ void VulkanSwapchain::transition_image(
     dependency_info.pImageMemoryBarriers = &image_barrier;
 
     vkCmdPipelineBarrier2(command, &dependency_info);
+}
+
+bool VulkanSwapchain::aquire_next_image(VulkanCommandPool *command_pool) {
+    VkResult aquire_result = vkAcquireNextImageKHR(
+        device->get_device(),
+        get_swapchain(),
+        UINT64_MAX,
+        command_pool->get_available_semaphore(),
+        VK_NULL_HANDLE,
+        &get_image_index()
+    );
+
+    if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
+        return true;
+    }
+
+    return false;
 }

@@ -1,18 +1,18 @@
 #pragma once
 
-struct VulkanFrameContext {
-    VkCommandPool command_pool;
-    VkCommandBuffer command_buffer;
-
-    VkSemaphore available_semaphore;
-    VkSemaphore finished_semaphore;
-    VkFence fence;
-};
-
 class VulkanDevice;
 class VulkanSwapchain;
 class VulkanCommandPool {
 public:
+    struct VulkanFrameContext {
+        VkCommandPool command_pool;
+        VkCommandBuffer command_buffer;
+
+        VkSemaphore available_semaphore;
+        VkSemaphore finished_semaphore;
+        VkFence fence;
+    };
+
     VulkanCommandPool();
     ~VulkanCommandPool();
 

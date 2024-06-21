@@ -49,7 +49,11 @@ struct FactoryHandle {
         }
     }
 
-    T operator->() { return interface; }
+    T operator->() {
+        if(good)
+            return interface;
+        return nullptr;
+    }
 };
 
 // Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.

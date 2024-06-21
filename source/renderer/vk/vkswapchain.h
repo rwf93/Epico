@@ -1,6 +1,7 @@
 #pragma once
 
 class VulkanDevice;
+class VulkanCommandPool;
 class VulkanSwapchain {
 public:
     VulkanSwapchain();
@@ -22,6 +23,8 @@ public:
     VkImageView &get_swapchain_image_view() { return get_swapchain_image_view(image_index); }
 
     void transition_image(VkCommandBuffer command, VkImage image, VkImageLayout current_layout, VkImageLayout new_layout);
+
+    bool aquire_next_image(VulkanCommandPool *command_pool);
 
     uint32_t &get_image_index() { return image_index; }
 private:

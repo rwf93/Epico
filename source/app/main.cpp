@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
         renderer->begin();
 
-        renderer->clear(0, (float)rand()/(float)(RAND_MAX/1), 0, 0);
+        renderer->clear(0, 1, 0.5, 1);
 
         renderer->end();
     }
