@@ -2,6 +2,7 @@
 
 #include <magic_enum.hpp>
 
+// Queue of functions, destroy() iterates the queue in reverse and calls them.
 template<typename T = void()>
 class FunctorQueue {
 	using Functor = std::function<T>;

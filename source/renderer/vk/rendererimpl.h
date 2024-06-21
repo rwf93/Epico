@@ -12,6 +12,14 @@ public:
 
 	AbstractUI *ui() { return &ui_imgui; };
 
+	ResourceHandle create_image(
+		int width,
+		int height,
+		int depth = 1,
+		ImageDimensions dimensions = ImageDimensions::IMAGE_2D,
+		ImageFormat format = ImageFormat::R16G16B16A16_UINT,
+		ImageSample samples = ImageSample::SAMPLE_COUNT_16_BIT
+	) override;
 protected:
 	void rebuild();
 
@@ -26,4 +34,6 @@ private:
 	VulkanSwapchain swapchain = {};
 	VulkanCommandPool command_pool = {};
 	VulkanImGUI ui_imgui = { &command_pool };
+
+	VulkanResourceManager resource_manager;
 };

@@ -10,4 +10,6 @@ public:
 
 	void clear(float,float,float,float) override {}
 	AbstractUI *ui() override { return nullptr; };
+
+	ResourceHandle create_image() override { return UINT32_MAX; }
 };

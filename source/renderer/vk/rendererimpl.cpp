@@ -3,6 +3,7 @@
 #include "vkdevice.h"
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
+#include "vkresourcemanager.h"
 #include "vkimgui.h"
 
 #include "rendererimpl.h"
@@ -19,6 +20,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	device.init(cleanup_queue, &instance, &surface);
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
+	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -94,6 +96,26 @@ void VulkanRenderer::clear(float r, float g, float b, float a) {
 		1,
 		&clear_range
 	);
+}
+
+ResourceHandle VulkanRenderer::create_image(
+	int width,
+	int height,
+	int depth,
+	ImageDimensions dimensions,
+	ImageFormat format,
+	ImageSample samples
+) {
+	UNUSED(dimensions)
+
+	auto image_info = info::image_create_info(width, height, depth);
+	image_info.format = convert::convert_image_format(format);
+	image_info.samples = convert::convert_sample_bits(samples);
+	image_info.mipLevels = 1;
+	image_info.arrayLayers = 1;
+	image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+	return resource_manager.create_image(image_info);
 }
 
 void VulkanRenderer::rebuild() {

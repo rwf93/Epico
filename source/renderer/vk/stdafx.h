@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <functional>
+#include <map>
 
 #define VK_NO_PROTOTYPES
 
@@ -20,8 +21,10 @@
 
 #include <public/render/abstractrenderer.h>
 #include <public/render/abstractui.h>
+#include <public/render/abstractresource.h>
 
 #include <public/appcontext.h>
 
 #include "vktools.h"
 #include "vkinfo.h"
+#include "vkconvert.h"

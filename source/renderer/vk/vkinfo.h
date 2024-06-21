@@ -54,7 +54,7 @@ VkPipelineRenderingCreateInfoKHR rendering_create_info(
 	VkFormat stencil_format = VK_FORMAT_UNDEFINED
 );
 
-VkImageCreateInfo image_create_info(int width, int height);
+VkImageCreateInfo image_create_info(int width, int height, int depth = 1);
 VkImageCreateInfo image_create_info(VkExtent2D extent);
 
 VkImageSubresourceRange image_subresource_range(VkImageAspectFlags aspect_mask);

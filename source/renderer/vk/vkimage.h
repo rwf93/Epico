@@ -1,9 +1,29 @@
 #pragma once
 
-class VulkanImage {
+class VulkanDevice;
+class VulkanCommandPool;
+class VulkanImage: public AbstractResource {
+public:
+	VulkanImage(
+		VulkanDevice *vkdevice,
+		VulkanCommandPool *vkcommandpool,
+		VmaAllocator vkallocator
+	);
+	~VulkanImage() override;
+
+	void init(VkImageCreateInfo image_info);
+	void fini();
+
 	VkImage &get_image() { return image; }
 	VkImageView &get_view() { return view; }
+
+	ResourceType get_type() { return ResourceType::IMAGE; }
 private:
+	VulkanDevice *device;
+	VulkanCommandPool *command_pool;
+
+	VmaAllocator allocator;
+
 	VkImage image;
 	VkImageView view;
 

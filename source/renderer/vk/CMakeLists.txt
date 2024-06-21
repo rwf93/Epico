@@ -2,11 +2,13 @@ add_library(renderer_vk SHARED
 		vma.cpp
 
 		vkinfo.cpp
+		vkconvert.cpp
 		vkinstance.cpp
 		vksurface.cpp
 		vkdevice.cpp
 		vkswapchain.cpp
 		vkcommandpool.cpp
+		vkresourcemanager.cpp
 		vkimage.cpp
 		vkimgui.cpp
 

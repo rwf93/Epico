@@ -157,13 +157,13 @@ VkPipelineRenderingCreateInfoKHR info::rendering_create_info(
 	return rendering_create_info;
 }
 
-VkImageCreateInfo info::image_create_info(int width, int height) {
+VkImageCreateInfo info::image_create_info(int width, int height, int depth) {
 	VkImageCreateInfo image_create_info = {};
 
 	image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image_create_info.extent.width = width;
 	image_create_info.extent.height = height;
-	image_create_info.extent.depth = 1; // what the fuck is this used for???
+	image_create_info.extent.depth = depth;
 
 	return image_create_info;
 }
