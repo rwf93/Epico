@@ -31,9 +31,6 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	auto h1 = renderer->create_image(640, 480);
-	spdlog::info("{}", h1);
-
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {

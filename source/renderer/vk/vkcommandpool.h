@@ -49,7 +49,7 @@ public:
 	void advance() { current_frame = (current_frame + 1) % get_max_flying_frames(); }
 
 	// Submits a single command to the gpu (useful for doing memory transfers cpu <-> gpu).
-	using SubmitCommandFunction = std::function<void(VulkanCommandPool *command_pool, VkCommandBuffer command)>;
+	using SubmitCommandFunction = std::function<void(VkCommandBuffer command)>;
 	void submit_command(SubmitCommandFunction &&command_function);
 private:
 	void create_command_pool();

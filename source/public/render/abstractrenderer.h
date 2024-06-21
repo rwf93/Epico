@@ -21,5 +21,11 @@ public:
 		ImageSample samples = ImageSample::SAMPLE_COUNT_16_BIT
 	) = 0;
 
+	virtual ResourceHandle create_buffer(
+		void *data,
+		size_t size,
+		BufferType type = BufferType::VERTEX
+	) = 0;
+
 	virtual AbstractUI *ui() = 0;
 };

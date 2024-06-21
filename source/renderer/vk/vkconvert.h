@@ -21,5 +21,6 @@ namespace convert {
 
 CONVERTER_HEADER(convert_image_format, ImageFormat, VkFormat);
 CONVERTER_HEADER(convert_sample_bits, ImageSample, VkSampleCountFlagBits);
+CONVERTER_HEADER(convert_buffer_type, BufferType, VkBufferUsageFlagBits);
 
 }

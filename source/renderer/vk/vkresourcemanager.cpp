@@ -1,5 +1,6 @@
 #include "vkinstance.h"
 #include "vkdevice.h"
+#include "vkcommandpool.h"
 #include "vkresourcemanager.h"
 
 void VulkanResourceManager::init(
@@ -56,12 +57,39 @@ ResourceHandle VulkanResourceManager::create_image(VkImageCreateInfo image_info)
 	return last_resource_handle;
 }
 
+ResourceHandle VulkanResourceManager::create_buffer(void *data, VkDeviceSize size, VkBufferCreateFlags type) {
+	ResourceHandle last_resource_handle = advance_handle();
+
+	auto *buffer_resource = new VulkanBuffer(device, command_pool, allocator);
+	resources[last_resource_handle] = buffer_resource;
+
+	auto staging_buffer_info = info::buffer_create_info(size);
+	auto buffer_info = info::buffer_create_info(
+		size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | type
+	);
+
+	auto allocate_info = info::allocation_create_info();
+
+	buffer_resource->init(&buffer_info, &allocate_info);
+
+	VulkanBuffer staging_buffer = { device, command_pool, allocator };
+	staging_buffer.init(&staging_buffer_info, &allocate_info);
+
+	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
+	buffer_resource->stage(&staging_buffer, size);
+
+	staging_buffer.fini();
+
+	return last_resource_handle;
+}
+
 void VulkanResourceManager::fini() {
 	for(auto &resource: resources) {
 		if(auto second = resource.second) {
 			switch(second->get_type()) {
-				case ResourceType::IMAGE: dynamic_cast<VulkanImage*>(second)->fini();
-				case ResourceType::BUFFER:
+				case ResourceType::IMAGE: dynamic_cast<VulkanImage*>(second)->fini(); break;
+				case ResourceType::BUFFER: dynamic_cast<VulkanBuffer*>(second)->fini(); break;
 				default: break;
 			}
 

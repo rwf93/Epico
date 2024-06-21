@@ -10,6 +10,7 @@ add_library(renderer_vk SHARED
 		vkcommandpool.cpp
 		vkresourcemanager.cpp
 		vkimage.cpp
+		vkbuffer.cpp
 		vkimgui.cpp
 
 		rendererimpl.cpp

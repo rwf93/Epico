@@ -20,6 +20,12 @@ public:
 		ImageFormat format = ImageFormat::R16G16B16A16_UINT,
 		ImageSample samples = ImageSample::SAMPLE_COUNT_16_BIT
 	) override;
+
+	ResourceHandle create_buffer(
+		void *data,
+		size_t size,
+		BufferType type = BufferType::VERTEX
+	) override;
 protected:
 	void rebuild();
 

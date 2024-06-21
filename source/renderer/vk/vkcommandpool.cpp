@@ -77,7 +77,7 @@ void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function)
 
 	VK_CHECK(vkBeginCommandBuffer(immediate_command_buffer, &begin_info));
 
-	command_function(this, immediate_command_buffer);
+	command_function(immediate_command_buffer);
 
 	VK_CHECK(vkEndCommandBuffer(immediate_command_buffer));
 

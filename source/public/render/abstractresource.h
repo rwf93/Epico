@@ -7,6 +7,12 @@ enum ResourceType {
     BUFFER
 };
 
+enum BufferType {
+    VERTEX,
+    INDEX,
+    STORAGE
+};
+
 enum ImageFormat {
     R16G16B16A16_UINT,
     R16G16B16A16_SINT,

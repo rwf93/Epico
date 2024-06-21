@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vkimage.h"
+#include "vkbuffer.h"
 
 class VulkanDevice;
 class VulkanResource;
@@ -12,12 +13,12 @@ public:
 	void fini();
 
 	ResourceHandle create_image(VkImageCreateInfo image_info);
+	ResourceHandle create_buffer(void *data, VkDeviceSize size, VkBufferCreateFlags type);
 
 	VulkanImage *get_image(ResourceHandle handle) {
 		return get_resource<VulkanImage*, ResourceType::IMAGE>(handle);
 	}
 
-private:
 	template<typename T, ResourceType R>
 	T get_resource(ResourceHandle handle) {
 		AbstractResource *resource = resources[handle];
@@ -29,6 +30,9 @@ private:
 
 		return dynamic_cast<T>(resource);
 	}
+
+private:
+
 
 	// increments the resource handle and returns the last one
 	ResourceHandle advance_handle() {

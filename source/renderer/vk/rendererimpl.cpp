@@ -118,6 +118,14 @@ ResourceHandle VulkanRenderer::create_image(
 	return resource_manager.create_image(image_info);
 }
 
+ResourceHandle VulkanRenderer::create_buffer(
+	void *data,
+	size_t size,
+	BufferType type
+) {
+	return resource_manager.create_buffer(data, size, convert::convert_buffer_type(type));
+}
+
 void VulkanRenderer::rebuild() {
 	device.wait();
 	swapchain.rebuild();
