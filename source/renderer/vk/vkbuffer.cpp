@@ -23,6 +23,8 @@ void VulkanBuffer::init(
         buffer_create_info, allocation_create_info,
         &buffer, &allocation, &allocation_info
     ));
+
+    prepared = true;
 }
 
 void VulkanBuffer::stage(
@@ -31,6 +33,8 @@ void VulkanBuffer::stage(
     VkDeviceSize src_offset,
     VkDeviceSize dst_offset
 ) {
+    assert(is_prepared());
+
     command_pool->submit_command([&](VkCommandBuffer command) {
         VkBufferCopy copy;
         copy.size = size;
@@ -42,6 +46,16 @@ void VulkanBuffer::stage(
     });
 }
 
+void VulkanBuffer::update(void *data, VkDeviceSize size, VkDeviceSize offset) {
+    assert(is_prepared());
+
+    command_pool->submit_command([&](VkCommandBuffer command) {
+        vkCmdUpdateBuffer(command, buffer, offset, size, data);
+    });
+}
+
 void VulkanBuffer::fini() {
-    vmaDestroyBuffer(allocator, buffer, allocation);
+    if(is_prepared())
+        vmaDestroyBuffer(allocator, buffer, allocation);
+    prepared = false;
 }

@@ -31,6 +31,18 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
+	uint32_t a[3] = { 1, 2, 3 };
+	uint32_t b[3] = { 3, 2, 1 };
+
+
+	auto buffer = renderer->create_buffer();
+	auto image = renderer->create_image();
+
+	spdlog::info("buffer, image {} {}", buffer, image);
+
+	renderer->buffer_data(buffer, a, sizeof(uint32_t) * 3, BufferType::INDEX);
+	renderer->buffer_sub_data(buffer, a, sizeof(uint32_t) * 3, 0);
+
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {

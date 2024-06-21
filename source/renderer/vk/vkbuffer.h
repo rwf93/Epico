@@ -24,6 +24,10 @@ public:
     	VkDeviceSize dst_offset = 0
 	);
 
+	void update(void *data, VkDeviceSize size, VkDeviceSize offset);
+
+	bool is_prepared() override { return prepared; }
+
 	void init(
     	VkBufferCreateInfo *buffer_create_info,
     	VmaAllocationCreateInfo *allocation_create_info
@@ -39,4 +43,6 @@ private:
 
 	VmaAllocation allocation;
 	VmaAllocationInfo allocation_info = {};
+
+	bool prepared = false;
 };

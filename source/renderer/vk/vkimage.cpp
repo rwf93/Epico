@@ -12,10 +12,12 @@ VulkanImage::VulkanImage(
 
 void VulkanImage::init(VkImageCreateInfo image_info) {
 	UNUSED(image_info);
+	prepared = true;
 }
 
 void VulkanImage::fini() {
-
+	if(is_prepared()) {}
+	prepared = false;
 }
 
 

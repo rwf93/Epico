@@ -12,20 +12,11 @@ public:
 
 	virtual void clear(float r, float g, float b, float a) = 0;
 
-	virtual ResourceHandle create_image(
-		int width,
-		int height,
-		int depth = 1,
-		ImageDimensions dimensions = ImageDimensions::IMAGE_2D,
-		ImageFormat format = ImageFormat::R16G16B16A16_UINT,
-		ImageSample samples = ImageSample::SAMPLE_COUNT_16_BIT
-	) = 0;
+	virtual ResourceHandle create_image() = 0;
+	virtual ResourceHandle create_buffer() = 0;
 
-	virtual ResourceHandle create_buffer(
-		void *data,
-		size_t size,
-		BufferType type = BufferType::VERTEX
-	) = 0;
+	virtual void buffer_data(ResourceHandle handle, void *data, size_t size, BufferType type) = 0;
+	virtual void buffer_sub_data(ResourceHandle handle, void *data, size_t size, size_t offset) = 0;
 
 	virtual AbstractUI *ui() = 0;
 };

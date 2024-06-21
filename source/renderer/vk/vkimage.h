@@ -14,6 +14,8 @@ public:
 	void init(VkImageCreateInfo image_info);
 	void fini();
 
+	bool is_prepared() { return prepared; }
+
 	VkImage &get_image() { return image; }
 	VkImageView &get_view() { return view; }
 
@@ -31,4 +33,6 @@ private:
 	VkExtent3D extent;
 
 	VkFormat format;
+
+	bool prepared = false;
 };

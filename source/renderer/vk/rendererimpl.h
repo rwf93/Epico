@@ -12,20 +12,12 @@ public:
 
 	AbstractUI *ui() { return &ui_imgui; };
 
-	ResourceHandle create_image(
-		int width,
-		int height,
-		int depth = 1,
-		ImageDimensions dimensions = ImageDimensions::IMAGE_2D,
-		ImageFormat format = ImageFormat::R16G16B16A16_UINT,
-		ImageSample samples = ImageSample::SAMPLE_COUNT_16_BIT
-	) override;
+	ResourceHandle create_image() override;
+	ResourceHandle create_buffer() override;
 
-	ResourceHandle create_buffer(
-		void *data,
-		size_t size,
-		BufferType type = BufferType::VERTEX
-	) override;
+	void buffer_data(ResourceHandle handle, void *data, size_t size, BufferType type) override;
+	void buffer_sub_data(ResourceHandle handle, void *data, size_t size, size_t offset) override;
+
 protected:
 	void rebuild();
 

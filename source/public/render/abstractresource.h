@@ -38,4 +38,5 @@ class AbstractResource {
 public:
     virtual ~AbstractResource() {}
     virtual ResourceType get_type() = 0;
+    virtual bool is_prepared() = 0;
 };

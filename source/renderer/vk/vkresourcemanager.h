@@ -12,8 +12,10 @@ public:
 	void init(FunctorQueue<> &queue, VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
 	void fini();
 
-	ResourceHandle create_image(VkImageCreateInfo image_info);
-	ResourceHandle create_buffer(void *data, VkDeviceSize size, VkBufferCreateFlags type);
+	ResourceHandle create_image();
+	ResourceHandle create_buffer();
+	void buffer_data(ResourceHandle handle, void *data, VkDeviceSize size, VkBufferCreateFlags type);
+	void buffer_sub_data(ResourceHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset);
 
 	VulkanImage *get_image(ResourceHandle handle) {
 		return get_resource<VulkanImage*, ResourceType::IMAGE>(handle);
@@ -32,8 +34,6 @@ public:
 	}
 
 private:
-
-
 	// increments the resource handle and returns the last one
 	ResourceHandle advance_handle() {
 		ResourceHandle last_resource_handle = current_resource_handle;

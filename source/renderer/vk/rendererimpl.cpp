@@ -98,32 +98,20 @@ void VulkanRenderer::clear(float r, float g, float b, float a) {
 	);
 }
 
-ResourceHandle VulkanRenderer::create_image(
-	int width,
-	int height,
-	int depth,
-	ImageDimensions dimensions,
-	ImageFormat format,
-	ImageSample samples
-) {
-	UNUSED(dimensions)
-
-	auto image_info = info::image_create_info(width, height, depth);
-	image_info.format = convert::convert_image_format(format);
-	image_info.samples = convert::convert_sample_bits(samples);
-	image_info.mipLevels = 1;
-	image_info.arrayLayers = 1;
-	image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-
-	return resource_manager.create_image(image_info);
+ResourceHandle VulkanRenderer::create_image() {
+	return resource_manager.create_image();
 }
 
-ResourceHandle VulkanRenderer::create_buffer(
-	void *data,
-	size_t size,
-	BufferType type
-) {
-	return resource_manager.create_buffer(data, size, convert::convert_buffer_type(type));
+ResourceHandle VulkanRenderer::create_buffer() {
+	return resource_manager.create_buffer();
+}
+
+void VulkanRenderer::buffer_data(ResourceHandle handle, void *data, size_t size, BufferType type) {
+	resource_manager.buffer_data(handle, data, size, convert::convert_buffer_type(type));
+}
+
+void VulkanRenderer::buffer_sub_data(ResourceHandle handle, void *data, size_t size, size_t offset) {
+	resource_manager.buffer_sub_data(handle, data, size, offset);
 }
 
 void VulkanRenderer::rebuild() {
