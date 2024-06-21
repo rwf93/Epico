@@ -4,66 +4,66 @@ class VulkanDevice;
 class VulkanSwapchain;
 class VulkanCommandPool {
 public:
-    struct VulkanFrameContext {
-        VkCommandPool command_pool;
-        VkCommandBuffer command_buffer;
+	struct VulkanFrameContext {
+		VkCommandPool command_pool;
+		VkCommandBuffer command_buffer;
 
-        VkSemaphore available_semaphore;
-        VkSemaphore finished_semaphore;
-        VkFence fence;
-    };
+		VkSemaphore available_semaphore;
+		VkSemaphore finished_semaphore;
+		VkFence fence;
+	};
 
-    VulkanCommandPool();
-    ~VulkanCommandPool();
+	VulkanCommandPool();
+	~VulkanCommandPool();
 
-    void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
-    void fini();
+	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
+	void fini();
 
-    // basically same as the destructor
-    void rebuild();
+	// basically same as the destructor
+	void rebuild();
 
-    void wait_fences();
-    void reset_fences();
+	void wait_fences();
+	void reset_fences();
 
-    void begin_recording();
-    void end_recording();
+	void begin_recording();
+	void end_recording();
 
-    VulkanFrameContext &get_frame_context(uint32_t index) { return frame_contexts.at(index); }
-    VulkanFrameContext &get_frame_context() { return get_frame_context(current_frame); }
+	VulkanFrameContext &get_frame_context(uint32_t index) { return frame_contexts.at(index); }
+	VulkanFrameContext &get_frame_context() { return get_frame_context(current_frame); }
 
-    VkCommandBuffer &get_command(uint32_t index) { return get_frame_context(index).command_buffer; }
-    VkCommandBuffer &get_command() { return get_command(current_frame); };
+	VkCommandBuffer &get_command(uint32_t index) { return get_frame_context(index).command_buffer; }
+	VkCommandBuffer &get_command() { return get_command(current_frame); };
 
-    VkSemaphore &get_available_semaphore(uint32_t index) { return get_frame_context(index).available_semaphore; }
-    VkSemaphore &get_available_semaphore() { return get_available_semaphore(current_frame); }
+	VkSemaphore &get_available_semaphore(uint32_t index) { return get_frame_context(index).available_semaphore; }
+	VkSemaphore &get_available_semaphore() { return get_available_semaphore(current_frame); }
 
-    VkSemaphore &get_finished_semaphore(uint32_t index) { return get_frame_context(index).finished_semaphore; }
-    VkSemaphore &get_finished_semaphore() { return get_available_semaphore(current_frame); }
+	VkSemaphore &get_finished_semaphore(uint32_t index) { return get_frame_context(index).finished_semaphore; }
+	VkSemaphore &get_finished_semaphore() { return get_available_semaphore(current_frame); }
 
-    VkFence &get_fence(uint32_t index) { return get_frame_context(index).fence; }
-    VkFence &get_fence() { return get_fence(current_frame); }
+	VkFence &get_fence(uint32_t index) { return get_frame_context(index).fence; }
+	VkFence &get_fence() { return get_fence(current_frame); }
 
-    uint32_t get_max_flying_frames() { return max_flying_frames; }
+	uint32_t get_max_flying_frames() { return max_flying_frames; }
 
-    // Flips the frame for the backbuffer.
-    void advance() { current_frame = (current_frame + 1) % get_max_flying_frames(); }
+	// Flips the frame for the backbuffer.
+	void advance() { current_frame = (current_frame + 1) % get_max_flying_frames(); }
 
-    // Submits a single command to the gpu (useful for doing memory transfers cpu <-> gpu).
-    using SubmitCommandFunction = std::function<void(VulkanCommandPool *command_pool, VkCommandBuffer command)>;
-    void submit_command(SubmitCommandFunction &&command_function);
+	// Submits a single command to the gpu (useful for doing memory transfers cpu <-> gpu).
+	using SubmitCommandFunction = std::function<void(VulkanCommandPool *command_pool, VkCommandBuffer command)>;
+	void submit_command(SubmitCommandFunction &&command_function);
 private:
-    void create_command_pool();
-    void create_sync_objects();
+	void create_command_pool();
+	void create_sync_objects();
 private:
-    VulkanDevice *device = nullptr;
-    VulkanSwapchain *swapchain = nullptr;
+	VulkanDevice *device = nullptr;
+	VulkanSwapchain *swapchain = nullptr;
 
-    std::vector<VulkanFrameContext> frame_contexts;
+	std::vector<VulkanFrameContext> frame_contexts;
 
-    VkFence immediate_fence;
-    VkCommandBuffer immediate_command_buffer;
-    VkCommandPool immediate_command_pool;
+	VkFence immediate_fence;
+	VkCommandBuffer immediate_command_buffer;
+	VkCommandPool immediate_command_pool;
 
-    uint32_t max_flying_frames = 0;
-    uint32_t current_frame = 0;
+	uint32_t max_flying_frames = 0;
+	uint32_t current_frame = 0;
 };

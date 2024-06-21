@@ -1,16 +1,16 @@
 add_library(renderer_vk SHARED
-    vma.cpp
+		vma.cpp
 
-    vkinfo.cpp
-    vkinstance.cpp
-    vksurface.cpp
-    vkdevice.cpp
-    vkswapchain.cpp
-    vkcommandpool.cpp
-    vkimage.cpp
-    vkimgui.cpp
+		vkinfo.cpp
+		vkinstance.cpp
+		vksurface.cpp
+		vkdevice.cpp
+		vkswapchain.cpp
+		vkcommandpool.cpp
+		vkimage.cpp
+		vkimgui.cpp
 
-    rendererimpl.cpp
+		rendererimpl.cpp
 )
 
 target_include_directories(renderer_vk PRIVATE ${SOURCE})
@@ -41,6 +41,6 @@ target_include_directories(renderer_vk PRIVATE ${THIRDPARTY}/imgui)
 target_link_libraries(renderer_vk PRIVATE imgui)
 
 target_compile_options(renderer_vk PRIVATE
-  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
-  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+	$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )

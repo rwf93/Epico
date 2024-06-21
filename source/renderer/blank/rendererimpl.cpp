@@ -8,11 +8,11 @@
 #include <spdlog/spdlog.h>
 
 BlankRenderer::BlankRenderer() {
-    spdlog::info("Unused Renderer... What are you doing??");
+	spdlog::info("Unused Renderer... What are you doing??");
 }
 
 BlankRenderer::~BlankRenderer() {
-    spdlog::info("Okay bro...");
+	spdlog::info("Okay bro...");
 }
 
 void BlankRenderer::begin() {
@@ -24,5 +24,5 @@ void BlankRenderer::end() {
 }
 
 extern "C" EAPI AbstractRenderer *create_factory() {
-    return new BlankRenderer();
+	return new BlankRenderer();
 }

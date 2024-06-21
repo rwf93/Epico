@@ -1,19 +1,19 @@
 {
-    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-    "builtin-baseline": "79a6c094989d1952da01a7bc3abf30198f8da860",
-    "dependencies": [
-        "fmt",
-        "spdlog",
-        "magic-enum",
-        "volk",
-        "vk-bootstrap",
-        "vulkan-memory-allocator",
-        "glm",
-        "assimp",
-        "tinyobjloader",
-        {
-            "name": "sdl2",
-            "features": ["vulkan"]
-        }
-    ]
+	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+	"builtin-baseline": "79a6c094989d1952da01a7bc3abf30198f8da860",
+	"dependencies": [
+		"fmt",
+		"spdlog",
+		"magic-enum",
+		"volk",
+		"vk-bootstrap",
+		"vulkan-memory-allocator",
+		"glm",
+		"assimp",
+		"tinyobjloader",
+		{
+			"name": "sdl2",
+			"features": ["vulkan"]
+		}
+	]
 }

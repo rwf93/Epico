@@ -4,29 +4,29 @@ class VulkanInstance;
 class VulkanSurface;
 class VulkanDevice {
 public:
-    VulkanDevice();
-    ~VulkanDevice();
+	VulkanDevice();
+	~VulkanDevice();
 
-    void init(FunctorQueue<> &queue, VulkanInstance *instance, VulkanSurface *surface);
-    void fini();
+	void init(FunctorQueue<> &queue, VulkanInstance *instance, VulkanSurface *surface);
+	void fini();
 
-    void wait() { vkDeviceWaitIdle(device); };
+	void wait() { vkDeviceWaitIdle(device); };
 
-    vkb::Device &get_device() { return device; }
-    VkQueue &get_graphics_queue() { return graphics_queue; }
-    VkQueue &get_present_queue() { return present_queue; }
-    uint32_t get_graphics_queue_index() { return graphics_queue_index; }
+	vkb::Device &get_device() { return device; }
+	VkQueue &get_graphics_queue() { return graphics_queue; }
+	VkQueue &get_present_queue() { return present_queue; }
+	uint32_t get_graphics_queue_index() { return graphics_queue_index; }
 protected:
-    void retreive_device();
-    void retreive_queues();
+	void retreive_device();
+	void retreive_queues();
 private:
-    VulkanInstance *instance = nullptr;
-    VulkanSurface *surface = nullptr;
+	VulkanInstance *instance = nullptr;
+	VulkanSurface *surface = nullptr;
 
-    vkb::Device device = {};
+	vkb::Device device = {};
 
-    VkQueue graphics_queue = VK_NULL_HANDLE;
-    VkQueue present_queue = VK_NULL_HANDLE;
+	VkQueue graphics_queue = VK_NULL_HANDLE;
+	VkQueue present_queue = VK_NULL_HANDLE;
 
-    uint32_t graphics_queue_index = 0;
+	uint32_t graphics_queue_index = 0;
 };

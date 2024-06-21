@@ -177,9 +177,9 @@ VkImageSubresourceRange info::image_subresource_range(VkImageAspectFlags aspect_
 
 	subresource_range.aspectMask = aspect_mask;
 	subresource_range.baseMipLevel = 0;
-    subresource_range.levelCount = VK_REMAINING_MIP_LEVELS;
-    subresource_range.baseArrayLayer = 0;
-    subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+	subresource_range.levelCount = VK_REMAINING_MIP_LEVELS;
+	subresource_range.baseArrayLayer = 0;
+	subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
 	return subresource_range;
 }
@@ -207,12 +207,12 @@ VkCommandBufferSubmitInfo info::command_buffer_submit_info(VkCommandBuffer comma
 VkSubmitInfo2 info::submit_info(VkCommandBufferSubmitInfo *command, VkSemaphoreSubmitInfo *signal_semaphore_info, VkSemaphoreSubmitInfo *wait_semaphore_info) {
 	VkSubmitInfo2 info = {};
 	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-    info.waitSemaphoreInfoCount = wait_semaphore_info == nullptr ? 0 : 1;
-    info.pWaitSemaphoreInfos = wait_semaphore_info;
-    info.signalSemaphoreInfoCount = signal_semaphore_info == nullptr ? 0 : 1;
-    info.pSignalSemaphoreInfos = signal_semaphore_info;
-    info.commandBufferInfoCount = 1;
-    info.pCommandBufferInfos = command;
+	info.waitSemaphoreInfoCount = wait_semaphore_info == nullptr ? 0 : 1;
+	info.pWaitSemaphoreInfos = wait_semaphore_info;
+	info.signalSemaphoreInfoCount = signal_semaphore_info == nullptr ? 0 : 1;
+	info.pSignalSemaphoreInfos = signal_semaphore_info;
+	info.commandBufferInfoCount = 1;
+	info.pCommandBufferInfos = command;
 
 	return info;
 }

@@ -4,19 +4,19 @@
 
 template<typename T = void()>
 class FunctorQueue {
-    using Functor = std::function<T>;
+	using Functor = std::function<T>;
 public:
-    void push(Functor &&f) {
-        functors.push_back(f);
-    }
+	void push(Functor &&f) {
+		functors.push_back(f);
+	}
 
-    void destroy() {
-        for(auto it = functors.rbegin(); it != functors.rend(); it++)
-            (*it)();
-    }
+	void destroy() {
+		for(auto it = functors.rbegin(); it != functors.rend(); it++)
+			(*it)();
+	}
 
 private:
-    std::deque<Functor> functors;
+	std::deque<Functor> functors;
 };
 
 template<>
@@ -28,12 +28,12 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
 
 #define VK_CHECK(f)                                                 \
 {                                                                   \
-    VkResult result = (f);                                          \
-    assert(result == VK_SUCCESS);                                   \
-    if(result != VK_SUCCESS) {                                      \
-        spdlog::error("VkResult is {} in {} @ {}", result, __FILE__, __LINE__);  \
-        std::abort();                                               \
-    }                                                               \
+	VkResult result = (f);                                          \
+	assert(result == VK_SUCCESS);                                   \
+	if(result != VK_SUCCESS) {                                      \
+		spdlog::error("VkResult is {} in {} @ {}", result, __FILE__, __LINE__);  \
+		std::abort();                                               \
+	}                                                               \
 }
 
 #define VK_ALIGN(size, alignment) ( (size + alignment - 1) & ~(alignment - 1) )

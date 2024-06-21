@@ -3,15 +3,15 @@
 class VulkanInstance;
 class VulkanSurface {
 public:
-    VulkanSurface();
-    ~VulkanSurface();
+	VulkanSurface();
+	~VulkanSurface();
 
-    void init(FunctorQueue<> &queue, AppContext *app_context, VulkanInstance *vkinstance);
-    void fini();
+	void init(FunctorQueue<> &queue, AppContext *app_context, VulkanInstance *vkinstance);
+	void fini();
 
-    VkSurfaceKHR &get_surface() { return surface; }
+	VkSurfaceKHR &get_surface() { return surface; }
 private:
-    VulkanInstance *instance = nullptr;
-    AppContext *context = nullptr;
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
+	VulkanInstance *instance = nullptr;
+	AppContext *context = nullptr;
+	VkSurfaceKHR surface = VK_NULL_HANDLE;
 };

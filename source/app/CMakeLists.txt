@@ -1,5 +1,5 @@
 add_executable(${PROJECT}
-    main.cpp
+		main.cpp
 )
 
 target_precompile_headers(${PROJECT} PRIVATE stdafx.h)
@@ -18,6 +18,6 @@ target_link_libraries(${PROJECT}
 )
 
 target_compile_options(${PROJECT} PRIVATE
-  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
-  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+	$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 )
