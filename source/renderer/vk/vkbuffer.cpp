@@ -46,7 +46,7 @@ void VulkanBuffer::stage(
     });
 }
 
-void VulkanBuffer::update(void *data, VkDeviceSize size, VkDeviceSize offset) {
+void VulkanBuffer::update(VkDeviceSize offset, VkDeviceSize size, void *data) {
     assert(is_prepared());
 
     command_pool->submit_command([&](VkCommandBuffer command) {

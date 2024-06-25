@@ -20,7 +20,9 @@ namespace convert {
     }
 
 CONVERTER_HEADER(convert_image_format, ImageFormat, VkFormat);
-CONVERTER_HEADER(convert_sample_bits, ImageSample, VkSampleCountFlagBits);
+CONVERTER_HEADER(convert_sample_bits, ImageSamples, VkSampleCountFlagBits);
 CONVERTER_HEADER(convert_buffer_type, BufferType, VkBufferUsageFlagBits);
+CONVERTER_HEADER(convert_image_dimensions, ImageDimensions, VkImageType);
+CONVERTER_HEADER(convert_image_view_dimensions, ImageDimensions, VkImageViewType);
 
 }

@@ -40,6 +40,7 @@ void VulkanResourceManager::init(
 	allocator_info.device = device->get_device();
 	allocator_info.physicalDevice = device->get_device().physical_device;
 	allocator_info.pVulkanFunctions = &vma_functions;
+	allocator_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
 	VK_CHECK(vmaCreateAllocator(&allocator_info, &allocator));
 
@@ -64,8 +65,13 @@ ResourceHandle VulkanResourceManager::create_buffer() {
 	return last_resource_handle;
 }
 
-void VulkanResourceManager::buffer_data(ResourceHandle handle, void *data, VkDeviceSize size, VkBufferCreateFlags type) {
-	auto resource = get_resource<VulkanBuffer*, ResourceType::BUFFER>(handle);
+void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size) {
+	auto resource = get_buffer(handle);
+	assert(resource);
+	if(!resource) {
+		spdlog::error("Invalid resource or resource is the wrong type.");
+		return;
+	}
 
 	// Deallocate the previous object if it was prepared.
 	resource->fini();
@@ -89,18 +95,73 @@ void VulkanResourceManager::buffer_data(ResourceHandle handle, void *data, VkDev
 	staging_buffer.fini();
 }
 
-void VulkanResourceManager::buffer_sub_data(ResourceHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset) {
-	auto resource = get_resource<VulkanBuffer*, ResourceType::BUFFER>(handle);
-	resource->update(data, size, offset);
+void VulkanResourceManager::buffer_sub_data(ResourceHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
+	auto resource = get_buffer(handle);
+	assert(resource);
+	if(!resource) {
+		spdlog::error("Invalid resource or resource is the wrong type.");
+		return;
+	}
+
+	resource->update(offset, size, data);
+}
+
+void VulkanResourceManager::image_data(
+	ResourceHandle handle,
+	VkImageCreateInfo image_info,
+	void *data
+) {
+	UNUSED(data);
+
+	auto resource = get_image(handle);
+	assert(resource);
+	if(!resource) {
+		spdlog::error("Invalid resource or resource is the wrong type.");
+		return;
+	}
+
+	resource->fini(); // ditto.
+
+	auto allocate_info = info::allocation_create_info(0);
+	allocate_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	allocate_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	resource->init(&image_info, &allocate_info);
+
+	if(!data)
+		return;
+
+	size_t size = image_info.extent.depth * image_info.extent.width * image_info.extent.height * 4;
+
+	auto staging_allocate_info = info::allocation_create_info();
+	auto staging_buffer_info = info::buffer_create_info(size);
+
+	VulkanBuffer staging_buffer = { device, command_pool, allocator };
+
+	staging_buffer.init(&staging_buffer_info, &staging_allocate_info);
+
+	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
+	resource->stage(&staging_buffer, image_info.extent);
+
+	staging_buffer.fini();
+}
+
+void VulkanResourceManager::image_sub_data(ResourceHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset) {
+	UNUSED(handle);
+	UNUSED(data);
+	UNUSED(size);
+	UNUSED(offset);
 }
 
 void VulkanResourceManager::fini() {
 	for(auto &resource: resources) {
 		if(auto second = resource.second) {
 			switch(second->get_type()) {
-				case ResourceType::IMAGE: dynamic_cast<VulkanImage*>(second)->fini(); break;
-				case ResourceType::BUFFER: dynamic_cast<VulkanBuffer*>(second)->fini(); break;
-				default: break;
+			case ResourceType::IMAGE:
+				dynamic_cast<VulkanImage*>(second)->fini(); break;
+			case ResourceType::BUFFER:
+				dynamic_cast<VulkanBuffer*>(second)->fini(); break;
+			default: break;
 			}
 
 			delete second;

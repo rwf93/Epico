@@ -2,7 +2,7 @@
 
 #define EAPI_EXPORT
 #include <platform/platform.h>
-#include <public/filesystem/abstractvfs.h>
+#include <public/filesystem/abstractfilesystem.h>
 
 #include <spdlog/spdlog.h>
 

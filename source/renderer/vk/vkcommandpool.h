@@ -43,6 +43,26 @@ public:
 	VkFence &get_fence(uint32_t index) { return get_frame_context(index).fence; }
 	VkFence &get_fence() { return get_fence(current_frame); }
 
+	void transition_image(
+		VkCommandBuffer command,
+		VkImage image,
+		VkImageLayout current_layout,
+		VkImageLayout new_layout
+	);
+
+	void transition_image(
+		VkImage image,
+		VkImageLayout current_layout,
+		VkImageLayout new_layout
+	) {
+		transition_image(get_command(), image, current_layout, new_layout);
+	}
+
+	void copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent2D src_size, VkExtent2D dst_size);
+	void copy_image(VkImage src, VkImage dst, VkExtent2D src_size, VkExtent2D dst_size) {
+		copy_image(get_command(), src, dst, src_size, dst_size);
+	};
+
 	uint32_t get_max_flying_frames() { return max_flying_frames; }
 
 	// Flips the frame for the backbuffer.

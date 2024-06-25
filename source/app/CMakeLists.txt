@@ -9,6 +9,7 @@ target_include_directories(${PROJECT} PRIVATE ${THIRDPARTY}/dynalo)
 find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 target_link_libraries(${PROJECT} PRIVATE fmt::fmt-header-only)
 target_link_libraries(${PROJECT} PRIVATE spdlog::spdlog_header_only)
 target_link_libraries(${PROJECT}
@@ -16,6 +17,7 @@ target_link_libraries(${PROJECT}
 	$<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
 	$<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
+target_link_libraries(${PROJECT} PRIVATE glm::glm)
 
 target_compile_options(${PROJECT} PRIVATE
 	$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>

@@ -14,23 +14,39 @@ public:
 
 	ResourceHandle create_image();
 	ResourceHandle create_buffer();
-	void buffer_data(ResourceHandle handle, void *data, VkDeviceSize size, VkBufferCreateFlags type);
-	void buffer_sub_data(ResourceHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset);
+
+	void buffer_data(ResourceHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size);
+	void buffer_sub_data(ResourceHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
+
+	void image_data(
+		ResourceHandle handle,
+		VkImageCreateInfo image_info,
+		void *data
+	);
+
+	void image_sub_data(ResourceHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset);
 
 	VulkanImage *get_image(ResourceHandle handle) {
-		return get_resource<VulkanImage*, ResourceType::IMAGE>(handle);
+		return get_resource<VulkanImage*>(handle);
 	}
 
-	template<typename T, ResourceType R>
-	T get_resource(ResourceHandle handle) {
-		AbstractResource *resource = resources[handle];
-		if(!resource)
-			return nullptr;
+	VulkanBuffer *get_buffer(ResourceHandle handle) {
+		return get_resource<VulkanBuffer*>(handle);
+	}
 
-		if(resource->get_type() != R)
-			return nullptr;
+	template<typename T>
+	T get_resource(ResourceHandle handle) {
+		AbstractResource *resource = nullptr;
+		if(!resources.contains(handle))
+			goto err;
+
+		resource = resources.at(handle);
+		if(!resource)
+			goto err;
 
 		return dynamic_cast<T>(resource);
+	err:
+		return nullptr;
 	}
 
 private:

@@ -15,8 +15,18 @@ public:
 	virtual ResourceHandle create_image() = 0;
 	virtual ResourceHandle create_buffer() = 0;
 
-	virtual void buffer_data(ResourceHandle handle, void *data, size_t size, BufferType type) = 0;
-	virtual void buffer_sub_data(ResourceHandle handle, void *data, size_t size, size_t offset) = 0;
+	virtual void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) = 0;
+	virtual void buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) = 0;
+
+	virtual void image_data(
+		ResourceHandle handle,
+		ImageDimensions dimensions,
+		ImageSamples samples,
+		ImageFormat format,
+		void *data,
+		bool mipmapped,
+		int width, int height, int depth = 1
+	) = 0;
 
 	virtual AbstractUI *ui() = 0;
 };

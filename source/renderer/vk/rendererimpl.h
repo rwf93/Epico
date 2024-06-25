@@ -10,13 +10,23 @@ public:
 
 	void clear(float r, float g, float b, float a) override;
 
-	AbstractUI *ui() { return &ui_imgui; };
-
 	ResourceHandle create_image() override;
 	ResourceHandle create_buffer() override;
 
-	void buffer_data(ResourceHandle handle, void *data, size_t size, BufferType type) override;
-	void buffer_sub_data(ResourceHandle handle, void *data, size_t size, size_t offset) override;
+	void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) override;
+	void buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) override;
+
+	void image_data(
+		ResourceHandle handle,
+		ImageDimensions dimensions,
+		ImageSamples samples,
+		ImageFormat format,
+		void *data,
+		bool mipmapped,
+		int width, int height, int depth
+	);
+
+	AbstractUI *ui() { return &ui_imgui; };
 
 protected:
 	void rebuild();
@@ -31,7 +41,9 @@ private:
 	VulkanDevice device = {};
 	VulkanSwapchain swapchain = {};
 	VulkanCommandPool command_pool = {};
-	VulkanImGUI ui_imgui = { &command_pool };
+	VulkanResourceManager resource_manager = {};
 
-	VulkanResourceManager resource_manager;
+	ResourceHandle draw_image = 0;
+
+	VulkanImGUI ui_imgui = { &command_pool };
 };

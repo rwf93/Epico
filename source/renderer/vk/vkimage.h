@@ -2,6 +2,7 @@
 
 class VulkanDevice;
 class VulkanCommandPool;
+class VulkanBuffer;
 class VulkanImage: public AbstractResource {
 public:
 	VulkanImage(
@@ -11,8 +12,10 @@ public:
 	);
 	~VulkanImage() override;
 
-	void init(VkImageCreateInfo image_info);
+	void init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *create_info);
 	void fini();
+
+	void stage(VulkanBuffer *staging_buffer, VkExtent3D extent);
 
 	bool is_prepared() { return prepared; }
 
@@ -30,9 +33,6 @@ private:
 	VkImageView view;
 
 	VmaAllocation allocation;
-	VkExtent3D extent;
-
-	VkFormat format;
 
 	bool prepared = false;
 };

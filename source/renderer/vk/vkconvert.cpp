@@ -1,12 +1,14 @@
 #include "vkconvert.h"
 
 CONVERTER(convert_image_format, ImageFormat, VkFormat, VK_FORMAT_UNDEFINED,
+    { R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
+    { R8G8B8A8_SNORM, VK_FORMAT_R8G8B8A8_SNORM },
     { R16G16B16A16_UINT, VK_FORMAT_R16G16B16A16_UINT },
     { R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SINT },
     { R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT }
 );
 
-CONVERTER(convert_sample_bits, ImageSample, VkSampleCountFlagBits, VK_SAMPLE_COUNT_1_BIT,
+CONVERTER(convert_sample_bits, ImageSamples, VkSampleCountFlagBits, VK_SAMPLE_COUNT_1_BIT,
     { SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT },
     { SAMPLE_COUNT_2_BIT, VK_SAMPLE_COUNT_2_BIT },
     { SAMPLE_COUNT_4_BIT, VK_SAMPLE_COUNT_4_BIT },
@@ -21,3 +23,17 @@ CONVERTER(convert_buffer_type, BufferType, VkBufferUsageFlagBits, VK_BUFFER_USAG
     { INDEX, VK_BUFFER_USAGE_INDEX_BUFFER_BIT },
     { STORAGE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT }
 );
+
+CONVERTER(convert_image_dimensions, ImageDimensions, VkImageType, VK_IMAGE_TYPE_1D,
+    { IMAGE_1D, VK_IMAGE_TYPE_1D },
+    { IMAGE_2D, VK_IMAGE_TYPE_2D },
+    { IMAGE_3D, VK_IMAGE_TYPE_3D },
+);
+
+
+CONVERTER(convert_image_view_dimensions, ImageDimensions, VkImageViewType, VK_IMAGE_VIEW_TYPE_1D,
+    { IMAGE_1D, VK_IMAGE_VIEW_TYPE_1D },
+    { IMAGE_2D, VK_IMAGE_VIEW_TYPE_2D },
+    { IMAGE_3D, VK_IMAGE_VIEW_TYPE_3D },
+);
+

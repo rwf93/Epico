@@ -8,8 +8,6 @@
 
 #include "rendererimpl.h"
 
-#include <public/filesystem/abstractvfs.h>
-
 VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	this->app_context = app_context;
 
@@ -21,6 +19,17 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
+
+	draw_image = create_image();
+	image_data(
+		draw_image,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		nullptr,
+		false,
+		app_context->width, app_context->height, 1
+	);
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -36,8 +45,7 @@ void VulkanRenderer::begin() {
 
 	command_pool.begin_recording();
 
-	swapchain.transition_image(
-		command_pool.get_command(),
+	command_pool.transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_GENERAL
@@ -45,8 +53,7 @@ void VulkanRenderer::begin() {
 }
 
 void VulkanRenderer::end() {
-	swapchain.transition_image(
-		command_pool.get_command(),
+	command_pool.transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
@@ -106,12 +113,39 @@ ResourceHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
-void VulkanRenderer::buffer_data(ResourceHandle handle, void *data, size_t size, BufferType type) {
-	resource_manager.buffer_data(handle, data, size, convert::convert_buffer_type(type));
+void VulkanRenderer::buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) {
+	resource_manager.buffer_data(handle, convert::convert_buffer_type(type), data, size);
 }
 
-void VulkanRenderer::buffer_sub_data(ResourceHandle handle, void *data, size_t size, size_t offset) {
-	resource_manager.buffer_sub_data(handle, data, size, offset);
+void VulkanRenderer::buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) {
+	resource_manager.buffer_sub_data(handle, offset, data, size);
+}
+
+void VulkanRenderer::image_data(
+	ResourceHandle handle,
+	ImageDimensions dimensions,
+	ImageSamples samples,
+	ImageFormat format,
+	void *data,
+	bool mipmapped,
+	int width, int height, int depth = 1
+) {
+	auto image_info = info::image_create_info(width, height, depth);
+	image_info.imageType = convert::convert_image_dimensions(dimensions);
+	image_info.samples = convert::convert_sample_bits(samples);
+	image_info.format = convert::convert_image_format(format);
+	image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+
+	image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+	image_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	image_info.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	if(mipmapped)
+		image_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+
+	resource_manager.image_data(handle, image_info, data);
 }
 
 void VulkanRenderer::rebuild() {

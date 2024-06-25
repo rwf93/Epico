@@ -1,5 +1,7 @@
 #include <math.h>
 
+#include <glm/glm.hpp>
+
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
@@ -32,16 +34,26 @@ int main(int argc, char *argv[]) {
 	}
 
 	uint32_t a[3] = { 1, 2, 3 };
-	uint32_t b[3] = { 3, 2, 1 };
 
+	auto handle = renderer->create_buffer();
+	renderer->buffer_data(handle, BufferType::VERTEX, sizeof(uint32_t) * 3, a);
 
-	auto buffer = renderer->create_buffer();
-	auto image = renderer->create_image();
+	auto image_handle = renderer->create_image();
 
-	spdlog::info("buffer, image {} {}", buffer, image);
+	std::array<uint32_t, 16 * 16> pixels;
 
-	renderer->buffer_data(buffer, a, sizeof(uint32_t) * 3, BufferType::INDEX);
-	renderer->buffer_sub_data(buffer, a, sizeof(uint32_t) * 3, 0);
+	for(int x = 0; x < 16; x++)
+		for(int y = 0; y < 16; y++)
+			pixels[ y* 16 + x ] = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
+
+	renderer->image_data(
+		image_handle,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R8G8B8A8_UNORM,
+		pixels.data(), false,
+		16, 16, 1
+	);
 
 	static bool quit = false;
 	static bool minimized = false;
@@ -66,7 +78,7 @@ int main(int argc, char *argv[]) {
 
 		renderer->begin();
 
-		renderer->clear(0, 1, 0.5, 1);
+		//renderer->clear(0, 1, 0.5, 1);
 
 		renderer->end();
 	}

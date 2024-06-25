@@ -164,6 +164,8 @@ VkImageCreateInfo info::image_create_info(int width, int height, int depth) {
 	image_create_info.extent.width = width;
 	image_create_info.extent.height = height;
 	image_create_info.extent.depth = depth;
+	image_create_info.mipLevels = 1;
+	image_create_info.arrayLayers = 1;
 
 	return image_create_info;
 }

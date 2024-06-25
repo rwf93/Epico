@@ -24,7 +24,7 @@ public:
     	VkDeviceSize dst_offset = 0
 	);
 
-	void update(void *data, VkDeviceSize size, VkDeviceSize offset);
+	void update(VkDeviceSize offset, VkDeviceSize size, void *data);
 
 	bool is_prepared() override { return prepared; }
 
