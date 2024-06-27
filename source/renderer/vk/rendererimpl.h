@@ -9,6 +9,7 @@ public:
 	void end() override;
 
 	void clear(float r, float g, float b, float a) override;
+	void clear_image(ResourceHandle handle) override;
 
 	ResourceHandle create_image() override;
 	ResourceHandle create_buffer() override;
@@ -45,5 +46,5 @@ private:
 
 	ResourceHandle draw_image = 0;
 
-	VulkanImGUI ui_imgui = { &command_pool };
+	VulkanImGUI ui_imgui = {};
 };

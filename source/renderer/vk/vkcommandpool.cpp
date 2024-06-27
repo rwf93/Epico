@@ -21,8 +21,6 @@ void VulkanCommandPool::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, Vulk
 }
 
 void VulkanCommandPool::fini() {
-	device->wait();
-
 	for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
 		VulkanFrameContext &context = get_frame_context(i);
 

@@ -14,6 +14,8 @@ public:
 	void destroy() {
 		for(auto it = functors.rbegin(); it != functors.rend(); it++)
 			(*it)();
+
+		functors.clear();
 	}
 
 private:

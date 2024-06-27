@@ -19,6 +19,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
+	ui_imgui.init(cleanup_queue, &command_pool);
 
 	draw_image = create_image();
 	image_data(
@@ -33,6 +34,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
+	device.wait();
 	cleanup_queue.destroy();
 }
 
@@ -46,16 +48,37 @@ void VulkanRenderer::begin() {
 	command_pool.begin_recording();
 
 	command_pool.transition_image(
-		swapchain.get_swapchain_image(),
+		resource_manager.get_image(draw_image)->get_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_GENERAL
 	);
 }
 
 void VulkanRenderer::end() {
+	auto image = resource_manager.get_image(draw_image)->get_image();
+
+	command_pool.transition_image(
+		image,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+	);
+
 	command_pool.transition_image(
 		swapchain.get_swapchain_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+	);
+
+	command_pool.copy_image(
+		image,
+		swapchain.get_swapchain_image(),
+		VkExtent2D{ .width = app_context->width, .height = app_context->height },
+		VkExtent2D{ .width = app_context->width, .height = app_context->height }
+	);
+
+	command_pool.transition_image(
+		swapchain.get_swapchain_image(),
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	);
 
@@ -97,11 +120,47 @@ void VulkanRenderer::clear(float r, float g, float b, float a) {
 	auto clear_range = info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
 	vkCmdClearColorImage(
 		command_pool.get_command(),
-		swapchain.get_swapchain_image(),
+		resource_manager.get_image(draw_image)->get_image(),
 		VK_IMAGE_LAYOUT_GENERAL,
 		&clear_value,
 		1,
 		&clear_range
+	);
+}
+
+void VulkanRenderer::clear_image(ResourceHandle handle) {
+	auto image = resource_manager.get_image(handle);
+	auto draw_resource = resource_manager.get_image(draw_image);
+
+	command_pool.transition_image(
+		image->get_image(),
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_GENERAL
+	);
+
+	command_pool.transition_image(
+		image->get_image(),
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+	);
+
+	command_pool.transition_image(
+		draw_resource->get_image(),
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+	);
+
+	command_pool.copy_image(
+		image->get_image(),
+		draw_resource->get_image(),
+		VkExtent2D{ .width = image->get_extent().width, .height = image->get_extent().height },
+		VkExtent2D{ .width = app_context->width, .height = app_context->height }
+	);
+
+	command_pool.transition_image(
+		draw_resource->get_image(),
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_GENERAL
 	);
 }
 
@@ -149,7 +208,23 @@ void VulkanRenderer::image_data(
 }
 
 void VulkanRenderer::rebuild() {
+	int width, height;
+	SDL_GetWindowSize(app_context->window, &width, &height);
+	app_context->width = width;
+	app_context->height = height;
+
 	device.wait();
+
+	image_data(
+		draw_image,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		nullptr,
+		false,
+		app_context->width, app_context->height, 1
+	);
+
 	swapchain.rebuild();
 	command_pool.rebuild();
 }

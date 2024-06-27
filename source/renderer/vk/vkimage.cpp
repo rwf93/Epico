@@ -14,7 +14,8 @@ VulkanImage::VulkanImage(
 }
 
 void VulkanImage::init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *create_info) {
-	UNUSED(image_info);
+	// evil
+	extent = image_info->extent;
 
 	VK_CHECK(vmaCreateImage(allocator, image_info, create_info, &image, &allocation, nullptr));
 
@@ -37,7 +38,7 @@ void VulkanImage::init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *c
 	prepared = true;
 }
 
-void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D extent) {
+void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent) {
 	command_pool->submit_command([&](VkCommandBuffer command) {
 		command_pool->transition_image(command, get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
@@ -49,7 +50,7 @@ void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D extent) {
 		copy.imageSubresource.mipLevel = 0;
 		copy.imageSubresource.baseArrayLayer = 0;
 		copy.imageSubresource.layerCount = 1;
-		copy.imageExtent = extent;
+		copy.imageExtent = image_extent;
 
 		vkCmdCopyBufferToImage(
 			command,

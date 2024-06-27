@@ -3,10 +3,13 @@
 class VulkanCommandPool;
 class VulkanImGUI: public AbstractUI {
 public:
-	VulkanImGUI(VulkanCommandPool *command_pool);
+	VulkanImGUI();
 	~VulkanImGUI() override;
 
 	void process_event(SDL_Event *event);
+
+	void init(FunctorQueue<> &queue, VulkanCommandPool *vkcommandpool);
+	void fini();
 private:
 	VulkanCommandPool *command_pool = nullptr;
 };

@@ -11,6 +11,7 @@ public:
 	virtual void end() = 0;
 
 	virtual void clear(float r, float g, float b, float a) = 0;
+	virtual void clear_image(ResourceHandle handle) = 0;
 
 	virtual ResourceHandle create_image() = 0;
 	virtual ResourceHandle create_buffer() = 0;

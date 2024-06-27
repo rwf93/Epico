@@ -1,12 +1,17 @@
 #include "vkimgui.h"
 
-VulkanImGUI::VulkanImGUI(VulkanCommandPool *command_pool) {
-	this->command_pool = command_pool;
+VulkanImGUI::VulkanImGUI() {}
+VulkanImGUI::~VulkanImGUI() {}
+
+void VulkanImGUI::init(FunctorQueue<> &queue, VulkanCommandPool *vkcommandpool) {
+	this->command_pool = vkcommandpool;
+	queue.push([&] { fini(); });
 }
 
-VulkanImGUI::~VulkanImGUI() {
+void VulkanImGUI::fini() {
 
 }
+
 
 void VulkanImGUI::process_event(SDL_Event *event) {
 	UNUSED(event);
