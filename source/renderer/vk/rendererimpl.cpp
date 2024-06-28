@@ -126,6 +126,33 @@ void VulkanRenderer::end() {
 	command_pool.advance();
 }
 
+void VulkanRenderer::begin_pass() {
+	auto draw_resource = resource_manager.get_image(draw_image);
+
+	auto color_attachment = info::attachment_info(swapchain.get_swapchain_image_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	auto rendering_info = info::rendering_info(swapchain.get_swapchain().extent, &color_attachment, nullptr);
+
+	command_pool.transition_image(
+		draw_resource->get_image(),
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	);
+
+	vkCmdBeginRendering(command_pool.get_command(), &rendering_info);
+}
+
+void VulkanRenderer::end_pass() {
+	vkCmdEndRendering(command_pool.get_command());
+
+	auto draw_resource = resource_manager.get_image(draw_image);
+	command_pool.transition_image(
+		draw_resource->get_image(),
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		VK_IMAGE_LAYOUT_GENERAL
+	);
+
+}
+
 void VulkanRenderer::clear(float r, float g, float b, float a) {
 	VkClearColorValue clear_value = { { r, g, b, a } };
 

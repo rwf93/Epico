@@ -8,6 +8,9 @@ public:
 	void begin() override;
 	void end() override;
 
+	void begin_pass() override;
+	void end_pass() override;
+
 	void clear(float r, float g, float b, float a) override;
 	void clear_image(ResourceHandle handle) override;
 
