@@ -19,7 +19,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	ui_imgui.init(cleanup_queue, &command_pool);
+	ui_imgui.init(cleanup_queue, app_context, &instance, &device, &swapchain, &command_pool);
 
 	draw_image = create_image();
 	image_data(
@@ -47,18 +47,16 @@ void VulkanRenderer::begin() {
 
 	command_pool.begin_recording();
 
+	auto image = resource_manager.get_image(draw_image);
+
 	command_pool.transition_image(
-		resource_manager.get_image(draw_image)->get_image(),
+		image->get_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_GENERAL
 	);
-}
-
-void VulkanRenderer::end() {
-	auto image = resource_manager.get_image(draw_image)->get_image();
 
 	command_pool.transition_image(
-		image,
+		image->get_image(),
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
 	);
@@ -70,15 +68,29 @@ void VulkanRenderer::end() {
 	);
 
 	command_pool.copy_image(
-		image,
+		image->get_image(),
 		swapchain.get_swapchain_image(),
-		VkExtent2D{ .width = app_context->width, .height = app_context->height },
-		VkExtent2D{ .width = app_context->width, .height = app_context->height }
+		image->get_extent(),
+		VkExtent3D{ .width = app_context->width, .height = app_context->height, .depth = 1 }
+	);
+
+	command_pool.transition_image(
+		image->get_image(),
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		VK_IMAGE_LAYOUT_GENERAL
 	);
 
 	command_pool.transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_GENERAL
+	);
+}
+
+void VulkanRenderer::end() {
+	command_pool.transition_image(
+		swapchain.get_swapchain_image(),
+		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	);
 
@@ -135,12 +147,6 @@ void VulkanRenderer::clear_image(ResourceHandle handle) {
 	command_pool.transition_image(
 		image->get_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_GENERAL
-	);
-
-	command_pool.transition_image(
-		image->get_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
 	);
 
@@ -153,8 +159,8 @@ void VulkanRenderer::clear_image(ResourceHandle handle) {
 	command_pool.copy_image(
 		image->get_image(),
 		draw_resource->get_image(),
-		VkExtent2D{ .width = image->get_extent().width, .height = image->get_extent().height },
-		VkExtent2D{ .width = app_context->width, .height = app_context->height }
+		image->get_extent(),
+		draw_resource->get_extent()
 	);
 
 	command_pool.transition_image(

@@ -83,6 +83,12 @@ int main(int argc, char *argv[]) {
 
 		renderer->clear_image(image_handle);
 
+		renderer->ui()->begin_ui();
+		renderer->ui()->show_demo_window();
+		renderer->ui()->end_ui();
+		renderer->ui()->present();
+
+
 		renderer->end();
 	}
 

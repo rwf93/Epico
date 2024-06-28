@@ -218,3 +218,31 @@ VkSubmitInfo2 info::submit_info(VkCommandBufferSubmitInfo *command, VkSemaphoreS
 
 	return info;
 }
+
+VkRenderingAttachmentInfo info::attachment_info(VkImageView view, VkClearValue *clear, VkImageLayout layout) {
+	VkRenderingAttachmentInfo attachment_info = {};
+	attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	attachment_info.imageView = view;
+	attachment_info.loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+	attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachment_info.imageLayout = layout;
+	attachment_info.clearValue = clear ? *clear : attachment_info.clearValue;
+
+	return attachment_info;
+}
+
+VkRenderingInfo info::rendering_info(
+	VkExtent2D extent,
+	VkRenderingAttachmentInfo *color_attachments,
+	VkRenderingAttachmentInfo *depth_attachments
+) {
+	VkRenderingInfo rendering_info = {};
+	rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	rendering_info.renderArea = VkRect2D { VkOffset2D { 0, 0 }, extent };
+	rendering_info.layerCount = 1;
+	rendering_info.colorAttachmentCount = 1;
+	rendering_info.pColorAttachments = color_attachments;
+	rendering_info.pDepthAttachment = depth_attachments;
+
+	return rendering_info;
+}

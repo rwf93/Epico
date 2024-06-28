@@ -58,8 +58,8 @@ public:
 		transition_image(get_command(), image, current_layout, new_layout);
 	}
 
-	void copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent2D src_size, VkExtent2D dst_size);
-	void copy_image(VkImage src, VkImage dst, VkExtent2D src_size, VkExtent2D dst_size) {
+	void copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size);
+	void copy_image(VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
 		copy_image(get_command(), src, dst, src_size, dst_size);
 	};
 

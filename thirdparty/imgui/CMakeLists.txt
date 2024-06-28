@@ -17,4 +17,4 @@ target_link_libraries(imgui
 	$<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
-target_link_libraries(imgui PRIVATE Vulkan::Vulkan)
+target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)

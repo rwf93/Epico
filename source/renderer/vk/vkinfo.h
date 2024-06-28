@@ -67,4 +67,11 @@ VkSubmitInfo2 submit_info(
 	VkSemaphoreSubmitInfo *wait_semaphore_info
 );
 
+VkRenderingAttachmentInfo attachment_info(VkImageView view, VkClearValue *clear, VkImageLayout layout);
+VkRenderingInfo rendering_info(
+	VkExtent2D extent,
+	VkRenderingAttachmentInfo *color_attachments,
+	VkRenderingAttachmentInfo *depth_attachments
+);
+
 }

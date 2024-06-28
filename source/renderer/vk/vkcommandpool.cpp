@@ -115,16 +115,17 @@ void VulkanCommandPool::transition_image(
 	vkCmdPipelineBarrier2(command, &dependency_info);
 }
 
-void VulkanCommandPool::copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent2D src_size, VkExtent2D dst_size) {
+void VulkanCommandPool::copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
 	VkImageBlit2 blit = {};
 	blit.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
 
 	blit.srcOffsets[1].x = src_size.width;
 	blit.srcOffsets[1].y = src_size.height;
-	blit.srcOffsets[1].z = 1;
+	blit.srcOffsets[1].z = src_size.depth;
+
 	blit.dstOffsets[1].x = dst_size.width;
 	blit.dstOffsets[1].y = dst_size.height;
-	blit.dstOffsets[1].z = 1;
+	blit.dstOffsets[1].z = dst_size.depth;
 
 	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	blit.srcSubresource.baseArrayLayer = 0;

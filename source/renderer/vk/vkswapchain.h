@@ -22,6 +22,8 @@ public:
 	VkImageView &get_swapchain_image_view(uint32_t index) { return get_swapchain_image_views().at(index); }
 	VkImageView &get_swapchain_image_view() { return get_swapchain_image_view(image_index); }
 
+	VkFormat &get_swapchain_image_format() { return swapchain.image_format; }
+
 	bool aquire_next_image(VulkanCommandPool *command_pool);
 
 	uint32_t &get_image_index() { return image_index; }
