@@ -150,6 +150,19 @@ void VulkanCommandPool::copy_image(VkCommandBuffer command, VkImage src, VkImage
 	vkCmdBlitImage2(command, &blit_info);
 }
 
+void VulkanCommandPool::clear_image(VkCommandBuffer command, VkImage image, float r, float g, float b, float a) {
+	VkClearColorValue clear_value = { { r, g, b, a } };
+	auto clear_range = info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
+	vkCmdClearColorImage(
+		command,
+		image,
+		VK_IMAGE_LAYOUT_GENERAL,
+		&clear_value,
+		1,
+		&clear_range
+	);
+}
+
 void VulkanCommandPool::create_command_pool() {
 	auto command_pool_info = info::command_pool_create_info(
 		device->get_graphics_queue_index(),

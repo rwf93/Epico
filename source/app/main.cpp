@@ -33,11 +33,6 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	uint32_t a[3] = { 1, 2, 3 };
-
-	auto handle = renderer->create_buffer();
-	renderer->buffer_data(handle, BufferType::VERTEX, sizeof(uint32_t) * 3, a);
-
 	auto image_handle = renderer->create_image();
 
 	std::array<uint32_t, 16 * 16> pixels;
@@ -56,6 +51,26 @@ int main(int argc, char *argv[]) {
 		ImageFormat::R8G8B8A8_UNORM,
 		pixels.data(), false,
 		16, 16, 1
+	);
+
+	auto forward_image = renderer->create_image();
+	renderer->image_data(
+		forward_image,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		nullptr, false,
+		context.width, context.height, 1
+	);
+
+	auto test_pass = renderer->create_image();
+	renderer->image_data(
+		test_pass,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		nullptr, false,
+		context.width, context.height, 1
 	);
 
 	static bool quit = false;
@@ -81,10 +96,23 @@ int main(int argc, char *argv[]) {
 
 		renderer->begin();
 
-		renderer->clear_image(image_handle);
+		renderer->clear(forward_image, 1, 0, 0, 0);
+		renderer->clear(test_pass, 1, 0, 0, 1);
 
-		renderer->begin_pass();
+		ResourceHandle handles[] = { forward_image, test_pass };
+		AttachmentType types[] = { AttachmentType::COLOR, AttachmentType::COLOR };
+		static SubpassDependency forward = {
+			.attachments = handles,
+			.types = types,
+			.count = 2,
+		};
+
+		renderer->begin_pass(&forward);
+		renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+		renderer->scissor(context.width, context.height);
 		renderer->end_pass();
+
+		renderer->present(forward_image);
 
 		renderer->ui()->begin_ui();
 		renderer->ui()->show_demo_window();

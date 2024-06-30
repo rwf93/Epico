@@ -20,17 +20,6 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
 	ui_imgui.init(cleanup_queue, app_context, &instance, &device, &swapchain, &command_pool);
-
-	draw_image = create_image();
-	image_data(
-		draw_image,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		nullptr,
-		false,
-		app_context->width, app_context->height, 1
-	);
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -47,42 +36,9 @@ void VulkanRenderer::begin() {
 
 	command_pool.begin_recording();
 
-	auto image = resource_manager.get_image(draw_image);
-
-	command_pool.transition_image(
-		image->get_image(),
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_GENERAL
-	);
-
-	command_pool.transition_image(
-		image->get_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-	);
-
 	command_pool.transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-	);
-
-	command_pool.copy_image(
-		image->get_image(),
-		swapchain.get_swapchain_image(),
-		image->get_extent(),
-		VkExtent3D{ .width = app_context->width, .height = app_context->height, .depth = 1 }
-	);
-
-	command_pool.transition_image(
-		image->get_image(),
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		VK_IMAGE_LAYOUT_GENERAL
-	);
-
-	command_pool.transition_image(
-		swapchain.get_swapchain_image(),
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_GENERAL
 	);
 }
@@ -119,23 +75,37 @@ void VulkanRenderer::end() {
 	present_info.pImageIndices = &swapchain.get_image_index();
 
 	VkResult present_result = vkQueuePresentKHR(device.get_graphics_queue(), &present_info);
-	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR) {
+	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
 		rebuild();
-	}
 
 	command_pool.advance();
 }
 
-void VulkanRenderer::begin_pass() {
-	auto draw_resource = resource_manager.get_image(draw_image);
+void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
+	UNUSED(dependencies)
 
-	auto color_attachment = info::attachment_info(swapchain.get_swapchain_image_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	auto rendering_info = info::rendering_info(swapchain.get_swapchain().extent, &color_attachment, nullptr);
+	std::vector<VkRenderingAttachmentInfo> color_attachments;
+	std::vector<VkRenderingAttachmentInfo> depth_attachments;
 
-	command_pool.transition_image(
-		draw_resource->get_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	for(uint32_t i = 0; i < dependencies->count; i++) {
+		auto resource = resource_manager.get_image(dependencies->attachments[i]);
+		switch(dependencies->types[i]) {
+			case AttachmentType::COLOR:
+				color_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+				break;
+			case AttachmentType::DEPTH:
+				depth_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL));
+				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+				break;
+			default: break;
+		}
+	}
+
+	auto rendering_info = info::rendering_info(
+		swapchain.get_swapchain().extent,
+		color_attachments.data(), depth_attachments.data(),
+		static_cast<uint32_t>(color_attachments.size())
 	);
 
 	vkCmdBeginRendering(command_pool.get_command(), &rendering_info);
@@ -143,58 +113,46 @@ void VulkanRenderer::begin_pass() {
 
 void VulkanRenderer::end_pass() {
 	vkCmdEndRendering(command_pool.get_command());
-
-	auto draw_resource = resource_manager.get_image(draw_image);
-	command_pool.transition_image(
-		draw_resource->get_image(),
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_IMAGE_LAYOUT_GENERAL
-	);
-
 }
 
-void VulkanRenderer::clear(float r, float g, float b, float a) {
-	VkClearColorValue clear_value = { { r, g, b, a } };
+void VulkanRenderer::clear(ResourceHandle handle, float r, float g, float b, float a) {
+	auto resource = resource_manager.get_image(handle);
 
-	auto clear_range = info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
-	vkCmdClearColorImage(
-		command_pool.get_command(),
-		resource_manager.get_image(draw_image)->get_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
-		&clear_value,
-		1,
-		&clear_range
-	);
+	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	command_pool.clear_image(resource->get_image(), r, g, b, a);
 }
 
-void VulkanRenderer::clear_image(ResourceHandle handle) {
-	auto image = resource_manager.get_image(handle);
-	auto draw_resource = resource_manager.get_image(draw_image);
+void VulkanRenderer::present(ResourceHandle handle) {
+	auto resource = resource_manager.get_image(handle);
+	UNUSED(resource);
 
-	command_pool.transition_image(
-		image->get_image(),
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-	);
-
-	command_pool.transition_image(
-		draw_resource->get_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-	);
+	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	command_pool.copy_image(
-		image->get_image(),
-		draw_resource->get_image(),
-		image->get_extent(),
-		draw_resource->get_extent()
+		resource->get_image(),
+		swapchain.get_swapchain_image(),
+		resource->get_extent(),
+		VkExtent3D{ .width = swapchain.get_swapchain().extent.width, .height = swapchain.get_swapchain().extent.height, .depth = 1 }
 	);
 
-	command_pool.transition_image(
-		draw_resource->get_image(),
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_GENERAL
-	);
+	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+}
+
+void VulkanRenderer::viewport(float width, float height, float x, float y) {
+	auto viewport = info::viewport(width, height, x, y);
+	vkCmdSetViewport(command_pool.get_command(), 0, 1, &viewport);
+}
+
+void VulkanRenderer::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
+	VkRect2D scissor = {};
+	scissor.extent.width = width;
+	scissor.extent.height = height;
+	scissor.offset.x = x;
+	scissor.offset.y = y;
+
+	vkCmdSetScissor(command_pool.get_command(), 0, 1, &scissor);
 }
 
 ResourceHandle VulkanRenderer::create_image() {
@@ -247,17 +205,6 @@ void VulkanRenderer::rebuild() {
 	app_context->height = height;
 
 	device.wait();
-
-	image_data(
-		draw_image,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		nullptr,
-		false,
-		app_context->width, app_context->height, 1
-	);
-
 	swapchain.rebuild();
 	command_pool.rebuild();
 }

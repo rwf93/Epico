@@ -13,11 +13,11 @@ public:
 	~VulkanImage() override;
 
 	void init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *create_info);
-	void fini();
+	void fini() override;
 
 	void stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent);
 
-	bool is_prepared() { return prepared; }
+	ResourceState get_state() override { return state; }
 
 	VkExtent3D &get_extent() { return extent; }
 
@@ -38,5 +38,5 @@ private:
 
 	VkExtent3D extent;
 
-	bool prepared = false;
+	ResourceState state = ResourceState::UNREADY;
 };

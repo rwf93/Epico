@@ -61,7 +61,12 @@ public:
 	void copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size);
 	void copy_image(VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
 		copy_image(get_command(), src, dst, src_size, dst_size);
-	};
+	}
+
+	void clear_image(VkCommandBuffer command, VkImage image, float r, float g, float b, float a);
+	void clear_image(VkImage image, float r, float g, float b, float a) {
+		clear_image(get_command(), image, r, g, b, a);
+	}
 
 	uint32_t get_max_flying_frames() { return max_flying_frames; }
 

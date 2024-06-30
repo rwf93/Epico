@@ -38,10 +38,16 @@ enum ImageDimensions {
     IMAGE_3D
 };
 
+enum ResourceState {
+    READY,
+    UNREADY
+};
+
 // Internal structure, expected to be used by the renderer implementation. ResourceHandles are public usage.
 class AbstractResource {
 public:
     virtual ~AbstractResource() {}
     virtual ResourceType get_type() = 0;
-    virtual bool is_prepared() = 0;
+    virtual ResourceState get_state() = 0;
+    virtual void fini() = 0; // Only finishes if a resource's state is READY.
 };

@@ -234,13 +234,14 @@ VkRenderingAttachmentInfo info::attachment_info(VkImageView view, VkClearValue *
 VkRenderingInfo info::rendering_info(
 	VkExtent2D extent,
 	VkRenderingAttachmentInfo *color_attachments,
-	VkRenderingAttachmentInfo *depth_attachments
+	VkRenderingAttachmentInfo *depth_attachments,
+	uint32_t color_attachment_count
 ) {
 	VkRenderingInfo rendering_info = {};
 	rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 	rendering_info.renderArea = VkRect2D { VkOffset2D { 0, 0 }, extent };
 	rendering_info.layerCount = 1;
-	rendering_info.colorAttachmentCount = 1;
+	rendering_info.colorAttachmentCount = color_attachment_count;
 	rendering_info.pColorAttachments = color_attachments;
 	rendering_info.pDepthAttachment = depth_attachments;
 

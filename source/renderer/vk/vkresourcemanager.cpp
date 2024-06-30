@@ -50,7 +50,7 @@ void VulkanResourceManager::init(
 ResourceHandle VulkanResourceManager::create_image() {
 	ResourceHandle last_resource_handle = advance_handle();
 
-	auto *image_resource = new VulkanImage(device, command_pool, allocator);
+	auto image_resource = new VulkanImage(device, command_pool, allocator);
 	resources[last_resource_handle] = image_resource;
 
 	return last_resource_handle;
@@ -59,7 +59,7 @@ ResourceHandle VulkanResourceManager::create_image() {
 ResourceHandle VulkanResourceManager::create_buffer() {
 	ResourceHandle last_resource_handle = advance_handle();
 
-	auto *buffer_resource = new VulkanBuffer(device, command_pool, allocator);
+	auto buffer_resource = new VulkanBuffer(device, command_pool, allocator);
 	resources[last_resource_handle] = buffer_resource;
 
 	return last_resource_handle;
@@ -68,13 +68,14 @@ ResourceHandle VulkanResourceManager::create_buffer() {
 void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size) {
 	auto resource = get_buffer(handle);
 	assert(resource);
+
 	if(!resource) {
 		spdlog::error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 
-	// Deallocate the previous object if it was prepared.
-	resource->fini();
+	if(resource->get_state() == ResourceState::READY)
+		resource->fini();
 
 	auto staging_buffer_info = info::buffer_create_info(size);
 	auto buffer_info = info::buffer_create_info(
@@ -98,6 +99,7 @@ void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFla
 void VulkanResourceManager::buffer_sub_data(ResourceHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
 	auto resource = get_buffer(handle);
 	assert(resource);
+
 	if(!resource) {
 		spdlog::error("Invalid resource or resource is the wrong type.");
 		return;
@@ -111,16 +113,16 @@ void VulkanResourceManager::image_data(
 	VkImageCreateInfo image_info,
 	void *data
 ) {
-	UNUSED(data);
-
 	auto resource = get_image(handle);
 	assert(resource);
+
 	if(!resource) {
 		spdlog::error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 
-	resource->fini(); // ditto.
+	if(resource->get_state() == ResourceState::READY)
+		resource->fini();
 
 	auto allocate_info = info::allocation_create_info(0);
 	allocate_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -156,14 +158,8 @@ void VulkanResourceManager::image_sub_data(ResourceHandle handle, void *data, Vk
 void VulkanResourceManager::fini() {
 	for(auto &resource: resources) {
 		if(auto second = resource.second) {
-			switch(second->get_type()) {
-			case ResourceType::IMAGE:
-				dynamic_cast<VulkanImage*>(second)->fini(); break;
-			case ResourceType::BUFFER:
-				dynamic_cast<VulkanBuffer*>(second)->fini(); break;
-			default: break;
-			}
-
+			if(second->get_state() == ResourceState::READY)
+				second->fini();
 			delete second;
 		}
 	}

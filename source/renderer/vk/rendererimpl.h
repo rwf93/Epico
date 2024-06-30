@@ -8,11 +8,14 @@ public:
 	void begin() override;
 	void end() override;
 
-	void begin_pass() override;
+	void begin_pass(SubpassDependency *dependencies) override;
 	void end_pass() override;
 
-	void clear(float r, float g, float b, float a) override;
-	void clear_image(ResourceHandle handle) override;
+	void clear(ResourceHandle handle, float r, float g, float b, float a) override;
+	void present(ResourceHandle handle) override;
+
+	void viewport(float width, float height, float x = 0, float y = 0) override;
+	void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) override;
 
 	ResourceHandle create_image() override;
 	ResourceHandle create_buffer() override;
@@ -46,8 +49,6 @@ private:
 	VulkanSwapchain swapchain = {};
 	VulkanCommandPool command_pool = {};
 	VulkanResourceManager resource_manager = {};
-
-	ResourceHandle draw_image = 0;
 
 	VulkanImGUI ui_imgui = {};
 };

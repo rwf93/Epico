@@ -35,7 +35,7 @@ void VulkanImage::init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *c
 
 	VK_CHECK(vkCreateImageView(device->get_device(), &image_view_info, nullptr, &get_view()));
 
-	prepared = true;
+	state = ResourceState::READY;
 }
 
 void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent) {
@@ -66,11 +66,9 @@ void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent) {
 }
 
 void VulkanImage::fini() {
-	if(is_prepared()) {
-		vkDestroyImageView(device->get_device(), get_view(), nullptr);
-		vmaDestroyImage(allocator, image, allocation);
-	}
-	prepared = false;
+	vkDestroyImageView(device->get_device(), get_view(), nullptr);
+	vmaDestroyImage(allocator, image, allocation);
+	state = ResourceState::UNREADY;
 }
 
 

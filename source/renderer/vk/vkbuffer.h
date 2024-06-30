@@ -26,13 +26,13 @@ public:
 
 	void update(VkDeviceSize offset, VkDeviceSize size, void *data);
 
-	bool is_prepared() override { return prepared; }
+	ResourceState get_state() override { return state; }
 
 	void init(
     	VkBufferCreateInfo *buffer_create_info,
     	VmaAllocationCreateInfo *allocation_create_info
 	);
-	void fini();
+	void fini() override;
 private:
     VulkanDevice *device;
 	VulkanCommandPool *command_pool;
@@ -44,5 +44,5 @@ private:
 	VmaAllocation allocation;
 	VmaAllocationInfo allocation_info = {};
 
-	bool prepared = false;
+	ResourceState state = ResourceState::UNREADY;
 };

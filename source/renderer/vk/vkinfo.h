@@ -71,7 +71,8 @@ VkRenderingAttachmentInfo attachment_info(VkImageView view, VkClearValue *clear,
 VkRenderingInfo rendering_info(
 	VkExtent2D extent,
 	VkRenderingAttachmentInfo *color_attachments,
-	VkRenderingAttachmentInfo *depth_attachments
+	VkRenderingAttachmentInfo *depth_attachments,
+	uint32_t color_attachment_count = 1
 );
 
 }
