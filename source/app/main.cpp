@@ -74,6 +74,14 @@ int main(int argc, char *argv[]) {
 		);
 	});
 
+	auto test_shader = renderer->create_graphic_shader();
+	test_shader = renderer->create_graphic_shader();
+	test_shader = renderer->create_graphic_shader();
+	test_shader = renderer->create_graphic_shader();
+	test_shader = renderer->create_graphic_shader();
+
+	spdlog::info("shader: {}", test_shader);
+
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {

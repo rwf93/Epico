@@ -47,6 +47,18 @@ void VulkanResourceManager::init(
 	queue.push([&] { fini(); });
 }
 
+void VulkanResourceManager::fini() {
+	for(auto &resource: resources) {
+		if(auto second = resource.second) {
+			if(second->get_state() == ResourceState::RESOURCE_READY)
+				second->fini();
+			delete second;
+		}
+	}
+
+	vmaDestroyAllocator(allocator);
+}
+
 ResourceHandle VulkanResourceManager::create_image() {
 	ResourceHandle last_resource_handle = advance_handle();
 
@@ -153,16 +165,4 @@ void VulkanResourceManager::image_sub_data(ResourceHandle handle, void *data, Vk
 	UNUSED(data);
 	UNUSED(size);
 	UNUSED(offset);
-}
-
-void VulkanResourceManager::fini() {
-	for(auto &resource: resources) {
-		if(auto second = resource.second) {
-			if(second->get_state() == ResourceState::RESOURCE_READY)
-				second->fini();
-			delete second;
-		}
-	}
-
-	vmaDestroyAllocator(allocator);
 }

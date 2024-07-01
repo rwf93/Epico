@@ -13,6 +13,9 @@ enum ShaderState {
 };
 
 class AbstractShader {
+public:
+    virtual ~AbstractShader() {}
     virtual ShaderType get_type() = 0;
     virtual ShaderState get_state() = 0;
+    virtual void fini() = 0;
 };

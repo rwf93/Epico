@@ -19,9 +19,9 @@ public:
 
 	void stage(
 		VulkanBuffer *staging_buffer,
-    	VkDeviceSize size,
-    	VkDeviceSize src_offset = 0,
-    	VkDeviceSize dst_offset = 0
+		VkDeviceSize size,
+		VkDeviceSize src_offset = 0,
+		VkDeviceSize dst_offset = 0
 	);
 
 	void update(VkDeviceSize offset, VkDeviceSize size, void *data);
@@ -29,12 +29,12 @@ public:
 	ResourceState get_state() override { return state; }
 
 	void init(
-    	VkBufferCreateInfo *buffer_create_info,
-    	VmaAllocationCreateInfo *allocation_create_info
+		VkBufferCreateInfo *buffer_create_info,
+		VmaAllocationCreateInfo *allocation_create_info
 	);
 	void fini() override;
 private:
-    VulkanDevice *device;
+	VulkanDevice *device;
 	VulkanCommandPool *command_pool;
 
 	VmaAllocator allocator;

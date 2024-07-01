@@ -3,10 +3,15 @@
 class VulkanDevice;
 class VulkanComputeShader: public AbstractShader {
 public:
-    ShaderType get_type() override { return ShaderType::COMPUTE; }
-    ShaderState get_state() override { return state; }
+	VulkanComputeShader(VulkanDevice *vkdevice);
+	~VulkanComputeShader() override;
+
+	ShaderType get_type() override { return ShaderType::COMPUTE; }
+	ShaderState get_state() override { return state; }
+
+	void fini() override;
 
 private:
-    VulkanDevice *device;
-    ShaderState state = ShaderState::SHADER_UNREADY;
+	VulkanDevice *device;
+	ShaderState state = ShaderState::SHADER_UNREADY;
 };
