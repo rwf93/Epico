@@ -4,6 +4,7 @@
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
+#include "vkshadermanager.h"
 #include "vkimgui.h"
 
 #include "rendererimpl.h"
@@ -19,6 +20,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
+	shader_manager.init(cleanup_queue);
 	ui_imgui.init(cleanup_queue, app_context, &instance, &device, &swapchain, &command_pool);
 }
 
@@ -65,7 +67,56 @@ void VulkanRenderer::end() {
 	auto submit_info = info::submit_info(&command_info, &signal_info, &wait_info);
 
 	VK_CHECK(vkQueueSubmit2(device.get_graphics_queue(), 1, &submit_info, command_pool.get_fence()));
+}
 
+void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
+	std::vector<VkRenderingAttachmentInfo> color_attachments;
+	std::vector<VkRenderingAttachmentInfo> depth_attachments;
+
+	for(uint32_t i = 0; i < dependencies->count; i++) {
+		auto resource = resource_manager.get_image(dependencies->attachments[i]);
+		switch(dependencies->types[i]) {
+			case AttachmentType::COLOR:
+				color_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+				break;
+			case AttachmentType::DEPTH:
+				depth_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL));
+				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+				break;
+			default: break;
+		}
+	}
+
+	assert(depth_attachments.size() <= 1);
+
+	auto rendering_info = info::rendering_info(
+		swapchain.get_swapchain().extent,
+		color_attachments.data(), depth_attachments.data(),
+		static_cast<uint32_t>(color_attachments.size())
+	);
+
+	vkCmdBeginRendering(command_pool.get_command(), &rendering_info);
+}
+
+void VulkanRenderer::end_pass(SubpassDependency *dependencies) {
+	vkCmdEndRendering(command_pool.get_command());
+
+	for(uint32_t i = 0; i < dependencies->count; i++) {
+		auto resource = resource_manager.get_image(dependencies->attachments[i]);
+		switch(dependencies->types[i]) {
+			case AttachmentType::COLOR:
+				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+				break;
+			case AttachmentType::DEPTH:
+				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+				break;
+			default: break;
+		}
+	}
+}
+
+void VulkanRenderer::present() {
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.pSwapchains = &swapchain.get_swapchain().swapchain;
@@ -81,63 +132,8 @@ void VulkanRenderer::end() {
 	command_pool.advance();
 }
 
-void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
-	UNUSED(dependencies)
-
-	std::vector<VkRenderingAttachmentInfo> color_attachments;
-	std::vector<VkRenderingAttachmentInfo> depth_attachments;
-
-	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto resource = resource_manager.get_image(dependencies->attachments[i]);
-		switch(dependencies->types[i]) {
-			case AttachmentType::COLOR:
-				color_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-				break;
-			case AttachmentType::DEPTH:
-				depth_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL));
-				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-				break;
-			default: break;
-		}
-	}
-
-	auto rendering_info = info::rendering_info(
-		swapchain.get_swapchain().extent,
-		color_attachments.data(), depth_attachments.data(),
-		static_cast<uint32_t>(color_attachments.size())
-	);
-
-	vkCmdBeginRendering(command_pool.get_command(), &rendering_info);
-}
-
-void VulkanRenderer::end_pass() {
-	vkCmdEndRendering(command_pool.get_command());
-}
-
-void VulkanRenderer::clear(ResourceHandle handle, float r, float g, float b, float a) {
-	auto resource = resource_manager.get_image(handle);
-
-	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-	command_pool.clear_image(resource->get_image(), r, g, b, a);
-}
-
-void VulkanRenderer::present(ResourceHandle handle) {
-	auto resource = resource_manager.get_image(handle);
-	UNUSED(resource);
-
-	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-	command_pool.copy_image(
-		resource->get_image(),
-		swapchain.get_swapchain_image(),
-		resource->get_extent(),
-		VkExtent3D{ .width = swapchain.get_swapchain().extent.width, .height = swapchain.get_swapchain().extent.height, .depth = 1 }
-	);
-
-	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+void VulkanRenderer::clear(float r, float g, float b, float a) {
+	command_pool.clear_image(swapchain.get_swapchain_image(), r, g, b, a);
 }
 
 void VulkanRenderer::viewport(float width, float height, float x, float y) {
@@ -161,6 +157,14 @@ ResourceHandle VulkanRenderer::create_image() {
 
 ResourceHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
+}
+
+ShaderHandle VulkanRenderer::create_graphic_shader() {
+	return shader_manager.create_graphic_shader();
+}
+
+ShaderHandle VulkanRenderer::create_compute_shader() {
+	return shader_manager.create_compute_shader();
 }
 
 void VulkanRenderer::buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) {
@@ -205,6 +209,7 @@ void VulkanRenderer::rebuild() {
 	app_context->height = height;
 
 	device.wait();
+	if(resize_event) resize_event(this);
 	swapchain.rebuild();
 	command_pool.rebuild();
 }

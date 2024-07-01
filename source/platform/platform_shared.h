@@ -40,7 +40,7 @@ template<typename T>
 struct FactoryHandle {
 	handle_t handle = nullptr;
 	T interface = nullptr;
-	bool good = false; // Determines if the result of get_factory is successful
+	bool good = false;
 	// Free the instantiated interface, and free the loaded library.
 	void release() {
 		if(good) {
@@ -78,7 +78,6 @@ inline FactoryHandle<T> get_factory(const char *binary, void *user_data = nullpt
 		goto fail_factory;
 
 	return {handle, factory_result, true};
-
 fail_factory:
 	platform_freelibrary(handle);
 fail:

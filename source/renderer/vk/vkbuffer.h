@@ -44,5 +44,5 @@ private:
 	VmaAllocation allocation;
 	VmaAllocationInfo allocation_info = {};
 
-	ResourceState state = ResourceState::UNREADY;
+	ResourceState state = ResourceState::RESOURCE_UNREADY;
 };

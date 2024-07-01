@@ -63,15 +63,16 @@ int main(int argc, char *argv[]) {
 		context.width, context.height, 1
 	);
 
-	auto test_pass = renderer->create_image();
-	renderer->image_data(
-		test_pass,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		nullptr, false,
-		context.width, context.height, 1
-	);
+	renderer->on_resize([&](AbstractRenderer* renderer) {
+		renderer->image_data(
+			forward_image,
+			ImageDimensions::IMAGE_2D,
+			ImageSamples::SAMPLE_COUNT_1_BIT,
+			ImageFormat::R16G16B16A16_SFLOAT,
+			nullptr, false,
+			context.width, context.height, 1
+		);
+	});
 
 	static bool quit = false;
 	static bool minimized = false;
@@ -96,30 +97,28 @@ int main(int argc, char *argv[]) {
 
 		renderer->begin();
 
-		renderer->clear(forward_image, 1, 0, 0, 0);
-		renderer->clear(test_pass, 1, 0, 0, 1);
+		renderer->clear(0, 0, 0, 0);
 
-		ResourceHandle handles[] = { forward_image, test_pass };
-		AttachmentType types[] = { AttachmentType::COLOR, AttachmentType::COLOR };
-		static SubpassDependency forward = {
+		static ResourceHandle handles[] = { forward_image };
+		static AttachmentType types[] = { AttachmentType::COLOR };
+		static SubpassDependency forward_dependency = {
 			.attachments = handles,
 			.types = types,
-			.count = 2,
+			.count = 1
 		};
 
-		renderer->begin_pass(&forward);
+		renderer->begin_pass(&forward_dependency);
 		renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 		renderer->scissor(context.width, context.height);
-		renderer->end_pass();
-
-		renderer->present(forward_image);
+		renderer->end_pass(&forward_dependency);
 
 		renderer->ui()->begin_ui();
 		renderer->ui()->show_demo_window();
 		renderer->ui()->end_ui();
-		renderer->ui()->present();
 
 		renderer->end();
+
+		renderer->present();
 	}
 
 	renderer.release();

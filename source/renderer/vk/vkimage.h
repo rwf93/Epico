@@ -38,5 +38,5 @@ private:
 
 	VkExtent3D extent;
 
-	ResourceState state = ResourceState::UNREADY;
+	ResourceState state = ResourceState::RESOURCE_UNREADY;
 };

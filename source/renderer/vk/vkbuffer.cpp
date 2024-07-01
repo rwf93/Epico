@@ -24,7 +24,7 @@ void VulkanBuffer::init(
         &buffer, &allocation, &allocation_info
     ));
 
-    state = ResourceState::READY;
+    state = ResourceState::RESOURCE_READY;
 }
 
 void VulkanBuffer::stage(
@@ -33,7 +33,7 @@ void VulkanBuffer::stage(
     VkDeviceSize src_offset,
     VkDeviceSize dst_offset
 ) {
-    assert(get_state() == ResourceState::READY);
+    assert(get_state() == ResourceState::RESOURCE_READY);
 
     command_pool->submit_command([&](VkCommandBuffer command) {
         VkBufferCopy copy;
@@ -47,7 +47,7 @@ void VulkanBuffer::stage(
 }
 
 void VulkanBuffer::update(VkDeviceSize offset, VkDeviceSize size, void *data) {
-    assert(get_state() == ResourceState::READY);
+    assert(get_state() == ResourceState::RESOURCE_READY);
 
     command_pool->submit_command([&](VkCommandBuffer command) {
         vkCmdUpdateBuffer(command, buffer, offset, size, data);
@@ -55,8 +55,8 @@ void VulkanBuffer::update(VkDeviceSize offset, VkDeviceSize size, void *data) {
 }
 
 void VulkanBuffer::fini() {
-    assert(get_state() == ResourceState::READY);
+    assert(get_state() == ResourceState::RESOURCE_READY);
 
     vmaDestroyBuffer(allocator, buffer, allocation);
-    state = ResourceState::UNREADY;
+    state = ResourceState::RESOURCE_UNREADY;
 }

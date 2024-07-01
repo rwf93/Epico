@@ -74,7 +74,7 @@ void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFla
 		return;
 	}
 
-	if(resource->get_state() == ResourceState::READY)
+	if(resource->get_state() == ResourceState::RESOURCE_READY)
 		resource->fini();
 
 	auto staging_buffer_info = info::buffer_create_info(size);
@@ -121,7 +121,7 @@ void VulkanResourceManager::image_data(
 		return;
 	}
 
-	if(resource->get_state() == ResourceState::READY)
+	if(resource->get_state() == ResourceState::RESOURCE_READY)
 		resource->fini();
 
 	auto allocate_info = info::allocation_create_info(0);
@@ -158,7 +158,7 @@ void VulkanResourceManager::image_sub_data(ResourceHandle handle, void *data, Vk
 void VulkanResourceManager::fini() {
 	for(auto &resource: resources) {
 		if(auto second = resource.second) {
-			if(second->get_state() == ResourceState::READY)
+			if(second->get_state() == ResourceState::RESOURCE_READY)
 				second->fini();
 			delete second;
 		}

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <public/render/abstractresource.h>
+#include <public/render/abstractshader.h>
+
+#include <functional>
 
 enum AttachmentType {
 	COLOR,
@@ -22,16 +25,22 @@ public:
 	virtual void end() = 0;
 
 	virtual void begin_pass(SubpassDependency *dependencies) = 0;
-	virtual void end_pass() = 0;
+	virtual void end_pass(SubpassDependency *dependencies) = 0;
 
-	virtual void present(ResourceHandle handle) = 0;
-	virtual void clear(ResourceHandle handle, float r, float g, float b, float a) = 0;
+	virtual void present() = 0;
 
+	virtual void clear(float r, float g, float b, float a) = 0;
 	virtual void viewport(float width, float height, float x = 0, float y = 0) = 0;
 	virtual void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) = 0;
 
+	using ResizeEventFunction = std::function<void(AbstractRenderer*)>;
+	virtual void on_resize(ResizeEventFunction &&resize) = 0;
+
 	virtual ResourceHandle create_image() = 0;
 	virtual ResourceHandle create_buffer() = 0;
+
+	virtual ShaderHandle create_graphic_shader() = 0;
+	virtual ShaderHandle create_compute_shader() = 0;
 
 	virtual void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) = 0;
 	virtual void buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) = 0;
@@ -47,4 +56,5 @@ public:
 	) = 0;
 
 	virtual AbstractUI *ui() = 0;
+
 };

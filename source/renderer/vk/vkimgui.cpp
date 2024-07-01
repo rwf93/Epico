@@ -93,9 +93,7 @@ void VulkanImGUI::begin_ui() {
 
 void VulkanImGUI::end_ui() {
 	ImGui::Render();
-}
 
-void VulkanImGUI::present() {
 	auto color_attachment = info::attachment_info(swapchain->get_swapchain_image_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	auto rendering_info = info::rendering_info(swapchain->get_swapchain().extent, &color_attachment, nullptr);
 

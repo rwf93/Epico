@@ -39,8 +39,8 @@ enum ImageDimensions {
 };
 
 enum ResourceState {
-    READY,
-    UNREADY
+    RESOURCE_READY,
+    RESOURCE_UNREADY
 };
 
 // Internal structure, expected to be used by the renderer implementation. ResourceHandles are public usage.

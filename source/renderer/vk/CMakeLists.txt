@@ -3,14 +3,21 @@ add_library(renderer_vk SHARED
 
 		vkinfo.cpp
 		vkconvert.cpp
+
 		vkinstance.cpp
 		vksurface.cpp
 		vkdevice.cpp
 		vkswapchain.cpp
 		vkcommandpool.cpp
+
 		vkresourcemanager.cpp
 		vkimage.cpp
 		vkbuffer.cpp
+
+		vkshadermanager.cpp
+		vkgraphicshader.cpp
+		vkcomputeshader.cpp
+
 		vkimgui.cpp
 
 		rendererimpl.cpp
