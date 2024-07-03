@@ -22,6 +22,72 @@ ShaderHandle VulkanGraphicShader::init() {
 
     auto input_info = info::input_vertex_info(bindings, attributes);
 
+    assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    assembly_info.primitiveRestartEnable = VK_FALSE;
+
+    viewport_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_info.viewportCount = 1;
+    viewport_info.scissorCount = 1;
+
+    rasterizer_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer_info.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer_info.lineWidth = 1.0f;
+    rasterizer_info.cullMode = VK_CULL_MODE_NONE;
+    rasterizer_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
+    multisampling_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling_info.sampleShadingEnable = VK_FALSE;
+    multisampling_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling_info.alphaToOneEnable = VK_FALSE;
+    multisampling_info.alphaToCoverageEnable = VK_FALSE;
+
+    color_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_info.logicOpEnable = VK_FALSE;
+    color_info.logicOp = VK_LOGIC_OP_COPY;
+    color_info.attachmentCount = static_cast<uint32_t>(color_states.size());
+    color_info.pAttachments = color_states.data();
+
+    stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    stencil_info.depthTestEnable = VK_FALSE;
+    stencil_info.depthWriteEnable = VK_FALSE;
+    stencil_info.depthCompareOp = VK_COMPARE_OP_NEVER;
+    stencil_info.depthBoundsTestEnable = VK_FALSE;
+    stencil_info.stencilTestEnable = VK_FALSE;
+    stencil_info.front = {};
+    stencil_info.back = {};
+    stencil_info.minDepthBounds = 0.f;
+    stencil_info.maxDepthBounds = 1.f;
+
+    auto rendering_create_info = info::rendering_create_info(attachment_formats, VK_FORMAT_UNDEFINED);
+
+    std::vector<VkDynamicState> dynamic_states = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamic_info = {};
+    dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_info.pDynamicStates = dynamic_states.data();
+    dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+
+    VkGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipeline_info.pNext = &rendering_create_info;
+    pipeline_info.pStages = shader_stages.data();
+    pipeline_info.stageCount = static_cast<uint32_t>(shader_stages.size());
+    pipeline_info.pVertexInputState = &input_info;
+    pipeline_info.pInputAssemblyState = &assembly_info;
+    pipeline_info.pViewportState = &viewport_info;
+    pipeline_info.pRasterizationState = &rasterizer_info;
+    pipeline_info.pMultisampleState = &multisampling_info;
+    pipeline_info.pColorBlendState = &color_info;
+    pipeline_info.pDepthStencilState = &stencil_info;
+    pipeline_info.pDynamicState = &dynamic_info;
+    pipeline_info.layout = pipeline_layout;
+
+    VK_CHECK(vkCreateGraphicsPipelines(device->get_device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline));
+
     for(auto &module: shader_modules)
         vkDestroyShaderModule(device->get_device(), module, nullptr);
 
@@ -30,10 +96,18 @@ ShaderHandle VulkanGraphicShader::init() {
 }
 
 void VulkanGraphicShader::fini() {
+    vkDestroyPipeline(device->get_device(), pipeline, nullptr);
     vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
 
     state = ShaderState::SHADER_UNREADY;
 }
+
+AbstractGraphicShader *VulkanGraphicShader::set_primitive(ShaderPrimitive type) {
+    assembly_info.topology = convert::convert_primitive_type(type);
+    assembly_info.primitiveRestartEnable = VK_FALSE;
+
+    return this;
+};
 
 AbstractGraphicShader *VulkanGraphicShader::add_binding(
     uint32_t binding,
@@ -88,5 +162,19 @@ AbstractGraphicShader *VulkanGraphicShader::add_stage(
 
     shader_stages.push_back(shader_stage_info);
 
+    return this;
+}
+
+
+AbstractGraphicShader *VulkanGraphicShader::add_attachment(ImageFormat format) {
+    VkPipelineColorBlendAttachmentState color_blend_state = {};
+    color_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                VK_COLOR_COMPONENT_G_BIT |
+                                VK_COLOR_COMPONENT_B_BIT |
+                                VK_COLOR_COMPONENT_A_BIT;
+    color_blend_state.blendEnable = VK_FALSE;
+    color_states.push_back(color_blend_state);
+
+    attachment_formats.push_back(convert::convert_image_format(format));
     return this;
 }

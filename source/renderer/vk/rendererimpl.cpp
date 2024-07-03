@@ -5,6 +5,7 @@
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
 #include "vkshadermanager.h"
+
 #include "vkimgui.h"
 
 #include "rendererimpl.h"
@@ -150,6 +151,42 @@ void VulkanRenderer::scissor(uint32_t width, uint32_t height, int32_t x, int32_t
 
 	vkCmdSetScissor(command_pool.get_command(), 0, 1, &scissor);
 }
+
+void VulkanRenderer::show_image(ResourceHandle handle) {
+	auto resource = resource_manager.get_image(handle);
+
+	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	command_pool.copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_extent(), VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
+
+	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+}
+
+void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
+	auto resource = resource_manager.get_buffer(handle);
+	VkDeviceSize offset[] = { 0 };
+
+	switch(type) {
+		case BindBufferType::BIND_VERTEX:
+			vkCmdBindVertexBuffers(command_pool.get_command(), 0, 1, &resource->get_buffer(), offset);
+			break;
+		case BindBufferType::BIND_INDEX:
+			vkCmdBindIndexBuffer(command_pool.get_command(), resource->get_buffer(), 0, VK_INDEX_TYPE_UINT32);
+			break;
+		default: break;
+	}
+}
+
+void VulkanRenderer::bind_graphic_shader(ShaderHandle handle) {
+	auto shader = shader_manager.get_graphic_shader(handle);
+	vkCmdBindPipeline(command_pool.get_command(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
+};
+
+void VulkanRenderer::draw(uint32_t vertex_count, uint32_t index_count) {
+	vkCmdDraw(command_pool.get_command(), vertex_count, index_count, 0, 0);
+};
 
 ResourceHandle VulkanRenderer::create_image() {
 	return resource_manager.create_image();

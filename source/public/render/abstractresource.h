@@ -2,15 +2,15 @@
 
 typedef uint64_t ResourceHandle;
 
-enum ResourceType {
-    IMAGE,
-    BUFFER
+enum BufferType {
+    BUFFER_VERTEX,
+    BUFFER_INDEX,
+    BUFFER_STORAGE
 };
 
-enum BufferType {
-    VERTEX,
-    INDEX,
-    STORAGE
+enum BindBufferType {
+    BIND_VERTEX,
+    BIND_INDEX
 };
 
 enum ImageFormat {

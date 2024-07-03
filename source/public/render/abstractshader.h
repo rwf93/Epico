@@ -14,7 +14,6 @@ enum AttributeType {
     VEC1D_SIGNED
 };
 
-
 enum ShaderState {
     SHADER_READY,
     SHADER_UNREADY,
@@ -23,6 +22,12 @@ enum ShaderState {
 enum ShaderStage {
     STAGE_VERTEX,
     STAGE_FRAGMENT
+};
+
+enum ShaderPrimitive {
+    TRIANGLE_LIST,
+    TRIANGLE_STRIP,
+    POINT_LIST
 };
 
 class AbstractShader {
@@ -35,6 +40,8 @@ public:
 
 class AbstractGraphicShader: public AbstractShader {
 public:
+    virtual AbstractGraphicShader *set_primitive(ShaderPrimitive type) = 0;
+
     virtual AbstractGraphicShader *add_binding(
         uint32_t binding,
         uint32_t size,
@@ -53,6 +60,8 @@ public:
         const char *data,
         size_t size
     ) = 0;
+
+    virtual AbstractGraphicShader *add_attachment(ImageFormat format) = 0;
 };
 
 class AbstractComputeShader: public AbstractShader {

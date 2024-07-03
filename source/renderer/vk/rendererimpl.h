@@ -16,6 +16,12 @@ public:
 	void viewport(float width, float height, float x = 0, float y = 0) override;
 	void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) override;
 
+	void bind_buffer(ResourceHandle handle, BindBufferType type) override;
+	void bind_graphic_shader(ShaderHandle handle) override;
+	void draw(uint32_t vertex_count, uint32_t index_count) override;
+
+	void show_image(ResourceHandle handle) override;
+
 	void on_resize(ResizeEventFunction &&resize) override {
 		resize_event = resize;
 	};

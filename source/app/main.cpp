@@ -4,12 +4,7 @@
 
 struct Vertex {
 	glm::vec3 position;
-	union {
-		glm::vec3 color;
-		glm::vec3 colour;
-	};
-	glm::vec3 normal;
-	glm::vec3 tex;
+	glm::vec3 color;
 };
 
 int main(int argc, char *argv[]) {
@@ -73,6 +68,16 @@ int main(int argc, char *argv[]) {
 		context.width, context.height, 1
 	);
 
+	auto test_image = renderer->create_image();
+	renderer->image_data(
+		test_image,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		nullptr, false,
+		context.width, context.height, 1
+	);
+
 	renderer->on_resize([&](AbstractRenderer* renderer) {
 		renderer->image_data(
 			forward_image,
@@ -88,13 +93,23 @@ int main(int argc, char *argv[]) {
 	auto fragment_shader_code = filesystem->read_file<char>("assets/shaders/triangle.frag.spv", true);
 
 	auto shader = renderer->create_graphic_shader()
-		->add_binding(0, sizeof(Vertex), BindingRate::RATE_INDEX)
-		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
-		->add_attribute(2, 0, offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
+		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		//->add_binding(0, sizeof(Vertex), BindingRate::RATE_VERTEX)
+		//->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+		//->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
+		->set_primitive(ShaderPrimitive::TRIANGLE_LIST)
 		->add_stage(ShaderStage::STAGE_VERTEX, vertex_shader_code.data(), vertex_shader_code.size())
 		->add_stage(ShaderStage::STAGE_FRAGMENT, fragment_shader_code.data(), fragment_shader_code.size())
 		->init();
+
+	std::vector<Vertex> triangle = {
+		{ {0.0, -0.5, 0}, {1.0, 1.0, 1.0} },
+    	{ { 0.5, 0.5, 0}, {1.0, 1.0, 1.0} },
+    	{ { -0.5, 0.5, 0}, { 1.0, 1.0, 1.0 } }
+	};
+
+	auto vbo_handle = renderer->create_buffer();
+	renderer->buffer_data(vbo_handle, BufferType::BUFFER_VERTEX, triangle.size(), triangle.data());
 
 	static bool quit = false;
 	static bool minimized = false;
@@ -118,28 +133,54 @@ int main(int argc, char *argv[]) {
 		}
 
 		renderer->begin();
+		{
+			renderer->clear(0, 0, 0, 0);
 
-		renderer->clear(0, 0, 0, 0);
+			{
+				static ResourceHandle handles[] = { forward_image };
+				static AttachmentType types[] = { AttachmentType::COLOR };
+				static SubpassDependency forward_dependency = {
+					.attachments = handles,
+					.types = types,
+					.count = sizeof(handles)/sizeof(handles[0])
+				};
 
-		static ResourceHandle handles[] = { forward_image };
-		static AttachmentType types[] = { AttachmentType::COLOR };
-		static SubpassDependency forward_dependency = {
-			.attachments = handles,
-			.types = types,
-			.count = 1
-		};
+				renderer->begin_pass(&forward_dependency);
+					renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+					renderer->scissor(context.width, context.height);
+					renderer->bind_graphic_shader(shader);
+					renderer->draw(3, 1);
 
-		renderer->begin_pass(&forward_dependency);
-		renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-		renderer->scissor(context.width, context.height);
-		renderer->end_pass(&forward_dependency);
+				renderer->end_pass(&forward_dependency);
+			}
 
-		renderer->ui()->begin_ui();
-		renderer->ui()->show_demo_window();
-		renderer->ui()->end_ui();
+			{
+				static ResourceHandle handles[] = { test_image };
+				static AttachmentType types[] = { AttachmentType::COLOR };
+				static SubpassDependency forward_dependency = {
+					.attachments = handles,
+					.types = types,
+					.count = sizeof(handles)/sizeof(handles[0])
+				};
 
-		renderer->end();
+				renderer->begin_pass(&forward_dependency);
+					renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+					renderer->scissor(context.width, context.height);
+					renderer->bind_graphic_shader(shader);
+					renderer->draw(3, 1);
 
+				renderer->end_pass(&forward_dependency);
+			}
+
+			renderer->show_image(test_image);
+
+			renderer->ui()->begin_ui();
+			renderer->ui()->show_demo_window();
+			renderer->ui()->end_ui();
+
+
+			renderer->end();
+		}
 		renderer->present();
 	}
 

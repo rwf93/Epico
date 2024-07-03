@@ -33,6 +33,13 @@ public:
 	virtual void viewport(float width, float height, float x = 0, float y = 0) = 0;
 	virtual void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) = 0;
 
+	virtual void bind_buffer(ResourceHandle handle, BindBufferType type) = 0;
+	virtual void bind_graphic_shader(ShaderHandle handle) = 0;
+
+	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;
+
+	virtual void show_image(ResourceHandle handle) = 0;
+
 	using ResizeEventFunction = std::function<void(AbstractRenderer*)>;
 	virtual void on_resize(ResizeEventFunction &&resize) = 0;
 
