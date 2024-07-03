@@ -1,3 +1,4 @@
+#include "vkdevice.h"
 #include "vkgraphicshader.h"
 #include "vkcomputeshader.h"
 #include "vkshadermanager.h"
@@ -26,7 +27,7 @@ void VulkanShaderManager::fini() {
 AbstractGraphicShader *VulkanShaderManager::create_graphic_shader() {
 	ShaderHandle last_shader_handle = advance_shader_handle();
 
-	auto graphic_shader = new VulkanGraphicShader(last_shader_handle, device);
+	auto graphic_shader = new VulkanGraphicShader(last_shader_handle, device, this);
 	shaders[last_shader_handle] = graphic_shader;
 
 	return graphic_shader;

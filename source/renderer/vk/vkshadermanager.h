@@ -21,12 +21,6 @@ protected:
 
 private:
 	VulkanDevice *device;
-
-	struct PipelineLayout {
-		std::vector<VkDescriptorSetLayout> descriptor_layouts;
-	};
-	std::map<PipelineLayout, VkPipelineLayout> layouts;
-
 	std::map<ShaderHandle, AbstractShader*> shaders;
 	ShaderHandle current_shader_handle = 0;
 };

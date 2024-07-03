@@ -84,13 +84,17 @@ int main(int argc, char *argv[]) {
 		);
 	});
 
+	auto vertex_shader_code = filesystem->read_file<char>("assets/shaders/triangle.vert.spv", true);
+	auto fragment_shader_code = filesystem->read_file<char>("assets/shaders/triangle.frag.spv", true);
+
 	auto shader = renderer->create_graphic_shader()
+		->add_binding(0, sizeof(Vertex), BindingRate::RATE_INDEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
 		->add_attribute(2, 0, offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
+		->add_stage(ShaderStage::STAGE_VERTEX, vertex_shader_code.data(), vertex_shader_code.size())
+		->add_stage(ShaderStage::STAGE_FRAGMENT, fragment_shader_code.data(), fragment_shader_code.size())
 		->init();
-
-	UNUSED(shader);
 
 	static bool quit = false;
 	static bool minimized = false;

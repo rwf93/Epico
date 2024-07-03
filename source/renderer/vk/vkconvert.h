@@ -26,5 +26,8 @@ CONVERTER_HEADER(convert_buffer_type, BufferType, VkBufferUsageFlagBits);
 CONVERTER_HEADER(convert_image_dimensions, ImageDimensions, VkImageType);
 CONVERTER_HEADER(convert_image_view_dimensions, ImageDimensions, VkImageViewType);
 CONVERTER_HEADER(convert_attribute_format, AttributeType, VkFormat);
+CONVERTER_HEADER(convert_shader_stage, ShaderStage, VkShaderStageFlagBits);
+CONVERTER_HEADER(convert_binding_rate, BindingRate, VkVertexInputRate);
+
 
 }
