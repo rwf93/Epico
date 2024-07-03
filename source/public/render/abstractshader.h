@@ -2,9 +2,11 @@
 
 typedef uint64_t ShaderHandle;
 
-enum ShaderType {
-    GRAPHIC,
-    COMPUTE
+enum AttributeType {
+    VEC4D_SIGNED,
+    VEC3D_SIGNED,
+    VEC2D_SIGNED,
+    VEC1D_SIGNED
 };
 
 enum ShaderState {
@@ -15,7 +17,21 @@ enum ShaderState {
 class AbstractShader {
 public:
     virtual ~AbstractShader() {}
-    virtual ShaderType get_type() = 0;
     virtual ShaderState get_state() = 0;
+    virtual ShaderHandle init() = 0;
     virtual void fini() = 0;
+};
+
+class AbstractGraphicShader: public AbstractShader {
+public:
+    virtual AbstractGraphicShader *add_attribute(
+        uint32_t location,
+        uint32_t binding,
+        uint32_t offset,
+        AttributeType type
+    ) = 0;
+};
+
+class AbstractComputeShader: public AbstractShader {
+
 };

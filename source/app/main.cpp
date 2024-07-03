@@ -2,6 +2,16 @@
 
 #include <glm/glm.hpp>
 
+struct Vertex {
+	glm::vec3 position;
+	union {
+		glm::vec3 color;
+		glm::vec3 colour;
+	};
+	glm::vec3 normal;
+	glm::vec3 tex;
+};
+
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
@@ -74,13 +84,13 @@ int main(int argc, char *argv[]) {
 		);
 	});
 
-	auto test_shader = renderer->create_graphic_shader();
-	test_shader = renderer->create_graphic_shader();
-	test_shader = renderer->create_graphic_shader();
-	test_shader = renderer->create_graphic_shader();
-	test_shader = renderer->create_graphic_shader();
+	auto shader = renderer->create_graphic_shader()
+		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
+		->add_attribute(2, 0, offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
+		->init();
 
-	spdlog::info("shader: {}", test_shader);
+	UNUSED(shader);
 
 	static bool quit = false;
 	static bool minimized = false;

@@ -24,7 +24,6 @@ public:
 	VkImage &get_image() { return image; }
 	VkImageView &get_view() { return view; }
 
-	ResourceType get_type() { return ResourceType::IMAGE; }
 private:
 	VulkanDevice *device;
 	VulkanCommandPool *command_pool;

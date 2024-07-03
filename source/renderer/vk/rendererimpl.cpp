@@ -159,11 +159,11 @@ ResourceHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
-ShaderHandle VulkanRenderer::create_graphic_shader() {
+AbstractGraphicShader *VulkanRenderer::create_graphic_shader() {
 	return shader_manager.create_graphic_shader();
 }
 
-ShaderHandle VulkanRenderer::create_compute_shader() {
+AbstractComputeShader *VulkanRenderer::create_compute_shader() {
 	return shader_manager.create_compute_shader();
 }
 

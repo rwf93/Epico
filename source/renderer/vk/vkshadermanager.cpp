@@ -23,20 +23,20 @@ void VulkanShaderManager::fini() {
 	}
 }
 
-ShaderHandle VulkanShaderManager::create_graphic_shader() {
+AbstractGraphicShader *VulkanShaderManager::create_graphic_shader() {
 	ShaderHandle last_shader_handle = advance_shader_handle();
 
-	auto graphic_shader = new VulkanGraphicShader(device);
+	auto graphic_shader = new VulkanGraphicShader(last_shader_handle, device);
 	shaders[last_shader_handle] = graphic_shader;
 
-	return last_shader_handle;
+	return graphic_shader;
 }
 
-ShaderHandle VulkanShaderManager::create_compute_shader() {
+AbstractComputeShader *VulkanShaderManager::create_compute_shader() {
 	ShaderHandle last_shader_handle = advance_shader_handle();
 
-	auto compute_shader = new VulkanComputeShader(device);
+	auto compute_shader = new VulkanComputeShader(last_shader_handle, device);
 	shaders[last_shader_handle] = compute_shader;
 
-	return last_shader_handle;
+	return compute_shader;
 }

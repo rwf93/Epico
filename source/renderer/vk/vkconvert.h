@@ -9,14 +9,15 @@ namespace convert {
 // Invariant is the result of when there is no suitable conversion to A.
 // Varadict arguments is the conversion table.
 // Check vkconvert.cpp for an example.
-#define CONVERTER(name, A, B, invariant, ...)       \
-	B convert::##name (A type) {                  \
-		static std::map<A, B> name##_table = {      \
-			__VA_ARGS__                             \
-		};                                          \
-		if(name##_table##.contains(type))           \
-			return name##_table##[type];            \
-		return invariant;                           \
+#define CONVERTER(name, A, B, invariant, ...)       	\
+	B convert::##name (A type) {                  		\
+		static std::map<A, B> name##_table = {      	\
+			__VA_ARGS__                             	\
+		};                                          	\
+		if(name##_table##.contains(type))           	\
+			return name##_table##[type];            	\
+		assert("Unable to find a suitable conversion"); \
+		return invariant;                           	\
 	}
 
 CONVERTER_HEADER(convert_image_format, ImageFormat, VkFormat);
@@ -24,5 +25,6 @@ CONVERTER_HEADER(convert_sample_bits, ImageSamples, VkSampleCountFlagBits);
 CONVERTER_HEADER(convert_buffer_type, BufferType, VkBufferUsageFlagBits);
 CONVERTER_HEADER(convert_image_dimensions, ImageDimensions, VkImageType);
 CONVERTER_HEADER(convert_image_view_dimensions, ImageDimensions, VkImageViewType);
+CONVERTER_HEADER(convert_attribute_format, AttributeType, VkFormat);
 
 }

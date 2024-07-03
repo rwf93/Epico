@@ -1,17 +1,18 @@
 #pragma once
 
 class VulkanDevice;
-class VulkanComputeShader: public AbstractShader {
+class VulkanComputeShader: public AbstractComputeShader {
 public:
-	VulkanComputeShader(VulkanDevice *vkdevice);
+	VulkanComputeShader(ShaderHandle shader_handle, VulkanDevice *vkdevice);
 	~VulkanComputeShader() override;
 
-	ShaderType get_type() override { return ShaderType::COMPUTE; }
 	ShaderState get_state() override { return state; }
 
+	ShaderHandle init() override;
 	void fini() override;
 
 private:
 	VulkanDevice *device;
+	ShaderHandle handle;
 	ShaderState state = ShaderState::SHADER_UNREADY;
 };

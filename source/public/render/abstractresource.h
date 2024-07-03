@@ -47,7 +47,6 @@ enum ResourceState {
 class AbstractResource {
 public:
     virtual ~AbstractResource() {}
-    virtual ResourceType get_type() = 0;
     virtual ResourceState get_state() = 0;
     virtual void fini() = 0; // Only finishes if a resource's state is READY.
 };

@@ -9,8 +9,8 @@ public:
 	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice);
 	void fini();
 
-	ShaderHandle create_graphic_shader();
-	ShaderHandle create_compute_shader();
+	AbstractGraphicShader *create_graphic_shader();
+	AbstractComputeShader *create_compute_shader();
 
 protected:
 	ShaderHandle advance_shader_handle() {
@@ -21,6 +21,11 @@ protected:
 
 private:
 	VulkanDevice *device;
+
+	struct PipelineLayout {
+		std::vector<VkDescriptorSetLayout> descriptor_layouts;
+	};
+	std::map<PipelineLayout, VkPipelineLayout> layouts;
 
 	std::map<ShaderHandle, AbstractShader*> shaders;
 	ShaderHandle current_shader_handle = 0;

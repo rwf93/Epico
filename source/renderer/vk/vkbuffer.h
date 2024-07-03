@@ -15,8 +15,6 @@ public:
 	VmaAllocation &get_allocation() { return allocation; }
 	VmaAllocationInfo &get_allocation_info() { return allocation_info; }
 
-	ResourceType get_type() override { return ResourceType::BUFFER; }
-
 	void stage(
 		VulkanBuffer *staging_buffer,
 		VkDeviceSize size,

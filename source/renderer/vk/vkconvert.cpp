@@ -30,10 +30,15 @@ CONVERTER(convert_image_dimensions, ImageDimensions, VkImageType, VK_IMAGE_TYPE_
 	{ IMAGE_3D, VK_IMAGE_TYPE_3D },
 );
 
-
 CONVERTER(convert_image_view_dimensions, ImageDimensions, VkImageViewType, VK_IMAGE_VIEW_TYPE_1D,
 	{ IMAGE_1D, VK_IMAGE_VIEW_TYPE_1D },
 	{ IMAGE_2D, VK_IMAGE_VIEW_TYPE_2D },
 	{ IMAGE_3D, VK_IMAGE_VIEW_TYPE_3D },
 );
 
+CONVERTER(convert_attribute_format, AttributeType, VkFormat, VK_FORMAT_UNDEFINED,
+	{ VEC4D_SIGNED, VK_FORMAT_R32G32B32A32_SFLOAT },
+	{ VEC3D_SIGNED, VK_FORMAT_R32G32B32_SFLOAT },
+	{ VEC2D_SIGNED, VK_FORMAT_R32G32_SFLOAT },
+	{ VEC1D_SIGNED, VK_FORMAT_R32_SFLOAT },
+);
