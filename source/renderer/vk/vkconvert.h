@@ -10,12 +10,12 @@ namespace convert {
 // Varadict arguments is the conversion table.
 // Check vkconvert.cpp for an example.
 #define CONVERTER(name, A, B, invariant, ...)       	\
-	B convert::##name (A type) {                  		\
+	B convert :: name (A type) {                  		\
 		static std::map<A, B> name##_table = {      	\
 			__VA_ARGS__                             	\
 		};                                          	\
-		if(name##_table##.contains(type))           	\
-			return name##_table##[type];            	\
+		if(name##_table.contains(type))					\
+			return name##_table[type];					\
 		assert("Unable to find a suitable conversion"); \
 		return invariant;                           	\
 	}
