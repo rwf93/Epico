@@ -93,6 +93,9 @@ ShaderHandle VulkanGraphicShaderBuilder::init() {
 
     shader->init(&pipeline_info);
 
+    // Is it more efficient to reuse a pipeline layout rather than destroy it? Is this even valid?
+    vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
+
     for(auto &module: shader_modules)
         vkDestroyShaderModule(device->get_device(), module, nullptr);
 
