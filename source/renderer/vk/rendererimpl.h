@@ -29,8 +29,7 @@ public:
 	ResourceHandle create_image() override;
 	ResourceHandle create_buffer() override;
 
-	AbstractGraphicShader *create_graphic_shader() override;
-	AbstractComputeShader *create_compute_shader() override;
+	AbstractGraphicShaderBuilder *create_graphic_shader() override;
 
 	void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) override;
 	void buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) override;

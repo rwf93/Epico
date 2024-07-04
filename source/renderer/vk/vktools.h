@@ -3,18 +3,31 @@
 #include <magic_enum.hpp>
 
 // Queue of functions, destroy() iterates the queue in reverse and calls them.
-template<typename T = void()>
+template<typename Return = void, typename ...Args>
 class FunctorQueue {
-	using Functor = std::function<T>;
+	using Functor = std::function<Return(Args...)>;
 public:
 	void push(Functor &&f) {
 		functors.push_back(f);
 	}
 
-	void destroy() {
-		for(auto it = functors.rbegin(); it != functors.rend(); it++)
-			(*it)();
+	void call_forward(Args... params) {
+		for(auto it = functors.begin(); it != functors.end(); it++)
+			(*it)(params...);
+	}
 
+	void call_backward(Args... params) {
+		for(auto it = functors.rbegin(); it != functors.rend(); it++)
+			(*it)(params...);
+	}
+
+	void destroy_forward(Args... params) {
+		call_forward(params...);
+		functors.clear();
+	}
+
+	void destroy_backward(Args... params) {
+		call_backward(params...);
 		functors.clear();
 	}
 

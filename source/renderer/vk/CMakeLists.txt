@@ -15,8 +15,9 @@ add_library(renderer_vk SHARED
 		vkbuffer.cpp
 
 		vkshadermanager.cpp
+
+		vkgraphicshaderbuilder.cpp
 		vkgraphicshader.cpp
-		vkcomputeshader.cpp
 
 		vkimgui.cpp
 

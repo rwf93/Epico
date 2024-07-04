@@ -34,36 +34,37 @@ class AbstractShader {
 public:
     virtual ~AbstractShader() {}
     virtual ShaderState get_state() = 0;
-    virtual ShaderHandle init() = 0;
     virtual void fini() = 0;
 };
 
-class AbstractGraphicShader: public AbstractShader {
+class AbstractShaderBuilder {
 public:
-    virtual AbstractGraphicShader *set_primitive(ShaderPrimitive type) = 0;
+    virtual ~AbstractShaderBuilder() {}
+    virtual ShaderHandle init() = 0;
+};
 
-    virtual AbstractGraphicShader *add_binding(
+class AbstractGraphicShaderBuilder: public AbstractShaderBuilder {
+public:
+    virtual AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) = 0;
+
+    virtual AbstractGraphicShaderBuilder *add_binding(
         uint32_t binding,
         uint32_t size,
         BindingRate rate
     ) = 0;
 
-    virtual AbstractGraphicShader *add_attribute(
+    virtual AbstractGraphicShaderBuilder *add_attribute(
         uint32_t location,
         uint32_t binding,
         uint32_t offset,
         AttributeType type
     ) = 0;
 
-    virtual AbstractGraphicShader *add_stage(
+    virtual AbstractGraphicShaderBuilder *add_stage(
         ShaderStage stage,
         const char *data,
         size_t size
     ) = 0;
 
-    virtual AbstractGraphicShader *add_attachment(ImageFormat format) = 0;
-};
-
-class AbstractComputeShader: public AbstractShader {
-
+    virtual AbstractGraphicShaderBuilder *add_attachment(ImageFormat format) = 0;
 };

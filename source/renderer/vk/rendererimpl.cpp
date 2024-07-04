@@ -27,7 +27,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 
 VulkanRenderer::~VulkanRenderer() {
 	device.wait();
-	cleanup_queue.destroy();
+	cleanup_queue.destroy_backward();
 }
 
 void VulkanRenderer::begin() {
@@ -172,7 +172,7 @@ void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
 		case BindBufferType::BIND_VERTEX:
 			vkCmdBindVertexBuffers(command_pool.get_command(), 0, 1, &resource->get_buffer(), offset);
 			break;
-		case BindBufferType::BIND_INDEX:
+		case BindBufferType::BIND_INSTANCE:
 			vkCmdBindIndexBuffer(command_pool.get_command(), resource->get_buffer(), 0, VK_INDEX_TYPE_UINT32);
 			break;
 		default: break;
@@ -196,12 +196,8 @@ ResourceHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
-AbstractGraphicShader *VulkanRenderer::create_graphic_shader() {
+AbstractGraphicShaderBuilder *VulkanRenderer::create_graphic_shader() {
 	return shader_manager.create_graphic_shader();
-}
-
-AbstractComputeShader *VulkanRenderer::create_compute_shader() {
-	return shader_manager.create_compute_shader();
 }
 
 void VulkanRenderer::buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) {

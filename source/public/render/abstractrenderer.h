@@ -10,6 +10,12 @@ enum AttachmentType {
 	DEPTH
 };
 
+enum RendererEvent {
+	EVENT_RESIZE,
+	EVENT_FINALIZE,
+	EVENT_DESTROY
+};
+
 struct SubpassDependency {
 	ResourceHandle *attachments;
 	AttachmentType *types;
@@ -46,8 +52,7 @@ public:
 	virtual ResourceHandle create_image() = 0;
 	virtual ResourceHandle create_buffer() = 0;
 
-	virtual AbstractGraphicShader *create_graphic_shader() = 0;
-	virtual AbstractComputeShader *create_compute_shader() = 0;
+	virtual AbstractGraphicShaderBuilder *create_graphic_shader() = 0;
 
 	virtual void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) = 0;
 	virtual void buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) = 0;

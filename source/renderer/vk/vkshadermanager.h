@@ -1,7 +1,7 @@
 #pragma once
 
+#include "vkgraphicshaderbuilder.h"
 #include "vkgraphicshader.h"
-#include "vkcomputeshader.h"
 
 class VulkanDevice;
 class VulkanShaderManager {
@@ -12,15 +12,10 @@ public:
 	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice);
 	void fini();
 
-	AbstractGraphicShader *create_graphic_shader();
-	AbstractComputeShader *create_compute_shader();
+	AbstractGraphicShaderBuilder *create_graphic_shader();
 
 	VulkanGraphicShader *get_graphic_shader(ShaderHandle handle) {
 		return get_shader<VulkanGraphicShader*>(handle);
-	}
-
-	VulkanComputeShader *get_compute_shader(ShaderHandle handle) {
-		return get_shader<VulkanComputeShader*>(handle);
 	}
 
 	template<typename T>
@@ -47,6 +42,9 @@ protected:
 
 private:
 	VulkanDevice *device;
+
+	VulkanGraphicShaderBuilder graphics_builder;
+
 	std::map<ShaderHandle, AbstractShader*> shaders;
 	ShaderHandle current_shader_handle = 0;
 };

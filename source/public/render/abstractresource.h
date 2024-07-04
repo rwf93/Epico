@@ -4,13 +4,13 @@ typedef uint64_t ResourceHandle;
 
 enum BufferType {
     BUFFER_VERTEX,
-    BUFFER_INDEX,
+    BUFFER_INSTANCE,
     BUFFER_STORAGE
 };
 
 enum BindBufferType {
     BIND_VERTEX,
-    BIND_INDEX
+    BIND_INSTANCE
 };
 
 enum ImageFormat {

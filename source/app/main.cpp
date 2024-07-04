@@ -148,31 +148,13 @@ int main(int argc, char *argv[]) {
 				renderer->begin_pass(&forward_dependency);
 					renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 					renderer->scissor(context.width, context.height);
+					//renderer->bind_buffer(vbo_handle, BindBufferType::BIND_VERTEX);
 					renderer->bind_graphic_shader(shader);
 					renderer->draw(3, 1);
-
 				renderer->end_pass(&forward_dependency);
 			}
 
-			{
-				static ResourceHandle handles[] = { test_image };
-				static AttachmentType types[] = { AttachmentType::COLOR };
-				static SubpassDependency forward_dependency = {
-					.attachments = handles,
-					.types = types,
-					.count = sizeof(handles)/sizeof(handles[0])
-				};
-
-				renderer->begin_pass(&forward_dependency);
-					renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-					renderer->scissor(context.width, context.height);
-					renderer->bind_graphic_shader(shader);
-					renderer->draw(3, 1);
-
-				renderer->end_pass(&forward_dependency);
-			}
-
-			renderer->show_image(test_image);
+			renderer->show_image(forward_image);
 
 			renderer->ui()->begin_ui();
 			renderer->ui()->show_demo_window();
