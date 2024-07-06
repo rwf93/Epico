@@ -89,6 +89,7 @@ void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
 		}
 	}
 
+	assert(color_attachments.size() >= 1);
 	assert(depth_attachments.size() <= 1);
 
 	auto rendering_info = info::rendering_info(
@@ -167,7 +168,6 @@ void VulkanRenderer::show_image(ResourceHandle handle) {
 void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
 	auto resource = resource_manager.get_buffer(handle);
 	VkDeviceSize offset[] = { 0 };
-
 	switch(type) {
 		case BindBufferType::BIND_VERTEX:
 			vkCmdBindVertexBuffers(command_pool.get_command(), 0, 1, &resource->get_buffer(), offset);
@@ -184,9 +184,13 @@ void VulkanRenderer::bind_graphic_shader(ShaderHandle handle) {
 	vkCmdBindPipeline(command_pool.get_command(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
-void VulkanRenderer::draw(uint32_t vertex_count, uint32_t index_count) {
-	vkCmdDraw(command_pool.get_command(), vertex_count, index_count, 0, 0);
+void VulkanRenderer::draw(uint32_t vertex_count, uint32_t instance_count) {
+	vkCmdDraw(command_pool.get_command(), vertex_count, instance_count, 0, 0);
 };
+
+void VulkanRenderer::draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) {
+	vkCmdDrawIndexed(command_pool.get_command(), index_count, instance_count, 0, 0, index);
+}
 
 ResourceHandle VulkanRenderer::create_image() {
 	return resource_manager.create_image();
@@ -213,8 +217,8 @@ void VulkanRenderer::image_data(
 	ImageDimensions dimensions,
 	ImageSamples samples,
 	ImageFormat format,
+	ImageFlags flags,
 	void *data,
-	bool mipmapped,
 	int width, int height, int depth = 1
 ) {
 	auto image_info = info::image_create_info(width, height, depth);
@@ -225,11 +229,17 @@ void VulkanRenderer::image_data(
 
 	image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-	image_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	image_info.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-	if(mipmapped)
+	if(flags & ImageFlags::IMAGE_COLOR_ATTACHMENT)
+		image_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	if(flags & ImageFlags::IMAGE_DEPTH_ATTACHMENT)
+		image_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+	if(flags & ImageFlags::IMAGE_SAMPLED)
+		image_info.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	if(flags & ImageFlags::IMAGE_MIPMAPPED)
 		image_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
 	resource_manager.image_data(handle, image_info, data);

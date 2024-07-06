@@ -14,6 +14,9 @@ public:
 	void begin_ui() override;
 	void end_ui() override;
 
+	void begin(const char *name) override;
+	void end() override;
+
 	void init(
 		FunctorQueue<> &queue,
 		AppContext *app_context,

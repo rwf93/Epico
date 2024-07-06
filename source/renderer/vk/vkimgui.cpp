@@ -114,6 +114,14 @@ void VulkanImGUI::end_ui() {
 	);
 }
 
+void VulkanImGUI::begin(const char *name) {
+	ImGui::Begin(name);
+}
+
+void VulkanImGUI::end() {
+	ImGui::End();
+}
+
 void VulkanImGUI::show_demo_window() {
 	ImGui::ShowDemoWindow();
 }

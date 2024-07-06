@@ -99,6 +99,10 @@ void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFla
 
 	resource->init(&buffer_info, &allocate_info);
 
+	// Skip initalizing the buffer with data, just create the buffer object's metadata.
+	if(!data)
+		return;
+
 	VulkanBuffer staging_buffer = { device, command_pool, allocator };
 	staging_buffer.init(&staging_buffer_info, &allocate_info);
 
@@ -142,6 +146,7 @@ void VulkanResourceManager::image_data(
 
 	resource->init(&image_info, &allocate_info);
 
+	// ditto.
 	if(!data)
 		return;
 

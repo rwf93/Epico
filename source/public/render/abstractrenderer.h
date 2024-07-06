@@ -10,12 +10,6 @@ enum AttachmentType {
 	DEPTH
 };
 
-enum RendererEvent {
-	EVENT_RESIZE,
-	EVENT_FINALIZE,
-	EVENT_DESTROY
-};
-
 struct SubpassDependency {
 	ResourceHandle *attachments;
 	AttachmentType *types;
@@ -43,7 +37,8 @@ public:
 	virtual void bind_graphic_shader(ShaderHandle handle) = 0;
 
 	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;
-
+	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) = 0;
+	// Copies the image resource to the surface.
 	virtual void show_image(ResourceHandle handle) = 0;
 
 	using ResizeEventFunction = std::function<void(AbstractRenderer*)>;
@@ -62,8 +57,8 @@ public:
 		ImageDimensions dimensions,
 		ImageSamples samples,
 		ImageFormat format,
+		ImageFlags flags,
 		void *data,
-		bool mipmapped,
 		int width, int height, int depth = 1
 	) = 0;
 

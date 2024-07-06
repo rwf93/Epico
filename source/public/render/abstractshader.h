@@ -30,6 +30,12 @@ enum ShaderPrimitive {
     POINT_LIST
 };
 
+enum ShaderPolygonMode {
+    MODE_FILL,
+    MODE_LINE,
+    MODE_POINT
+};
+
 class AbstractShader {
 public:
     virtual ~AbstractShader() {}
@@ -46,6 +52,8 @@ public:
 class AbstractGraphicShaderBuilder: public AbstractShaderBuilder {
 public:
     virtual AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) = 0;
+    virtual AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
+    virtual AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) = 0;
 
     virtual AbstractGraphicShaderBuilder *add_binding(
         uint32_t binding,

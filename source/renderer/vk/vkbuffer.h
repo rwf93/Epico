@@ -15,7 +15,7 @@ public:
 	VmaAllocation &get_allocation() { return allocation; }
 	VmaAllocationInfo &get_allocation_info() { return allocation_info; }
 
-	void stage(
+ 	void stage(
 		VulkanBuffer *staging_buffer,
 		VkDeviceSize size,
 		VkDeviceSize src_offset = 0,

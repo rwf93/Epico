@@ -18,6 +18,9 @@ public:
 	);
 
 	AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) override;
+	AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
+	AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) override;
+
 
 	AbstractGraphicShaderBuilder *add_binding(
         uint32_t binding,
@@ -62,4 +65,6 @@ private:
 
 	std::vector<VkPipelineColorBlendAttachmentState> color_states = {};
 	std::vector<VkFormat> attachment_formats = {};
+
+	VkFormat depth_format = {};
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vkdescriptorallocator.h"
+
 #include "vkgraphicshaderbuilder.h"
 #include "vkgraphicshader.h"
 
@@ -42,9 +44,9 @@ protected:
 
 private:
 	VulkanDevice *device;
-
 	VulkanGraphicShaderBuilder graphics_builder;
 
 	std::map<ShaderHandle, AbstractShader*> shaders;
+
 	ShaderHandle current_shader_handle = 0;
 };

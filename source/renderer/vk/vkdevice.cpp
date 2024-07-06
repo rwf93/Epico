@@ -52,11 +52,16 @@ void VulkanDevice::retreive_device() {
 		std::abort();
 	}
 
-	this->device = builder_ret.value();
+	this->device = builder_ret.value(); // ze vuwlkan dewice is weady to wender. :DDDDD
 
 	volkLoadDevice(this->device);
 
-	spdlog::info("Found capable render device: {}", device.physical_device.name);
+	spdlog::info("{}: {}",
+		rand() % 15 == 1
+			? "ze vuwlkan dewice is weady to wender"
+			: "Found capable render device",
+		device.physical_device.name
+	);
 }
 
 void VulkanDevice::retreive_queues() {

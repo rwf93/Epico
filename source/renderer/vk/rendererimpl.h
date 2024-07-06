@@ -18,7 +18,9 @@ public:
 
 	void bind_buffer(ResourceHandle handle, BindBufferType type) override;
 	void bind_graphic_shader(ShaderHandle handle) override;
-	void draw(uint32_t vertex_count, uint32_t index_count) override;
+
+	void draw(uint32_t vertex_count, uint32_t instance_count) override;
+	void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) override;
 
 	void show_image(ResourceHandle handle) override;
 
@@ -39,8 +41,8 @@ public:
 		ImageDimensions dimensions,
 		ImageSamples samples,
 		ImageFormat format,
+		ImageFlags flags,
 		void *data,
-		bool mipmapped,
 		int width, int height, int depth
 	);
 

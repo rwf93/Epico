@@ -15,17 +15,13 @@ void VulkanGraphicShaderBuilder::clear(
     this->shader = vkshader;
     this->device = vkdevice;
     this->shader_manager = vkshadermanager;
-}
 
-ShaderHandle VulkanGraphicShaderBuilder::init() {
-    VkPipelineLayout pipeline_layout;
-
-    std::vector<VkDescriptorSetLayout> descriptor_layouts = {};
-    auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
-
-    VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));
-
-    auto input_info = info::input_vertex_info(bindings, attributes);
+    bindings.clear();
+	attributes.clear();
+	shader_modules.clear();
+	shader_stages.clear();
+	color_states.clear();
+	attachment_formats.clear();
 
     assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -50,8 +46,6 @@ ShaderHandle VulkanGraphicShaderBuilder::init() {
     color_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     color_info.logicOpEnable = VK_FALSE;
     color_info.logicOp = VK_LOGIC_OP_COPY;
-    color_info.attachmentCount = static_cast<uint32_t>(color_states.size());
-    color_info.pAttachments = color_states.data();
 
     stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     stencil_info.depthTestEnable = VK_FALSE;
@@ -64,7 +58,18 @@ ShaderHandle VulkanGraphicShaderBuilder::init() {
     stencil_info.minDepthBounds = 0.f;
     stencil_info.maxDepthBounds = 1.f;
 
-    auto rendering_create_info = info::rendering_create_info(attachment_formats, VK_FORMAT_UNDEFINED);
+    depth_format = VK_FORMAT_UNDEFINED;
+}
+
+ShaderHandle VulkanGraphicShaderBuilder::init() {
+    VkPipelineLayout pipeline_layout;
+
+    std::vector<VkDescriptorSetLayout> descriptor_layouts = {};
+    auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
+    VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));
+
+    auto input_info = info::input_vertex_info(bindings, attributes);
+    auto rendering_create_info = info::rendering_create_info(attachment_formats, depth_format);
 
     std::vector<VkDynamicState> dynamic_states = {
         VK_DYNAMIC_STATE_VIEWPORT,
@@ -108,6 +113,17 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_primitive(ShaderPr
 
     return this;
 };
+
+AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_polygon_mode(ShaderPolygonMode mode) {
+    rasterizer_info.polygonMode = convert::convert_polygon_mode(mode);
+    return this;
+}
+
+
+AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_depth_format(ImageFormat format) {
+    depth_format = convert::convert_image_format(format);
+    return this;
+}
 
 AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_binding(
     uint32_t binding,
@@ -176,5 +192,10 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_attachment(ImageFo
     color_states.push_back(color_blend_state);
 
     attachment_formats.push_back(convert::convert_image_format(format));
+
+    // Update color_info
+    color_info.attachmentCount = static_cast<uint32_t>(color_states.size());
+    color_info.pAttachments = color_states.data();
+
     return this;
 }

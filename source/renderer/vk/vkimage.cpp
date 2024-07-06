@@ -30,7 +30,7 @@ void VulkanImage::init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *c
 	image_view_info.subresourceRange.layerCount = 1;
 	image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-	if(image_view_info.format == VK_FORMAT_D32_SFLOAT)
+	if(image_info->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
 	VK_CHECK(vkCreateImageView(device->get_device(), &image_view_info, nullptr, &get_view()));

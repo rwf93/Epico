@@ -5,6 +5,7 @@ typedef uint64_t ResourceHandle;
 enum BufferType {
     BUFFER_VERTEX,
     BUFFER_INSTANCE,
+    BUFFER_UNIFORM,
     BUFFER_STORAGE
 };
 
@@ -14,12 +15,21 @@ enum BindBufferType {
 };
 
 enum ImageFormat {
+    D32_SFLOAT,
+
     R8G8B8A8_UNORM,
     R8G8B8A8_SNORM,
 
     R16G16B16A16_UINT,
     R16G16B16A16_SINT,
     R16G16B16A16_SFLOAT,
+};
+
+enum ImageFlags {
+    IMAGE_COLOR_ATTACHMENT = 1 << 0,
+    IMAGE_DEPTH_ATTACHMENT = 1 << 1,
+    IMAGE_SAMPLED = 1 << 2,
+    IMAGE_MIPMAPPED = 1 << 3
 };
 
 enum ImageSamples {

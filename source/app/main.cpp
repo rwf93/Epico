@@ -7,6 +7,10 @@ struct Vertex {
 	glm::vec3 color;
 };
 
+struct SceneData {
+	float test_float;
+};
+
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
@@ -38,43 +42,25 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	auto image_handle = renderer->create_image();
-
-	std::array<uint32_t, 16 * 16> pixels;
-
-	uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
-	uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-
-	for(int x = 0; x < 16; x++)
-		for(int y = 0; y < 16; y++)
-			pixels[ y* 16 + x ] = ((x % 2) ^ (y % 2)) ? magenta : black;
-
-	renderer->image_data(
-		image_handle,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R8G8B8A8_UNORM,
-		pixels.data(), false,
-		16, 16, 1
-	);
-
 	auto forward_image = renderer->create_image();
 	renderer->image_data(
 		forward_image,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R16G16B16A16_SFLOAT,
-		nullptr, false,
+		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		nullptr,
 		context.width, context.height, 1
 	);
 
-	auto test_image = renderer->create_image();
+	auto depth_image = renderer->create_image();
 	renderer->image_data(
-		test_image,
+		depth_image,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		nullptr, false,
+		ImageFormat::D32_SFLOAT,
+		ImageFlags::IMAGE_DEPTH_ATTACHMENT,
+		nullptr,
 		context.width, context.height, 1
 	);
 
@@ -84,7 +70,8 @@ int main(int argc, char *argv[]) {
 			ImageDimensions::IMAGE_2D,
 			ImageSamples::SAMPLE_COUNT_1_BIT,
 			ImageFormat::R16G16B16A16_SFLOAT,
-			nullptr, false,
+			ImageFlags::IMAGE_COLOR_ATTACHMENT,
+			nullptr,
 			context.width, context.height, 1
 		);
 	});
@@ -94,22 +81,33 @@ int main(int argc, char *argv[]) {
 
 	auto shader = renderer->create_graphic_shader()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		//->add_binding(0, sizeof(Vertex), BindingRate::RATE_VERTEX)
-		//->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		//->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
-		->set_primitive(ShaderPrimitive::TRIANGLE_LIST)
+		->set_depth_format(ImageFormat::D32_SFLOAT)
+		->add_binding(0, sizeof(Vertex), BindingRate::RATE_VERTEX)
+		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
 		->add_stage(ShaderStage::STAGE_VERTEX, vertex_shader_code.data(), vertex_shader_code.size())
 		->add_stage(ShaderStage::STAGE_FRAGMENT, fragment_shader_code.data(), fragment_shader_code.size())
 		->init();
 
+	UNUSED(shader);
+
+
 	std::vector<Vertex> triangle = {
-		{ {0.0, -0.5, 0}, {1.0, 1.0, 1.0} },
-    	{ { 0.5, 0.5, 0}, {1.0, 1.0, 1.0} },
-    	{ { -0.5, 0.5, 0}, { 1.0, 1.0, 1.0 } }
+		{ {-0.5, -0.5, 0}, {1.0, 1.0, 1.0} },
+    	{ { 0.5, -0.5, 0}, {1.0, 1.0, 1.0} },
+    	{ { 0.5, 0.5, 0}, { 1.0, 1.0, 1.0 } },
+		{ {-0.5, 0.5, 0}, {1.0, 1.0, 1.0} },
 	};
 
 	auto vbo_handle = renderer->create_buffer();
-	renderer->buffer_data(vbo_handle, BufferType::BUFFER_VERTEX, triangle.size(), triangle.data());
+	renderer->buffer_data(vbo_handle, BufferType::BUFFER_VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
+
+	std::vector<uint32_t> indicies = {
+		0, 1, 2, 2, 3, 0
+	};
+
+	auto ibo_handle = renderer->create_buffer();
+	renderer->buffer_data(ibo_handle, BufferType::BUFFER_INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
 
 	static bool quit = false;
 	static bool minimized = false;
@@ -134,11 +132,14 @@ int main(int argc, char *argv[]) {
 
 		renderer->begin();
 		{
-			renderer->clear(0, 0, 0, 0);
+			renderer->clear(1, 0, 0, 0);
+
+			static SceneData scene;
+			scene.test_float = 1;
 
 			{
-				static ResourceHandle handles[] = { forward_image };
-				static AttachmentType types[] = { AttachmentType::COLOR };
+				static ResourceHandle handles[] = { forward_image, depth_image };
+				static AttachmentType types[] = { AttachmentType::COLOR, AttachmentType::DEPTH };
 				static SubpassDependency forward_dependency = {
 					.attachments = handles,
 					.types = types,
@@ -148,18 +149,21 @@ int main(int argc, char *argv[]) {
 				renderer->begin_pass(&forward_dependency);
 					renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 					renderer->scissor(context.width, context.height);
-					//renderer->bind_buffer(vbo_handle, BindBufferType::BIND_VERTEX);
 					renderer->bind_graphic_shader(shader);
-					renderer->draw(3, 1);
+					renderer->bind_buffer(vbo_handle, BindBufferType::BIND_VERTEX);
+					renderer->bind_buffer(ibo_handle, BindBufferType::BIND_INSTANCE);
+					renderer->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
 				renderer->end_pass(&forward_dependency);
 			}
 
 			renderer->show_image(forward_image);
 
-			renderer->ui()->begin_ui();
-			renderer->ui()->show_demo_window();
-			renderer->ui()->end_ui();
-
+			static AbstractUI *ui = renderer->ui();
+			ui->begin_ui();
+				ui->show_demo_window();
+				ui->begin("Shader Picker");
+				ui->end();
+			ui->end_ui();
 
 			renderer->end();
 		}
