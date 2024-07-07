@@ -23,9 +23,6 @@ public:
 	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
 	void fini();
 
-	// basically same as the destructor
-	void rebuild();
-
 	void wait_fences();
 	void reset_fences();
 

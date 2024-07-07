@@ -37,18 +37,6 @@ void VulkanCommandPool::fini() {
 	vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
 }
 
-void VulkanCommandPool::rebuild() {
-	for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
-		TracyVkDestroy(get_frame_context(i).trace_context);
-		vkDestroyCommandPool(device->get_device(), get_frame_context(i).command_pool, nullptr);
-	}
-
-	TracyVkDestroy(immediate_trace);
-	vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
-
-	create_command_pool();
-}
-
 void VulkanCommandPool::wait_fences() {
 	VK_CHECK(vkWaitForFences(device->get_device(), 1, &get_fence(), VK_TRUE, UINT64_MAX));
 }

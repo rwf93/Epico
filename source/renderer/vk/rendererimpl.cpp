@@ -267,9 +267,10 @@ void VulkanRenderer::rebuild() {
 	app_context->height = height;
 
 	device.wait();
-	if(resize_event) resize_event(this);
 	swapchain.rebuild();
-	command_pool.rebuild();
+
+	if(resize_event)
+		resize_event(this);
 }
 
 static VulkanRenderer *singleton;

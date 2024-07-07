@@ -25,7 +25,7 @@ AbstractGraphicShaderBuilder *VulkanShaderManager::create_graphic_shader() {
 	ShaderHandle last_shader_handle = advance_shader_handle();
 
 	auto graphic_shader = new VulkanGraphicShader(device);
-	shaders[last_shader_handle] = graphic_shader;
+	shaders.insert(std::make_pair(last_shader_handle, graphic_shader));
 
 	graphics_builder.clear(last_shader_handle, graphic_shader, device, this);
 

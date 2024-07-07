@@ -56,7 +56,7 @@ target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 target_include_directories(renderer_vk PRIVATE ${THIRDPARTY}/imgui)
 target_link_libraries(renderer_vk PRIVATE imgui)
 
-target_compile_definitions(tracy PUBLIC TRACY_ENABLE)
+#target_compile_definitions(tracy PUBLIC TRACY_ENABLE)
 target_include_directories(renderer_vk PRIVATE ${THIRDPARTY}/tracy)
 target_link_libraries(renderer_vk PRIVATE tracy)
 
