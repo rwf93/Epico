@@ -7,10 +7,6 @@ struct Vertex {
 	glm::vec3 color;
 };
 
-struct SceneData {
-	float test_float;
-};
-
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
@@ -143,9 +139,6 @@ int main(int argc, char *argv[]) {
 		renderer->begin();
 		{
 			renderer->clear(1, 0, 0, 0);
-
-			static SceneData scene;
-			scene.test_float = 1;
 
 			{
 				static ResourceHandle handles[] = { forward_image, depth_image };
