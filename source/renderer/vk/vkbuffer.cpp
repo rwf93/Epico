@@ -35,22 +35,26 @@ void VulkanBuffer::stage(
 ) {
 	assert(get_state() == ResourceState::RESOURCE_READY);
 
-	command_pool->submit_command([&](VkCommandBuffer command) {
+	command_pool->submit_command([&](VulkanCommand *command) {
 		VkBufferCopy copy;
 		copy.size = size;
 		copy.srcOffset = src_offset;
 		copy.dstOffset = dst_offset;
 
+		std::vector<VkBufferCopy> copy_ranges = {
+			copy
+		};
+
 		vmaFlushAllocation(allocator, staging_buffer->get_allocation(), 0, VK_WHOLE_SIZE);
-		vkCmdCopyBuffer(command, staging_buffer->get_buffer(), buffer, 1, &copy);
+		command->copy_buffer(staging_buffer->get_buffer(), buffer, copy_ranges);
 	});
 }
 
 void VulkanBuffer::update(VkDeviceSize offset, VkDeviceSize size, void *data) {
 	assert(get_state() == ResourceState::RESOURCE_READY);
 
-	command_pool->submit_command([&](VkCommandBuffer command) {
-		vkCmdUpdateBuffer(command, buffer, offset, size, data);
+	command_pool->submit_command([&](VulkanCommand *command) {
+		command->update_buffer(buffer, offset, size, data);
 	});
 }
 

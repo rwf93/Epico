@@ -39,8 +39,8 @@ void VulkanImage::init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *c
 }
 
 void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent) {
-	command_pool->submit_command([&](VkCommandBuffer command) {
-		command_pool->transition_image(command, get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	command_pool->submit_command([&](VulkanCommand *command) {
+		command->transition_image(get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 		VkBufferImageCopy copy = {};
 		copy.bufferOffset = 0;
@@ -52,16 +52,18 @@ void VulkanImage::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent) {
 		copy.imageSubresource.layerCount = 1;
 		copy.imageExtent = image_extent;
 
-		vkCmdCopyBufferToImage(
-			command,
+		std::vector<VkBufferImageCopy> copy_regions = {
+			copy
+		};
+
+		command->copy_buffer_to_image(
 			staging_buffer->get_buffer(),
 			get_image(),
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			1,
-			&copy
+			copy_regions
 		);
 
-		command_pool->transition_image(command, get_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		command->transition_image(get_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	});
 }
 

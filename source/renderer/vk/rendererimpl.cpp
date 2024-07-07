@@ -55,7 +55,7 @@ void VulkanRenderer::end() {
 
 	command_pool.end_recording();
 
-	auto command_info = info::command_buffer_submit_info(command_pool.get_command());
+	auto command_info = info::command_buffer_submit_info(command_pool.get_command()->get_command());
 	auto wait_info = info::semaphore_submit_info(
 		VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
 		command_pool.get_available_semaphore()
@@ -98,11 +98,11 @@ void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
 		static_cast<uint32_t>(color_attachments.size())
 	);
 
-	vkCmdBeginRendering(command_pool.get_command(), &rendering_info);
+	command_pool.get_command()->begin_rendering(&rendering_info);
 }
 
 void VulkanRenderer::end_pass(SubpassDependency *dependencies) {
-	vkCmdEndRendering(command_pool.get_command());
+	command_pool.get_command()->end_rendering();
 
 	for(uint32_t i = 0; i < dependencies->count; i++) {
 		auto resource = resource_manager.get_image(dependencies->attachments[i]);
@@ -139,8 +139,11 @@ void VulkanRenderer::clear(float r, float g, float b, float a) {
 }
 
 void VulkanRenderer::viewport(float width, float height, float x, float y) {
-	auto viewport = info::viewport(width, height, x, y);
-	vkCmdSetViewport(command_pool.get_command(), 0, 1, &viewport);
+	std::vector<VkViewport> viewports = {
+		info::viewport(width, height, x, y)
+	};
+
+	command_pool.get_command()->viewport(0, viewports);
 }
 
 void VulkanRenderer::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
@@ -150,7 +153,10 @@ void VulkanRenderer::scissor(uint32_t width, uint32_t height, int32_t x, int32_t
 	scissor.offset.x = x;
 	scissor.offset.y = y;
 
-	vkCmdSetScissor(command_pool.get_command(), 0, 1, &scissor);
+	std::vector<VkRect2D> scissors = {
+		scissor
+	};
+	command_pool.get_command()->scissor(0, scissors);
 }
 
 void VulkanRenderer::show_image(ResourceHandle handle) {
@@ -170,10 +176,10 @@ void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
 		case BindBufferType::BIND_VERTEX:
-			vkCmdBindVertexBuffers(command_pool.get_command(), 0, 1, &resource->get_buffer(), offset);
+			command_pool.get_command()->bind_vertex_buffer(0, 1, &resource->get_buffer(), offset);
 			break;
 		case BindBufferType::BIND_INSTANCE:
-			vkCmdBindIndexBuffer(command_pool.get_command(), resource->get_buffer(), 0, VK_INDEX_TYPE_UINT32);
+			command_pool.get_command()->bind_index_buffer(resource->get_buffer(), 0, VK_INDEX_TYPE_UINT32);
 			break;
 		default: break;
 	}
@@ -181,15 +187,15 @@ void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
 
 void VulkanRenderer::bind_graphic_shader(ShaderHandle handle) {
 	auto shader = shader_manager.get_graphic_shader(handle);
-	vkCmdBindPipeline(command_pool.get_command(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
+	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
 void VulkanRenderer::draw(uint32_t vertex_count, uint32_t instance_count) {
-	vkCmdDraw(command_pool.get_command(), vertex_count, instance_count, 0, 0);
+	vkCmdDraw(command_pool.get_command()->get_command(), vertex_count, instance_count, 0, 0);
 };
 
 void VulkanRenderer::draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) {
-	vkCmdDrawIndexed(command_pool.get_command(), index_count, instance_count, 0, 0, index);
+	vkCmdDrawIndexed(command_pool.get_command()->get_command(), index_count, instance_count, 0, 0, index);
 }
 
 ResourceHandle VulkanRenderer::create_image() {

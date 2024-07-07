@@ -103,9 +103,9 @@ void VulkanImGUI::end_ui() {
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	);
 
-	vkCmdBeginRendering(command_pool->get_command(), &rendering_info);
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_pool->get_command());
-	vkCmdEndRendering(command_pool->get_command());
+	command_pool->get_command()->begin_rendering(&rendering_info);
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_pool->get_command()->get_command());
+	command_pool->get_command()->end_rendering();
 
 	command_pool->transition_image(
 		swapchain->get_swapchain_image(),

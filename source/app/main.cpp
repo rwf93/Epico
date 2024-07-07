@@ -74,6 +74,16 @@ int main(int argc, char *argv[]) {
 			nullptr,
 			context.width, context.height, 1
 		);
+
+		renderer->image_data(
+			depth_image,
+			ImageDimensions::IMAGE_2D,
+			ImageSamples::SAMPLE_COUNT_1_BIT,
+			ImageFormat::D32_SFLOAT,
+			ImageFlags::IMAGE_DEPTH_ATTACHMENT,
+			nullptr,
+			context.width, context.height, 1
+		);
 	});
 
 	auto vertex_shader_code = filesystem->read_file<char>("assets/shaders/triangle.vert.spv", true);

@@ -1,8 +1,8 @@
 
 #include "vkinfo.h"
-#include "vkcommandpool.h"
 #include "vkdevice.h"
 #include "vkswapchain.h"
+#include "vkcommandpool.h"
 
 VulkanCommandPool::VulkanCommandPool() {}
 VulkanCommandPool::~VulkanCommandPool() {}
@@ -52,34 +52,33 @@ void VulkanCommandPool::reset_fences() {
 }
 
 void VulkanCommandPool::begin_recording() {
-	VK_CHECK(vkResetCommandBuffer(get_command(), 0));
-
 	static VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VK_CHECK(vkBeginCommandBuffer(get_command(), &begin_info));
+	get_command()->reset();
+	get_command()->begin_recording(&begin_info);
 }
 
 void VulkanCommandPool::end_recording() {
-	VK_CHECK(vkEndCommandBuffer(get_command()));
+	get_command()->end_recording();
 }
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
 	VK_CHECK(vkResetFences(device->get_device(), 1, &immediate_fence));
-	VK_CHECK(vkResetCommandBuffer(immediate_command_buffer, 0));
+	immediate_command_buffer.reset();
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VK_CHECK(vkBeginCommandBuffer(immediate_command_buffer, &begin_info));
+	immediate_command_buffer.begin_recording(&begin_info);
 
-	command_function(immediate_command_buffer);
+	command_function(&immediate_command_buffer);
 
-	VK_CHECK(vkEndCommandBuffer(immediate_command_buffer));
+	immediate_command_buffer.end_recording();
 
-	auto command_info = info::command_buffer_submit_info(immediate_command_buffer);
+	auto command_info = info::command_buffer_submit_info(immediate_command_buffer.get_command());
 	auto submit_info = info::submit_info(&command_info, nullptr, nullptr);
 
 	VK_CHECK(vkQueueSubmit2(device->get_graphics_queue(), 1, &submit_info, immediate_fence));
@@ -87,80 +86,25 @@ void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function)
 }
 
 void VulkanCommandPool::transition_image(
-	VkCommandBuffer command,
+	VulkanCommand *command,
 	VkImage image,
 	VkImageLayout current_layout,
 	VkImageLayout new_layout
 ) {
-	VkImageMemoryBarrier2 image_barrier = {};
-	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-	image_barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-	image_barrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-	image_barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-	image_barrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-	image_barrier.oldLayout = current_layout;
-	image_barrier.newLayout = new_layout;
-
-	VkImageAspectFlags aspect_mask = (new_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL || current_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
-		? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-
-	image_barrier.subresourceRange = info::image_subresource_range(aspect_mask);
-	image_barrier.image = image;
-
-	VkDependencyInfo dependency_info = {};
-	dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-	dependency_info.imageMemoryBarrierCount = 1;
-	dependency_info.pImageMemoryBarriers = &image_barrier;
-
-	vkCmdPipelineBarrier2(command, &dependency_info);
+	command->transition_image(image, current_layout, new_layout);
 }
 
-void VulkanCommandPool::copy_image(VkCommandBuffer command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
-	VkImageBlit2 blit = {};
-	blit.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
-
-	blit.srcOffsets[1].x = src_size.width;
-	blit.srcOffsets[1].y = src_size.height;
-	blit.srcOffsets[1].z = src_size.depth;
-
-	blit.dstOffsets[1].x = dst_size.width;
-	blit.dstOffsets[1].y = dst_size.height;
-	blit.dstOffsets[1].z = dst_size.depth;
-
-	blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	blit.srcSubresource.baseArrayLayer = 0;
-	blit.srcSubresource.layerCount = 1;
-	blit.srcSubresource.mipLevel = 0;
-
-	blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	blit.dstSubresource.baseArrayLayer = 0;
-	blit.dstSubresource.layerCount = 1;
-	blit.dstSubresource.mipLevel = 0;
-
-	VkBlitImageInfo2 blit_info = {};
-	blit_info.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
-	blit_info.srcImage = src;
-	blit_info.dstImage = dst;
-	blit_info.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	blit_info.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	blit_info.filter = VK_FILTER_LINEAR;
-	blit_info.regionCount = 1;
-	blit_info.pRegions = &blit;
-
-	vkCmdBlitImage2(command, &blit_info);
+void VulkanCommandPool::copy_image(VulkanCommand *command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
+	command->copy_image(src, dst, src_size, dst_size);
 }
 
-void VulkanCommandPool::clear_image(VkCommandBuffer command, VkImage image, float r, float g, float b, float a) {
+void VulkanCommandPool::clear_image(VulkanCommand *command, VkImage image, float r, float g, float b, float a) {
 	VkClearColorValue clear_value = { { r, g, b, a } };
-	auto clear_range = info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
-	vkCmdClearColorImage(
-		command,
-		image,
-		VK_IMAGE_LAYOUT_GENERAL,
-		&clear_value,
-		1,
-		&clear_range
-	);
+	std::vector<VkImageSubresourceRange> clear_ranges = {
+		info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT)
+	};
+
+	command->clear_image(image, VK_IMAGE_LAYOUT_GENERAL, &clear_value, clear_ranges);
 }
 
 void VulkanCommandPool::create_command_pool() {
@@ -174,12 +118,12 @@ void VulkanCommandPool::create_command_pool() {
 
 		VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &context.command_pool));
 		auto command_allocate_info = info::command_buffer_allocate_info(context.command_pool);
-		VK_CHECK(vkAllocateCommandBuffers(device->get_device(),  &command_allocate_info, &context.command_buffer));
+		context.command_buffer.init(device, &command_allocate_info);
 	}
 
 	VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &immediate_command_pool));
 	auto immediate_command_buffer_info = info::command_buffer_allocate_info(immediate_command_pool);
-	VK_CHECK(vkAllocateCommandBuffers(device->get_device(), &immediate_command_buffer_info, &immediate_command_buffer));
+	immediate_command_buffer.init(device, &immediate_command_buffer_info);
 }
 
 void VulkanCommandPool::create_sync_objects() {

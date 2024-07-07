@@ -8,7 +8,9 @@ add_library(renderer_vk SHARED
 		vksurface.cpp
 		vkdevice.cpp
 		vkswapchain.cpp
+
 		vkcommandpool.cpp
+		vkcommand.cpp
 
 		vkresourcemanager.cpp
 		vkimage.cpp
