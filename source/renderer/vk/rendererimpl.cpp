@@ -31,6 +31,8 @@ VulkanRenderer::~VulkanRenderer() {
 }
 
 void VulkanRenderer::begin() {
+	ZoneScoped;
+
 	command_pool.wait_fences();
 	command_pool.reset_fences();
 
@@ -38,6 +40,8 @@ void VulkanRenderer::begin() {
 		rebuild();
 
 	command_pool.begin_recording();
+
+	TracyVkZone(command_pool.get_frame_context().trace_context, command_pool.get_command()->get_command(), "API Begin");
 
 	command_pool.transition_image(
 		swapchain.get_swapchain_image(),
@@ -52,6 +56,8 @@ void VulkanRenderer::end() {
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	);
+
+	TracyVkCollect(command_pool.get_frame_context().trace_context, command_pool.get_command()->get_command());
 
 	command_pool.end_recording();
 
@@ -71,6 +77,8 @@ void VulkanRenderer::end() {
 }
 
 void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
+	ZoneScoped;
+
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
 	std::vector<VkRenderingAttachmentInfo> depth_attachments;
 
@@ -132,6 +140,7 @@ void VulkanRenderer::present() {
 		rebuild();
 
 	command_pool.advance();
+	FrameMark;
 }
 
 void VulkanRenderer::clear(float r, float g, float b, float a) {
@@ -191,11 +200,11 @@ void VulkanRenderer::bind_graphic_shader(ShaderHandle handle) {
 };
 
 void VulkanRenderer::draw(uint32_t vertex_count, uint32_t instance_count) {
-	vkCmdDraw(command_pool.get_command()->get_command(), vertex_count, instance_count, 0, 0);
+	command_pool.get_command()->draw(vertex_count, instance_count, 0, 0);
 };
 
 void VulkanRenderer::draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) {
-	vkCmdDrawIndexed(command_pool.get_command()->get_command(), index_count, instance_count, 0, 0, index);
+	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, index);
 }
 
 ResourceHandle VulkanRenderer::create_image() {

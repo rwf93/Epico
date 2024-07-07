@@ -52,8 +52,13 @@ target_link_libraries(renderer_vk
 )
 target_link_libraries(renderer_vk PRIVATE magic_enum::magic_enum)
 
+target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 target_include_directories(renderer_vk PRIVATE ${THIRDPARTY}/imgui)
 target_link_libraries(renderer_vk PRIVATE imgui)
+
+target_compile_definitions(tracy PUBLIC TRACY_ENABLE)
+target_include_directories(renderer_vk PRIVATE ${THIRDPARTY}/tracy)
+target_link_libraries(renderer_vk PRIVATE tracy)
 
 target_compile_options(renderer_vk PRIVATE
 	$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>

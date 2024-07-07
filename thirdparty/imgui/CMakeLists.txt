@@ -19,5 +19,3 @@ target_link_libraries(imgui
 
 # GCC causes issues without -fPIC on linux...
 target_compile_options(imgui PRIVATE $<$<PLATFORM_ID:Linux>:-fPIC>)
-
-target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_NO_PROTOTYPES)

@@ -13,6 +13,8 @@ public:
 		VkSemaphore available_semaphore;
 		VkSemaphore finished_semaphore;
 		VkFence fence;
+
+		TracyVkCtx trace_context;
 	};
 
 	VulkanCommandPool();
@@ -90,6 +92,7 @@ private:
 	VkFence immediate_fence;
 	VkCommandPool immediate_command_pool;
 	VulkanCommand immediate_command_buffer;
+	TracyVkCtx immediate_trace;
 
 	uint32_t max_flying_frames = 0;
 	uint32_t current_frame = 0;

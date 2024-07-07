@@ -24,20 +24,26 @@ void VulkanCommandPool::fini() {
 	for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
 		VulkanFrameContext &context = get_frame_context(i);
 
+		TracyVkDestroy(get_frame_context(i).trace_context);
+
 		vkDestroyFence(device->get_device(), context.fence, nullptr);
 		vkDestroySemaphore(device->get_device(), context.finished_semaphore,  nullptr);
 		vkDestroySemaphore(device->get_device(), context.available_semaphore, nullptr);
 		vkDestroyCommandPool(device->get_device(), context.command_pool, nullptr);
 	}
 
+	TracyVkDestroy(immediate_trace);
 	vkDestroyFence(device->get_device(), immediate_fence, nullptr);
 	vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
 }
 
 void VulkanCommandPool::rebuild() {
-	for(uint32_t i = 0; i < get_max_flying_frames(); i++)
+	for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
+		TracyVkDestroy(get_frame_context(i).trace_context);
 		vkDestroyCommandPool(device->get_device(), get_frame_context(i).command_pool, nullptr);
+	}
 
+	TracyVkDestroy(immediate_trace);
 	vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
 
 	create_command_pool();
@@ -119,11 +125,25 @@ void VulkanCommandPool::create_command_pool() {
 		VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &context.command_pool));
 		auto command_allocate_info = info::command_buffer_allocate_info(context.command_pool);
 		context.command_buffer.init(device, &command_allocate_info);
+
+		context.trace_context = TracyVkContext(
+			device->get_device().physical_device,
+			device->get_device(),
+			device->get_graphics_queue(),
+			context.command_buffer.get_command()
+		);
 	}
 
 	VK_CHECK(vkCreateCommandPool(device->get_device(), &command_pool_info, nullptr, &immediate_command_pool));
 	auto immediate_command_buffer_info = info::command_buffer_allocate_info(immediate_command_pool);
 	immediate_command_buffer.init(device, &immediate_command_buffer_info);
+
+	immediate_trace = TracyVkContext(
+		device->get_device().physical_device,
+		device->get_device(),
+		device->get_graphics_queue(),
+		immediate_command_buffer.get_command()
+	);
 }
 
 void VulkanCommandPool::create_sync_objects() {

@@ -16,6 +16,10 @@
 
 #include <vk_mem_alloc.h>
 
+#define TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyVulkan.hpp>
+
 #define EAPI_EXPORT
 #include <platform/platform.h>
 
