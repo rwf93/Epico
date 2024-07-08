@@ -6,8 +6,6 @@ public:
 	void init(VulkanDevice *vkdevice, VkCommandBufferAllocateInfo *allocate_info);
 	VkCommandBuffer get_command() { return command; }
 
-	void reset(VkCommandBufferResetFlags reset_flags = 0);
-
 	void begin_recording(VkCommandBufferBeginInfo *begin_info);
 	void end_recording();
 

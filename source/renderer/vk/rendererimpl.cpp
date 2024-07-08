@@ -227,6 +227,14 @@ ResourceHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
+UniformHandle VulkanRenderer::create_uniform_buffer() {
+	return descriptor_manager.create_uniform_buffer();
+}
+
+void VulkanRenderer::init_uniform_buffer(UniformHandle uniform_handle, ResourceHandle resource_handle) {
+	descriptor_manager.init_uniform_buffer(uniform_handle, resource_handle);
+}
+
 AbstractGraphicShaderBuilder *VulkanRenderer::create_graphic_shader() {
 	return shader_manager.create_graphic_shader();
 }

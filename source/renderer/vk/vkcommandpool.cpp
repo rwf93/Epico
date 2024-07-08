@@ -50,7 +50,7 @@ void VulkanCommandPool::begin_recording() {
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	get_command()->reset();
+	vkResetCommandPool(device->get_device(), get_frame_context().command_pool, 0);
 	get_command()->begin_recording(&begin_info);
 }
 
@@ -60,7 +60,7 @@ void VulkanCommandPool::end_recording() {
 
 void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function) {
 	VK_CHECK(vkResetFences(device->get_device(), 1, &immediate_fence));
-	immediate_command_buffer.reset();
+	vkResetCommandPool(device->get_device(), immediate_command_pool, 0);
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

@@ -31,6 +31,9 @@ public:
 	ResourceHandle create_image() override;
 	ResourceHandle create_buffer() override;
 
+	UniformHandle create_uniform_buffer() override;
+	void init_uniform_buffer(UniformHandle uniform_handle, ResourceHandle resource_handle) override;
+
 	AbstractGraphicShaderBuilder *create_graphic_shader() override;
 
 	void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) override;

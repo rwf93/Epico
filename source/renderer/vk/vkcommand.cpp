@@ -5,10 +5,6 @@ void VulkanCommand::init(VulkanDevice *vkdevice, VkCommandBufferAllocateInfo *al
 	VK_CHECK(vkAllocateCommandBuffers(vkdevice->get_device(),  allocate_info, &command));
 }
 
-void VulkanCommand::reset(VkCommandBufferResetFlags reset_flags) {
-	VK_CHECK(vkResetCommandBuffer(get_command(), reset_flags));
-}
-
 void VulkanCommand::begin_recording(VkCommandBufferBeginInfo *begin_info) {
 	VK_CHECK(vkBeginCommandBuffer(get_command(), begin_info));
 }

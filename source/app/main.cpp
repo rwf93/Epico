@@ -7,6 +7,11 @@ struct Vertex {
 	glm::vec3 color;
 };
 
+struct SceneData {
+	glm::mat4 projection;
+	glm::mat4 view;
+};
+
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
@@ -114,6 +119,12 @@ int main(int argc, char *argv[]) {
 	auto ibo_handle = renderer->create_buffer();
 	renderer->buffer_data(ibo_handle, BufferType::BUFFER_INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
 
+	auto scene_data_handle = renderer->create_buffer();
+	renderer->buffer_data(scene_data_handle, BufferType::BUFFER_UNIFORM, sizeof(SceneData), nullptr);
+
+	auto scene_data_uniform_handle = renderer->create_uniform_buffer();
+	renderer->init_uniform_buffer(scene_data_uniform_handle, scene_data_handle);
+
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {
@@ -134,6 +145,9 @@ int main(int argc, char *argv[]) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
+
+		static SceneData scene_data = {};
+		renderer->buffer_sub_data(scene_data_handle, 0, sizeof(SceneData), &scene_data);
 
 		renderer->begin();
 		{

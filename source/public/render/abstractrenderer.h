@@ -49,6 +49,9 @@ public:
 	virtual ResourceHandle create_image() = 0;
 	virtual ResourceHandle create_buffer() = 0;
 
+	virtual UniformHandle create_uniform_buffer() = 0;
+	virtual void init_uniform_buffer(UniformHandle uniform_handle, ResourceHandle resource_handle) = 0;
+
 	virtual AbstractGraphicShaderBuilder *create_graphic_shader() = 0;
 
 	virtual void buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) = 0;
@@ -65,5 +68,4 @@ public:
 	) = 0;
 
 	virtual AbstractUI *ui() = 0;
-
 };
