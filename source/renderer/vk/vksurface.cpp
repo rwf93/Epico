@@ -17,7 +17,7 @@ void VulkanSurface::init(FunctorQueue<> &queue, AppContext *app_context, VulkanI
 	);
 
 	if(!SDL_Vulkan_CreateSurface(context->window, instance->get_instance(), &surface)) {
-		spdlog::info("Failed to create SDL Surface: {}", SDL_GetError());
+		spdlog::get("renderer")->error("Failed to create SDL Surface: {}", SDL_GetError());
 		std::abort();
 	}
 

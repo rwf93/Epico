@@ -76,7 +76,7 @@ void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFla
 	assert(resource);
 
 	if(!resource) {
-		spdlog::error("Invalid resource or resource is the wrong type.");
+		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 
@@ -123,7 +123,7 @@ void VulkanResourceManager::buffer_sub_data(ResourceHandle handle, VkDeviceSize 
 	assert(resource);
 
 	if(!resource) {
-		spdlog::error("Invalid resource or resource is the wrong type.");
+		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 
@@ -139,7 +139,7 @@ void VulkanResourceManager::image_data(
 	assert(resource);
 
 	if(!resource) {
-		spdlog::error("Invalid resource or resource is the wrong type.");
+		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 

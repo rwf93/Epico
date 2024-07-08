@@ -34,7 +34,7 @@ void VulkanSwapchain::create_swapchain(bool rebuild) {
 		.build();
 
 	if(!builder_ret.has_value()) {
-		spdlog::error("Couldn't create Vulkan Swapchain: {}", builder_ret.error().message());
+		spdlog::get("renderer")->error("Couldn't create Vulkan Swapchain: {}", builder_ret.error().message());
 		std::abort();
 	}
 

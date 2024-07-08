@@ -97,7 +97,6 @@ int main(int argc, char *argv[]) {
 
 	UNUSED(shader);
 
-
 	std::vector<Vertex> triangle = {
 		{ {-0.5, -0.5, 0}, {1.0, 1.0, 1.0} },
     	{ { 0.5, -0.5, 0}, {1.0, 1.0, 1.0} },

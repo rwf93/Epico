@@ -47,7 +47,7 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
 	VkResult result = (f);                                          \
 	assert(result == VK_SUCCESS);                                   \
 	if(result != VK_SUCCESS) {                                      \
-		spdlog::error("VkResult is {} in {} @ {}", result, __FILE__, __LINE__);  \
+		spdlog::get("renderer")->error("VkResult is {} in {} @ {}", result, __FILE__, __LINE__);  \
 		std::abort();                                               \
 	}                                                               \
 }

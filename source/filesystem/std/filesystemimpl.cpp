@@ -1,7 +1,12 @@
 #include "filesystemimpl.h"
 
+StandardFilesystem::StandardFilesystem() {
+	auto console = spdlog::stdout_color_mt("filesystem");
+	UNUSED(console);
+}
+
 void StandardFilesystem::mount(std::filesystem::path virtual_dir, std::filesystem::path physical_dir) {
-	spdlog::info("Mounting {} to {}", virtual_dir.string(), physical_dir.string());
+	spdlog::get("filesystem")->info("Mounting {} to {}", virtual_dir.string(), physical_dir.string());
 	mounts[virtual_dir].push_back(physical_dir);
 }
 
