@@ -29,7 +29,7 @@ void VulkanSwapchain::create_swapchain(bool rebuild) {
 
 	auto builder_ret = builder
 		.set_desired_format(swapchain_format)
-		.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+		.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)
 		.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 		.build();
 
