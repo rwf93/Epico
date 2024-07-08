@@ -27,6 +27,7 @@ UniformHandle VulkanDescriptorManager::create_uniform_buffer() {
 	}
 
 	uniforms.insert(std::make_pair(last_uniform_handle, buffer_uniforms));
+	uniform_resources.insert(std::make_pair(last_uniform_handle, resource_manager->create_buffer()));
 
 	return last_uniform_handle;
 }

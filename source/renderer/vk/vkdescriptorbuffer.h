@@ -12,6 +12,8 @@ public:
     void fini() override;
     UniformState get_state() override { return state; };
 
+    VK_TRACY_MEMORY_OVERLOADS;
+
     friend class VulkanDescriptorManager;
 private:
     VulkanDevice *device;

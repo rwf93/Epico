@@ -56,3 +56,14 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
 #define VK_ALIGN_BOUNDS(size, alignment) ( alignment > 0 ? VK_ALIGN(size, alignment) : size )
 static_assert(VK_ALIGN(1024, 0) != 1024);
 static_assert(VK_ALIGN_BOUNDS(1024, 0) == 1024);
+
+#define VK_TRACY_MEMORY_OVERLOADS 		\
+	void *operator new(size_t size) { 	\
+        void *p = ::operator new(size); \
+        TracyAlloc(p, size); 			\
+        return p; 						\
+    } 									\
+    void operator delete(void *p) { 	\
+        TracyFree(p); 					\
+        free(p); 						\
+    }

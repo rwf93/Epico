@@ -11,6 +11,9 @@ public:
 
     void init(VkGraphicsPipelineCreateInfo *pipeline_create_info);
     void fini() override;
+
+    VK_TRACY_MEMORY_OVERLOADS;
+
 private:
     VulkanDevice *device;
 	ShaderState state = ShaderState::SHADER_UNREADY;

@@ -28,6 +28,8 @@ public:
 	friend class VulkanResourceManager;
 	friend class VulkanDescriptorManager;
 
+	VK_TRACY_MEMORY_OVERLOADS;
+
 private:
 	VulkanDevice *device;
 	VulkanCommandPool *command_pool;
