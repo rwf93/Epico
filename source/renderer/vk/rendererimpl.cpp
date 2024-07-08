@@ -15,6 +15,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	this->app_context = app_context;
 
 	auto tracy_log_sink = std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg &msg) {
+		UNUSED(msg); // Disabling tracy causes issues.
 		TracyMessage(msg.payload.data(), msg.payload.size());
 	});
 

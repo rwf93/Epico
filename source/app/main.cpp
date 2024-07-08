@@ -167,8 +167,9 @@ int main(int argc, char *argv[]) {
 				ui->end();
 			ui->end_ui();
 
-			renderer->end();
+
 		}
+		renderer->end();
 		renderer->present();
 	}
 
