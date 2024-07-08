@@ -13,6 +13,7 @@ enum UniformState {
 
 class AbstractUniform {
 public:
+    virtual ~AbstractUniform() {};
     virtual UniformState get_state() = 0;
     virtual void fini() = 0;
 };

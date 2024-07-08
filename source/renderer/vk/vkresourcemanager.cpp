@@ -61,19 +61,13 @@ void VulkanResourceManager::fini() {
 
 ResourceHandle VulkanResourceManager::create_image() {
 	ResourceHandle last_resource_handle = advance_handle();
-
-	auto image_resource = new VulkanImage();
-	resources.insert(std::make_pair(last_resource_handle,image_resource));
-
+	resources.insert(std::make_pair(last_resource_handle,new VulkanImage()));
 	return last_resource_handle;
 }
 
 ResourceHandle VulkanResourceManager::create_buffer() {
 	ResourceHandle last_resource_handle = advance_handle();
-
-	auto buffer_resource = new VulkanBuffer();
-	resources.insert(std::make_pair(last_resource_handle, buffer_resource));
-
+	resources.insert(std::make_pair(last_resource_handle, new VulkanBuffer()));
 	return last_resource_handle;
 }
 

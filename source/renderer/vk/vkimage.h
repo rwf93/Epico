@@ -25,6 +25,9 @@ public:
 	VkImage &get_image() { return image; }
 	VkImageView &get_view() { return view; }
 
+	friend class VulkanResourceManager;
+	friend class VulkanDescriptorManager;
+
 private:
 	VulkanDevice *device;
 	VulkanCommandPool *command_pool;

@@ -22,7 +22,7 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	descriptor_manager.init(cleanup_queue, &device, &command_pool);
+	descriptor_manager.init(cleanup_queue, &device, &command_pool, &resource_manager);
 	shader_manager.init(cleanup_queue, &device);
 	ui_imgui.init(cleanup_queue, app_context, &instance, &device, &swapchain, &command_pool);
 }

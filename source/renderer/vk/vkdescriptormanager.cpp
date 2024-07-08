@@ -1,36 +1,42 @@
 #include "vkdevice.h"
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
-#include "vkdescriptorallocator.h"
+#include "vkresourcemanager.h"
+#include "vkdescriptorbuffer.h"
 #include "vkdescriptormanager.h"
 
-void VulkanDescriptorManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool) {
+void VulkanDescriptorManager::init(
+	FunctorQueue<> &queue,
+	VulkanDevice *vkdevice,
+	VulkanCommandPool *vkcommandpool,
+	VulkanResourceManager *vkresourcemanager
+) {
 	this->device = vkdevice;
 	this->command_pool = vkcommandpool;
-
-
-	for(uint32_t i = 0; i < command_pool->get_max_flying_frames(); i++) {
-		allocators.push_back(new VulkanDescriptorAllocator());
-		VulkanDescriptorAllocator *allocator = allocators.at(i);
-
-		std::vector<VulkanDescriptorAllocator::PoolSizeRatio> pool_ratios = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
-		};
-
-		allocator->init(device, 1000, pool_ratios);
-	}
-
+	this->resource_manager = vkresourcemanager;
 
 	queue.push([&]() { fini(); });
 }
 
-void VulkanDescriptorManager::fini() {
+UniformHandle VulkanDescriptorManager::create_uniform_buffer() {
+	UniformHandle last_uniform_handle = advance_handle();
+
+	std::vector<AbstractUniform*> buffer_uniforms = {};
 	for(uint32_t i = 0; i < command_pool->get_max_flying_frames(); i++) {
-		VulkanDescriptorAllocator *allocator = allocators.at(i);
-		allocator->fini();
-		delete allocator;
+		buffer_uniforms.push_back(new VulkanUniformBuffer());
+	}
+
+	uniforms.insert(std::make_pair(last_uniform_handle, buffer_uniforms));
+
+	return last_uniform_handle;
+}
+
+void VulkanDescriptorManager::fini() {
+	for(auto &uniform_handle: uniforms) {
+		for(auto &uniform: uniform_handle.second) {
+			if(uniform->get_state() == UniformState::UNIFORM_READY)
+				uniform->fini();
+			delete uniform;
+		}
 	}
 }

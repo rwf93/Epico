@@ -14,7 +14,6 @@ void VulkanImage::init(
 	this->command_pool = vkcommandpool;
 	this->allocator = vkallocator;
 
-
 	// evil
 	extent = image_info->extent;
 

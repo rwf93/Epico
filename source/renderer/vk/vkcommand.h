@@ -88,6 +88,8 @@ public:
 		uint32_t first_instance
 	);
 
+	friend class VulkanCommandPool;
+
 private:
 	VkCommandBuffer command;
 };

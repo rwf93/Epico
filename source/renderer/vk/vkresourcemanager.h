@@ -3,10 +3,13 @@
 #include "vkimage.h"
 #include "vkbuffer.h"
 
+enum CreateBufferFlags {
+	CREATE_BUFFER_COHERENT = 1 << 0,
+};
+
 class VulkanDevice;
 class VulkanResource;
 class VulkanCommandPool;
-
 class VulkanResourceManager {
 public:
 	void init(FunctorQueue<> &queue, VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
@@ -48,6 +51,8 @@ public:
 	err:
 		return nullptr;
 	}
+
+    friend class VulkanDescriptorManager;
 
 private:
 	// increments the resource handle and returns the last one

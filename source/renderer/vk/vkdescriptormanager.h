@@ -2,11 +2,18 @@
 
 class VulkanDevice;
 class VulkanSwapchain;
-class VulkanDescriptorAllocator;
+class VulkanResourceManager;
 class VulkanDescriptorManager {
 public:
-    void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
+    void init(
+        FunctorQueue<> &queue,
+        VulkanDevice *vkdevice,
+        VulkanCommandPool *vkcommandpool,
+        VulkanResourceManager *vkresourcemanager
+    );
     void fini();
+
+    UniformHandle create_uniform_buffer();
 
 protected:
     UniformHandle advance_handle() {
@@ -17,9 +24,11 @@ protected:
 private:
     VulkanDevice *device;
     VulkanCommandPool *command_pool;
+    VulkanResourceManager *resource_manager;
 
-    std::vector<VulkanDescriptorAllocator*> allocators;
+    // Tied {handle = {...}} where ... is max flying frames.
     std::map<UniformHandle, std::vector<AbstractUniform*>> uniforms;
+    std::map<UniformHandle, ResourceHandle> uniform_resources;
 
     UniformHandle current_uniform_handle = 0;
 };
