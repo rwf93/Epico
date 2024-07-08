@@ -29,20 +29,20 @@ public:
 		VkImage image,
 		VkImageLayout layout,
 		VkClearColorValue *clear_values,
-		std::vector<VkImageSubresourceRange> &ranges
+		std::span<VkImageSubresourceRange> ranges
 	);
 
 	void copy_buffer_to_image(
 		VkBuffer src_buffer,
 		VkImage dst_image,
 		VkImageLayout layout,
-		std::vector<VkBufferImageCopy> &regions
+		std::span<VkBufferImageCopy> regions
 	);
 
 	void copy_buffer(
 		VkBuffer src_buffer,
 		VkBuffer dst_buffer,
-		std::vector<VkBufferCopy> &regions
+		std::span<VkBufferCopy> regions
 	);
 
 	void update_buffer(
@@ -54,11 +54,11 @@ public:
 
 	void viewport(
 		uint32_t first_viewport,
-		std::vector<VkViewport> &viewports
+		std::span<VkViewport> viewports
 	);
 	void scissor(
 		uint32_t first_scissor,
-		std::vector<VkRect2D> &scissors
+		std::span<VkRect2D> scissors
 	);
 
 	void bind_vertex_buffer(

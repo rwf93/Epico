@@ -3,17 +3,18 @@
 #include "vkcommandpool.h"
 #include "vkimage.h"
 
-VulkanImage::VulkanImage(
+void VulkanImage::init(
 	VulkanDevice *vkdevice,
 	VulkanCommandPool *vkcommandpool,
-	VmaAllocator vkallocator
+	VmaAllocator vkallocator,
+	VkImageCreateInfo *image_info,
+	VmaAllocationCreateInfo *create_info
 ) {
 	this->device = vkdevice;
 	this->command_pool = vkcommandpool;
 	this->allocator = vkallocator;
-}
 
-void VulkanImage::init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *create_info) {
+
 	// evil
 	extent = image_info->extent;
 

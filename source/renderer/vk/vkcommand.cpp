@@ -97,7 +97,7 @@ void VulkanCommand::clear_image(
 	VkImage image,
 	VkImageLayout layout,
 	VkClearColorValue *clear_values,
-	std::vector<VkImageSubresourceRange> &ranges
+	std::span<VkImageSubresourceRange> ranges
 ) {
 	vkCmdClearColorImage(
 		get_command(),
@@ -112,7 +112,7 @@ void VulkanCommand::copy_buffer_to_image(
 	VkBuffer src_buffer,
 	VkImage dst_image,
 	VkImageLayout layout,
-	std::vector<VkBufferImageCopy> &regions
+	std::span<VkBufferImageCopy> regions
 ) {
 	vkCmdCopyBufferToImage(
 		get_command(),
@@ -127,7 +127,7 @@ void VulkanCommand::copy_buffer_to_image(
 void VulkanCommand::copy_buffer(
 	VkBuffer src_buffer,
 	VkBuffer dst_buffer,
-	std::vector<VkBufferCopy> &regions
+	std::span<VkBufferCopy> regions
 ) {
 	vkCmdCopyBuffer(
 		get_command(),
@@ -149,7 +149,7 @@ void VulkanCommand::update_buffer(
 
 void VulkanCommand::viewport(
 	uint32_t first_viewport,
-	std::vector<VkViewport> &viewports
+	std::span<VkViewport> viewports
 ) {
 	vkCmdSetViewport(
 		get_command(),
@@ -161,7 +161,7 @@ void VulkanCommand::viewport(
 
 void VulkanCommand::scissor(
 	uint32_t first_scissor,
-	std::vector<VkRect2D> &scissors
+	std::span<VkRect2D> scissors
 ) {
 	vkCmdSetScissor(
 		get_command(),

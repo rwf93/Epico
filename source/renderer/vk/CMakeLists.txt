@@ -17,6 +17,8 @@ add_library(renderer_vk SHARED
 		vkbuffer.cpp
 
 		vkdescriptorallocator.cpp
+		vkdescriptormanager.cpp
+		vkdescriptorbuffer.cpp
 
 		vkshadermanager.cpp
 

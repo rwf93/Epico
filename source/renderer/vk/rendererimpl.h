@@ -61,6 +61,7 @@ private:
 	VulkanSwapchain swapchain = {};
 	VulkanCommandPool command_pool = {};
 	VulkanResourceManager resource_manager = {};
+	VulkanDescriptorManager descriptor_manager = {};
 	VulkanShaderManager shader_manager = {};
 
 	VulkanImGUI ui_imgui = {};

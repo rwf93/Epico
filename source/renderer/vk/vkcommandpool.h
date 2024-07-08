@@ -29,8 +29,10 @@ public:
 	void begin_recording();
 	void end_recording();
 
+	uint32_t get_current_frame() { return current_frame; }
+
 	VulkanFrameContext &get_frame_context(uint32_t index) { return frame_contexts.at(index); }
-	VulkanFrameContext &get_frame_context() { return get_frame_context(current_frame); }
+	VulkanFrameContext &get_frame_context() { return get_frame_context(get_current_frame()); }
 
 	VulkanCommand *get_command(uint32_t index) { return &get_frame_context(index).command_buffer; }
 	VulkanCommand *get_command() { return get_command(current_frame); };
@@ -44,6 +46,7 @@ public:
 	VkFence &get_fence(uint32_t index) { return get_frame_context(index).fence; }
 	VkFence &get_fence() { return get_fence(current_frame); }
 
+	// These functions are left over from when I merged out the VkCommand from FrameContext into it's own class.
 	void transition_image(
 		VulkanCommand *command,
 		VkImage image,

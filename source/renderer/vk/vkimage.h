@@ -5,14 +5,15 @@ class VulkanCommandPool;
 class VulkanBuffer;
 class VulkanImage: public AbstractResource {
 public:
-	VulkanImage(
-		VulkanDevice *vkdevice,
-		VulkanCommandPool *vkcommandpool,
-		VmaAllocator vkallocator
-	);
 	~VulkanImage() override;
 
-	void init(VkImageCreateInfo *image_info, VmaAllocationCreateInfo *create_info);
+	void init(
+		VulkanDevice *vkdevice,
+		VulkanCommandPool *vkcommandpool,
+		VmaAllocator vkallocator,
+		VkImageCreateInfo *image_info,
+		VmaAllocationCreateInfo *create_info
+	);
 	void fini() override;
 
 	void stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent);

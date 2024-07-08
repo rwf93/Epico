@@ -3,6 +3,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <span>
 
 #define VK_NO_PROTOTYPES
 
@@ -23,8 +24,6 @@
 #include <platform/platform.h>
 
 #include <public/render/abstractrenderer.h>
-#include <public/render/abstractui.h>
-#include <public/render/abstractresource.h>
 
 #include <public/appcontext.h>
 

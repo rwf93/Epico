@@ -4,13 +4,6 @@ class VulkanDevice;
 class VulkanCommandPool;
 class VulkanBuffer: public AbstractResource {
 public:
-	VulkanBuffer(
-		VulkanDevice *vkdevice,
-		VulkanCommandPool *vkcommandpool,
-		VmaAllocator vkallocator
-	);
-	~VulkanBuffer() override;
-
 	VkBuffer &get_buffer() { return buffer; }
 	VmaAllocation &get_allocation() { return allocation; }
 	VmaAllocationInfo &get_allocation_info() { return allocation_info; }
@@ -27,6 +20,9 @@ public:
 	ResourceState get_state() override { return state; }
 
 	void init(
+		VulkanDevice *vkdevice,
+		VulkanCommandPool *vkcommandpool,
+		VmaAllocator vkallocator,
 		VkBufferCreateInfo *buffer_create_info,
 		VmaAllocationCreateInfo *allocation_create_info
 	);

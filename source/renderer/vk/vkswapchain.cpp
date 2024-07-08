@@ -58,9 +58,8 @@ bool VulkanSwapchain::aquire_next_image(VulkanCommandPool *command_pool) {
 		&get_image_index()
 	);
 
-	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR) {
+	if(aquire_result == VK_ERROR_OUT_OF_DATE_KHR)
 		return true;
-	}
 
 	return false;
 }

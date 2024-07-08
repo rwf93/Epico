@@ -1,7 +1,5 @@
 #pragma once
 
-#include "vkdescriptorallocator.h"
-
 #include "vkgraphicshaderbuilder.h"
 #include "vkgraphicshader.h"
 
@@ -36,7 +34,7 @@ public:
 	}
 
 protected:
-	ShaderHandle advance_shader_handle() {
+	ShaderHandle advance_handle() {
 		ShaderHandle last_shader_handle = current_shader_handle;
 		current_shader_handle++;
 		return last_shader_handle;

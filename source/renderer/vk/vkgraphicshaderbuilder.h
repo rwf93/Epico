@@ -21,7 +21,6 @@ public:
 	AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
 	AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) override;
 
-
 	AbstractGraphicShaderBuilder *add_binding(
         uint32_t binding,
         uint32_t size,

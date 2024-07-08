@@ -2,22 +2,17 @@
 #include "vkcommandpool.h"
 #include "vkbuffer.h"
 
-VulkanBuffer::VulkanBuffer(
+void VulkanBuffer::init(
 	VulkanDevice *vkdevice,
 	VulkanCommandPool *vkcommandpool,
-	VmaAllocator vkallocator
+	VmaAllocator vkallocator,
+	VkBufferCreateInfo *buffer_create_info,
+	VmaAllocationCreateInfo *allocation_create_info
 ) {
 	this->device = vkdevice;
 	this->command_pool = vkcommandpool;
 	this->allocator = vkallocator;
-}
 
-VulkanBuffer::~VulkanBuffer() {}
-
-void VulkanBuffer::init(
-	VkBufferCreateInfo *buffer_create_info,
-	VmaAllocationCreateInfo *allocation_create_info
-) {
 	VK_CHECK(vmaCreateBuffer(
 		allocator,
 		buffer_create_info, allocation_create_info,

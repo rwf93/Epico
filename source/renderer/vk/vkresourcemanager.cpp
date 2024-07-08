@@ -62,7 +62,7 @@ void VulkanResourceManager::fini() {
 ResourceHandle VulkanResourceManager::create_image() {
 	ResourceHandle last_resource_handle = advance_handle();
 
-	auto image_resource = new VulkanImage(device, command_pool, allocator);
+	auto image_resource = new VulkanImage();
 	resources.insert(std::make_pair(last_resource_handle,image_resource));
 
 	return last_resource_handle;
@@ -71,7 +71,7 @@ ResourceHandle VulkanResourceManager::create_image() {
 ResourceHandle VulkanResourceManager::create_buffer() {
 	ResourceHandle last_resource_handle = advance_handle();
 
-	auto buffer_resource = new VulkanBuffer(device, command_pool, allocator);
+	auto buffer_resource = new VulkanBuffer();
 	resources.insert(std::make_pair(last_resource_handle, buffer_resource));
 
 	return last_resource_handle;
@@ -97,14 +97,26 @@ void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFla
 
 	auto allocate_info = info::allocation_create_info();
 
-	resource->init(&buffer_info, &allocate_info);
+	resource->init(
+		device,
+		command_pool,
+		allocator,
+		&buffer_info,
+		&allocate_info
+	);
 
 	// Skip initalizing the buffer with data, just create the buffer object's metadata.
 	if(!data)
 		return;
 
-	VulkanBuffer staging_buffer = { device, command_pool, allocator };
-	staging_buffer.init(&staging_buffer_info, &allocate_info);
+	VulkanBuffer staging_buffer;
+	staging_buffer.init(
+		device,
+		command_pool,
+		allocator,
+		&staging_buffer_info,
+		&allocate_info
+	);
 
 	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
 	resource->stage(&staging_buffer, size);
@@ -144,7 +156,13 @@ void VulkanResourceManager::image_data(
 	allocate_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 	allocate_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	resource->init(&image_info, &allocate_info);
+	resource->init(
+		device,
+		command_pool,
+		allocator,
+		&image_info,
+		&allocate_info
+	);
 
 	// ditto.
 	if(!data)
@@ -155,9 +173,15 @@ void VulkanResourceManager::image_data(
 	auto staging_allocate_info = info::allocation_create_info();
 	auto staging_buffer_info = info::buffer_create_info(size);
 
-	VulkanBuffer staging_buffer = { device, command_pool, allocator };
+	VulkanBuffer staging_buffer;
 
-	staging_buffer.init(&staging_buffer_info, &staging_allocate_info);
+	staging_buffer.init(
+		device,
+		command_pool,
+		allocator,
+		&staging_buffer_info,
+		&staging_allocate_info
+	);
 
 	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
 	resource->stage(&staging_buffer, image_info.extent);

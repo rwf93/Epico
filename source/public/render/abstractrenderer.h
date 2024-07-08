@@ -2,6 +2,8 @@
 
 #include <public/render/abstractresource.h>
 #include <public/render/abstractshader.h>
+#include <public/render/abstractuniform.h>
+#include <public/render/abstractui.h>
 
 #include <functional>
 
