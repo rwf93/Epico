@@ -66,3 +66,7 @@ CONVERTER(convert_polygon_mode, ShaderPolygonMode, VkPolygonMode, VK_POLYGON_MOD
 	{ MODE_LINE, VK_POLYGON_MODE_LINE },
 	{ MODE_POINT, VK_POLYGON_MODE_POINT },
 );
+
+CONVERTER(convert_uniform_type, UniformType, VkDescriptorType, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+	{ UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER }
+);

@@ -9,10 +9,12 @@ public:
 	void end() override;
 	void present() override;
 
-	void begin_pass(SubpassDependency *dependencies) override;
-	void end_pass(SubpassDependency *dependencies) override;
+	void begin_pass(SubpassDependencyInfo *dependencies) override;
+	void end_pass(SubpassDependencyInfo *dependencies) override;
 
 	void clear(float r, float g, float b, float a) override;
+	void clear(ResourceHandle handle, float r, float g, float b, float a) override;
+
 	void viewport(float width, float height, float x = 0, float y = 0) override;
 	void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) override;
 

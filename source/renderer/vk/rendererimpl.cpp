@@ -88,29 +88,50 @@ void VulkanRenderer::end() {
 	VK_CHECK(vkQueueSubmit2(device.get_graphics_queue(), 1, &submit_info, command_pool.get_fence()));
 }
 
-void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
+void VulkanRenderer::begin_pass(SubpassDependencyInfo *dependencies) {
 	ZoneScoped;
 
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
 	std::vector<VkRenderingAttachmentInfo> depth_attachments;
 
 	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto resource = resource_manager.get_image(dependencies->attachments[i]);
-		switch(dependencies->types[i]) {
+		auto resource = resource_manager.get_image(dependencies->attachments[i].resource);
+		VkClearValue *clear_value = reinterpret_cast<VkClearValue*>(&dependencies->attachments[i].clear);
+
+		switch(dependencies->attachments[i].type) {
 			case AttachmentType::COLOR:
-				color_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+				color_attachments.push_back(
+					info::attachment_info(
+						resource->get_view(),
+						clear_value,
+						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+					)
+				);
+
+				command_pool.transition_image(
+					resource->get_image(),
+					VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+				);
 				break;
 			case AttachmentType::DEPTH:
-				depth_attachments.push_back(info::attachment_info(resource->get_view(), nullptr, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL));
-				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+				depth_attachments.push_back(
+					info::attachment_info(
+						resource->get_view(),
+						clear_value,
+						VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+					)
+				);
+
+				command_pool.transition_image(
+					resource->get_image(),
+					VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+				);
 				break;
 			default: break;
 		}
 	}
-
-	assert(color_attachments.size() >= 1);
-	assert(depth_attachments.size() <= 1);
 
 	auto rendering_info = info::rendering_info(
 		swapchain.get_swapchain().extent,
@@ -121,17 +142,25 @@ void VulkanRenderer::begin_pass(SubpassDependency *dependencies) {
 	command_pool.get_command()->begin_rendering(&rendering_info);
 }
 
-void VulkanRenderer::end_pass(SubpassDependency *dependencies) {
+void VulkanRenderer::end_pass(SubpassDependencyInfo *dependencies) {
 	command_pool.get_command()->end_rendering();
 
 	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto resource = resource_manager.get_image(dependencies->attachments[i]);
-		switch(dependencies->types[i]) {
+		auto resource = resource_manager.get_image(dependencies->attachments[i].resource);
+		switch(dependencies->attachments[i].type) {
 			case AttachmentType::COLOR:
-				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+				command_pool.transition_image(
+					resource->get_image(),
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_GENERAL
+				);
 				break;
 			case AttachmentType::DEPTH:
-				command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+				command_pool.transition_image(
+					resource->get_image(),
+					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_GENERAL
+				);
 				break;
 			default: break;
 		}
@@ -157,6 +186,11 @@ void VulkanRenderer::present() {
 
 void VulkanRenderer::clear(float r, float g, float b, float a) {
 	command_pool.clear_image(swapchain.get_swapchain_image(), r, g, b, a);
+}
+
+void VulkanRenderer::clear(ResourceHandle handle, float r, float g, float b, float a) {
+	auto image = resource_manager.get_image(handle);
+	command_pool.clear_image(image->get_image(), r, g, b, a);
 }
 
 void VulkanRenderer::viewport(float width, float height, float x, float y) {

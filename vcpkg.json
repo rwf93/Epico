@@ -10,6 +10,7 @@
 		"vulkan-memory-allocator",
 		"glm",
 		"assimp",
+		"stb",
 		"tinyobjloader",
 		{
 			"name": "sdl2",

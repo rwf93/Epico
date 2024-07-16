@@ -7,6 +7,9 @@ VulkanShaderManager::~VulkanShaderManager() {}
 
 void VulkanShaderManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice) {
 	this->device = vkdevice;
+
+	graphics_builder.init(device);
+
 	queue.push([&]() { fini(); });
 }
 
@@ -19,6 +22,8 @@ void VulkanShaderManager::fini() {
 			delete shader;
 		}
 	}
+
+	graphics_builder.fini();
 }
 
 AbstractGraphicShaderBuilder *VulkanShaderManager::create_graphic_shader() {
@@ -27,7 +32,7 @@ AbstractGraphicShaderBuilder *VulkanShaderManager::create_graphic_shader() {
 	auto graphic_shader = new VulkanGraphicShader(device);
 	shaders.insert(std::make_pair(last_shader_handle, graphic_shader));
 
-	graphics_builder.clear(last_shader_handle, graphic_shader, device, this);
+	graphics_builder.clear(last_shader_handle, graphic_shader);
 
 	return &graphics_builder;
 }

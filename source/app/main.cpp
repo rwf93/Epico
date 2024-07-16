@@ -1,7 +1,3 @@
-#include <math.h>
-
-#include <glm/glm.hpp>
-
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 color;
@@ -98,9 +94,8 @@ int main(int argc, char *argv[]) {
 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
 		->add_stage(ShaderStage::STAGE_VERTEX, vertex_shader_code.data(), vertex_shader_code.size())
 		->add_stage(ShaderStage::STAGE_FRAGMENT, fragment_shader_code.data(), fragment_shader_code.size())
-		->init();
-
-	UNUSED(shader);
+		->add_uniform(0, 0, UniformType::UNIFORM_BUFFER, ShaderStage::STAGE_VERTEX)
+		->build();
 
 	std::vector<Vertex> triangle = {
 		{ {-0.5, -0.5, 0}, {0.3, 1.0, 1.0} },
@@ -151,15 +146,17 @@ int main(int argc, char *argv[]) {
 
 		renderer->begin();
 		{
-			renderer->clear(1, 0, 0, 0);
+			renderer->clear(0, 0, 0, 0);
 
 			{
-				static ResourceHandle handles[] = { forward_image, depth_image };
-				static AttachmentType types[] = { AttachmentType::COLOR, AttachmentType::DEPTH };
-				static SubpassDependency forward_dependency = {
-					.attachments = handles,
-					.types = types,
-					.count = sizeof(handles)/sizeof(handles[0])
+				static std::vector<SubpassAttachment> attachments = {
+					{ .resource = forward_image, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+					{ .resource = depth_image,   .type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
+				};
+
+				static SubpassDependencyInfo forward_dependency = {
+					.attachments = attachments.data(),
+					.count = static_cast<uint32_t>(attachments.size())
 				};
 
 				renderer->begin_pass(&forward_dependency);
@@ -180,8 +177,6 @@ int main(int argc, char *argv[]) {
 				ui->begin("Shader Picker");
 				ui->end();
 			ui->end_ui();
-
-
 		}
 		renderer->end();
 		renderer->present();

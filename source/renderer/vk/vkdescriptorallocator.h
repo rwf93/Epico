@@ -12,7 +12,7 @@ public:
     void clear();
     void fini();
 
-    VkDescriptorSet allocate(VkDescriptorSetLayout *layout);
+    VkDescriptorSet allocate(std::vector<VkDescriptorSetLayout> &layouts);
 private:
     VulkanDevice *device;
 

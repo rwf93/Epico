@@ -11,6 +11,11 @@ enum UniformState {
     UNIFORM_READY
 };
 
+enum UniformStageFlag {
+    UNIFORM_STAGE_VERTEX = 1 << 0,
+    UNIFORM_STAGE_FRAGMENT = 1 << 1
+};
+
 class AbstractUniform {
 public:
     virtual ~AbstractUniform() {};

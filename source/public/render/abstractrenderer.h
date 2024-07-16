@@ -1,8 +1,8 @@
 #pragma once
 
 #include <public/render/abstractresource.h>
-#include <public/render/abstractshader.h>
 #include <public/render/abstractuniform.h>
+#include <public/render/abstractshader.h>
 #include <public/render/abstractui.h>
 
 #include <functional>
@@ -12,9 +12,19 @@ enum AttachmentType {
 	DEPTH
 };
 
-struct SubpassDependency {
-	ResourceHandle *attachments;
-	AttachmentType *types;
+struct SubpassAttachment {
+	ResourceHandle resource;
+	AttachmentType type;
+
+	struct ClearValue {
+		float r, g, b, a;
+		float depth;
+		uint32_t stencil;
+	} clear;
+};
+
+struct SubpassDependencyInfo {
+	SubpassAttachment *attachments;
 	uint32_t count;
 };
 
@@ -26,12 +36,14 @@ public:
 	virtual void begin() = 0;
 	virtual void end() = 0;
 
-	virtual void begin_pass(SubpassDependency *dependencies) = 0;
-	virtual void end_pass(SubpassDependency *dependencies) = 0;
+	virtual void begin_pass(SubpassDependencyInfo *dependencies) = 0;
+	virtual void end_pass(SubpassDependencyInfo *dependencies) = 0;
 
 	virtual void present() = 0;
 
+	virtual void clear(ResourceHandle handle, float r, float g, float b, float a) = 0;
 	virtual void clear(float r, float g, float b, float a) = 0;
+
 	virtual void viewport(float width, float height, float x = 0, float y = 0) = 0;
 	virtual void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) = 0;
 

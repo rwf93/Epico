@@ -1,20 +1,20 @@
 #include "vkdevice.h"
-#include "vkshadermanager.h"
+#include "vkgraphicshader.h"
 #include "vkgraphicshaderbuilder.h"
 
 VulkanGraphicShaderBuilder::VulkanGraphicShaderBuilder() {}
 VulkanGraphicShaderBuilder::~VulkanGraphicShaderBuilder() {}
 
+void VulkanGraphicShaderBuilder::init(VulkanDevice *vkdevice) {
+    this->device = vkdevice;
+}
+
 void VulkanGraphicShaderBuilder::clear(
     ShaderHandle shader_handle,
-    VulkanGraphicShader *vkshader,
-    VulkanDevice *vkdevice,
-    VulkanShaderManager* vkshadermanager
+    VulkanGraphicShader *vkshader
 ) {
     this->handle = shader_handle;
     this->shader = vkshader;
-    this->device = vkdevice;
-    this->shader_manager = vkshadermanager;
 
     bindings.clear();
 	attributes.clear();
@@ -22,6 +22,7 @@ void VulkanGraphicShaderBuilder::clear(
 	shader_stages.clear();
 	color_states.clear();
 	attachment_formats.clear();
+    descriptor_layout_bindings.clear();
 
     assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -61,12 +62,18 @@ void VulkanGraphicShaderBuilder::clear(
     depth_format = VK_FORMAT_UNDEFINED;
 }
 
-ShaderHandle VulkanGraphicShaderBuilder::init() {
-    VkPipelineLayout pipeline_layout;
+ShaderHandle VulkanGraphicShaderBuilder::build() {
+    for(auto &layout: descriptor_layout_bindings) {
+        VkDescriptorSetLayout set_layout;
+        auto layout_info = info::descriptor_set_layout_info(layout.second);
+        VK_CHECK(vkCreateDescriptorSetLayout(device->get_device(), &layout_info, nullptr, &set_layout));
+        descriptor_layouts.push_back(set_layout);
+    }
 
-    std::vector<VkDescriptorSetLayout> descriptor_layouts = {};
+    VkPipelineLayout pipeline_layout;
     auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
     VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));
+    pipeline_layouts.push_back(pipeline_layout);
 
     auto input_info = info::input_vertex_info(bindings, attributes);
     auto rendering_create_info = info::rendering_create_info(attachment_formats, depth_format);
@@ -98,13 +105,18 @@ ShaderHandle VulkanGraphicShaderBuilder::init() {
 
     shader->init(&pipeline_info);
 
-    // Is it more efficient to reuse a pipeline layout rather than destroy it? Is this even valid?
-    vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
-
     for(auto &module: shader_modules)
         vkDestroyShaderModule(device->get_device(), module, nullptr);
 
     return handle;
+}
+
+void VulkanGraphicShaderBuilder::fini() {
+    for(auto &descriptor_layout: descriptor_layouts)
+        vkDestroyDescriptorSetLayout(device->get_device(), descriptor_layout, nullptr);
+
+    for(auto &pipeline_layout: pipeline_layouts)
+        vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
 }
 
 AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_primitive(ShaderPrimitive type) {
@@ -170,10 +182,18 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_stage(
     VK_CHECK(vkCreateShaderModule(device->get_device(), &shader_create_info, nullptr, &shader_module));
     shader_modules.push_back(shader_module);
 
+    uint64_t stage_bits = 0;
+
+    if(stage & STAGE_VERTEX)
+        stage_bits |= VK_SHADER_STAGE_VERTEX_BIT;
+
+    if(stage & STAGE_FRAGMENT)
+        stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
+
     VkPipelineShaderStageCreateInfo shader_stage_info = {};
     shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shader_stage_info.module = shader_module;
-    shader_stage_info.stage = convert::convert_shader_stage(stage);
+    shader_stage_info.stage = static_cast<VkShaderStageFlagBits>(stage_bits);
     shader_stage_info.pName = "main";
 
     shader_stages.push_back(shader_stage_info);
@@ -196,6 +216,31 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_attachment(ImageFo
     // Update color_info
     color_info.attachmentCount = static_cast<uint32_t>(color_states.size());
     color_info.pAttachments = color_states.data();
+
+    return this;
+}
+
+AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_uniform(
+    uint32_t set,
+    uint32_t binding,
+    UniformType uniform,
+    ShaderStage stage
+) {
+    uint64_t stage_bits = 0;
+
+    if(stage & STAGE_VERTEX)
+        stage_bits |= VK_SHADER_STAGE_VERTEX_BIT;
+
+    if(stage & STAGE_FRAGMENT)
+        stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    descriptor_layout_bindings[set].push_back({
+        info::descriptor_set_layout_binding(
+            convert::convert_uniform_type(uniform),
+            static_cast<VkShaderStageFlagBits>(stage_bits),
+            binding
+        )
+    });
 
     return this;
 }

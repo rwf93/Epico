@@ -8,6 +8,7 @@ public:
 
     ShaderState get_state() override { return state; };
 	VkPipeline get_pipeline() { return pipeline; }
+    VkPipelineLayout get_layout() { return layout; }
 
     void init(VkGraphicsPipelineCreateInfo *pipeline_create_info);
     void fini() override;
@@ -17,5 +18,7 @@ public:
 private:
     VulkanDevice *device;
 	ShaderState state = ShaderState::SHADER_UNREADY;
-	VkPipeline pipeline;
+
+    VkPipeline pipeline;
+    VkPipelineLayout layout;
 };

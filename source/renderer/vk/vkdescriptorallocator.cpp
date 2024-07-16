@@ -40,14 +40,10 @@ void VulkanDescriptorAllocator::fini() {
 	full_pools.clear();
 }
 
-VkDescriptorSet VulkanDescriptorAllocator::allocate(VkDescriptorSetLayout *layout) {
+VkDescriptorSet VulkanDescriptorAllocator::allocate(std::vector<VkDescriptorSetLayout> &layouts) {
 	VkDescriptorPool pool_to_use = get_pool();
 
-	VkDescriptorSetAllocateInfo allocate_info = {};
-	allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocate_info.descriptorPool = pool_to_use;
-	allocate_info.descriptorSetCount = 1;
-	allocate_info.pSetLayouts = layout;
+	VkDescriptorSetAllocateInfo allocate_info = info::descriptor_set_allocate_info(layouts, pool_to_use);
 
 	VkDescriptorSet descriptor_set;
 	VkResult res = vkAllocateDescriptorSets(device->get_device(), &allocate_info, &descriptor_set);

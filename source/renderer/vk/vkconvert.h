@@ -30,5 +30,6 @@ CONVERTER_HEADER(convert_shader_stage, ShaderStage, VkShaderStageFlagBits);
 CONVERTER_HEADER(convert_binding_rate, BindingRate, VkVertexInputRate);
 CONVERTER_HEADER(convert_primitive_type, ShaderPrimitive, VkPrimitiveTopology);
 CONVERTER_HEADER(convert_polygon_mode, ShaderPolygonMode, VkPolygonMode);
+CONVERTER_HEADER(convert_uniform_type, UniformType, VkDescriptorType);
 
 }

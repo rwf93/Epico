@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vkdescriptorbuffer.h"
+
 class VulkanDevice;
 class VulkanSwapchain;
 class VulkanResourceManager;

@@ -3,60 +3,64 @@
 typedef uint64_t ResourceHandle;
 
 enum BufferType {
-    BUFFER_VERTEX,
-    BUFFER_INSTANCE,
-    BUFFER_UNIFORM,
-    BUFFER_STORAGE
+	BUFFER_VERTEX,
+	BUFFER_INSTANCE,
+	BUFFER_UNIFORM,
+	BUFFER_STORAGE
 };
 
 enum BindBufferType {
-    BIND_VERTEX,
-    BIND_INSTANCE
+	BIND_VERTEX,
+	BIND_INSTANCE
 };
 
 enum ImageFormat {
-    D32_SFLOAT,
+	D32_SFLOAT,
 
-    R8G8B8A8_UNORM,
-    R8G8B8A8_SNORM,
+	R8G8B8A8_UNORM,
+	R8G8B8A8_SNORM,
 
-    R16G16B16A16_UINT,
-    R16G16B16A16_SINT,
-    R16G16B16A16_SFLOAT,
+	R16G16B16A16_UINT,
+	R16G16B16A16_SINT,
+	R16G16B16A16_SFLOAT,
 };
 
 enum ImageFlags {
-    IMAGE_COLOR_ATTACHMENT = 1 << 0,
-    IMAGE_DEPTH_ATTACHMENT = 1 << 1,
-    IMAGE_SAMPLED = 1 << 2,
-    IMAGE_MIPMAPPED = 1 << 3
+	IMAGE_COLOR_ATTACHMENT = 1 << 0,
+	IMAGE_DEPTH_ATTACHMENT = 1 << 1,
+	IMAGE_SAMPLED = 1 << 2,
+	IMAGE_MIPMAPPED = 1 << 3
 };
 
+inline ImageFlags operator | ( ImageFlags lhs, ImageFlags rhs ) {
+	return static_cast<ImageFlags>( static_cast<int>(lhs) | static_cast<int>(rhs) );
+}
+
 enum ImageSamples {
-    SAMPLE_COUNT_1_BIT,
-    SAMPLE_COUNT_2_BIT,
-    SAMPLE_COUNT_4_BIT,
-    SAMPLE_COUNT_8_BIT,
-    SAMPLE_COUNT_16_BIT,
-    SAMPLE_COUNT_32_BIT,
-    SAMPLE_COUNT_64_BIT,
+	SAMPLE_COUNT_1_BIT,
+	SAMPLE_COUNT_2_BIT,
+	SAMPLE_COUNT_4_BIT,
+	SAMPLE_COUNT_8_BIT,
+	SAMPLE_COUNT_16_BIT,
+	SAMPLE_COUNT_32_BIT,
+	SAMPLE_COUNT_64_BIT,
 };
 
 enum ImageDimensions {
-    IMAGE_1D,
-    IMAGE_2D,
-    IMAGE_3D
+	IMAGE_1D,
+	IMAGE_2D,
+	IMAGE_3D
 };
 
 enum ResourceState {
-    RESOURCE_READY,
-    RESOURCE_UNREADY
+	RESOURCE_READY,
+	RESOURCE_UNREADY
 };
 
 // Internal structure, expected to be used by the renderer implementation. ResourceHandles are public usage.
 class AbstractResource {
 public:
-    virtual ~AbstractResource() {}
-    virtual ResourceState get_state() = 0;
-    virtual void fini() = 0; // Only finishes if a resource's state is READY.
+	virtual ~AbstractResource() {}
+	virtual ResourceState get_state() = 0;
+	virtual void fini() = 0; // Only finishes if a resource's state is READY.
 };
