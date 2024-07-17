@@ -4,7 +4,7 @@
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
-#include "vkdescriptormanager.h"
+#include "vklayoutmanager.h"
 #include "vkshadermanager.h"
 
 #include "vkimgui.h"
@@ -32,8 +32,8 @@ VulkanRenderer::VulkanRenderer(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	descriptor_manager.init(cleanup_queue, &device, &command_pool, &resource_manager);
-	shader_manager.init(cleanup_queue, &device);
+	layout_manager.init(cleanup_queue, &instance, &device, &command_pool);
+	shader_manager.init(cleanup_queue, &device, &layout_manager);
 	ui_imgui.init(cleanup_queue, app_context, &instance, &device, &swapchain, &command_pool);
 }
 
@@ -261,12 +261,8 @@ ResourceHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
-UniformHandle VulkanRenderer::create_uniform_buffer() {
-	return descriptor_manager.create_uniform_buffer();
-}
-
-void VulkanRenderer::init_uniform_buffer(UniformHandle uniform_handle, ResourceHandle resource_handle) {
-	descriptor_manager.init_uniform_buffer(uniform_handle, resource_handle);
+AbstractLayoutBuilder *VulkanRenderer::create_layout() {
+	return layout_manager.create_layout();
 }
 
 AbstractGraphicShaderBuilder *VulkanRenderer::create_graphic_shader() {

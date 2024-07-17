@@ -78,16 +78,11 @@ public:
 
 	virtual AbstractGraphicShaderBuilder *add_attachment(ImageFormat format) = 0;
 
-	virtual AbstractGraphicShaderBuilder *add_uniform(
-		uint32_t set,
-		uint32_t binding,
-		UniformType uniform,
-		ShaderStage stage
-	) = 0;
-
 	virtual AbstractGraphicShaderBuilder *add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) = 0;
+
+	virtual AbstractGraphicShaderBuilder *add_layout(LayoutHandle layout) = 0;
 };

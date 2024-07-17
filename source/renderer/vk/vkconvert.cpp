@@ -62,10 +62,6 @@ CONVERTER(convert_polygon_mode, ShaderPolygonMode, VkPolygonMode, VK_POLYGON_MOD
 	{ MODE_POINT, VK_POLYGON_MODE_POINT },
 );
 
-CONVERTER(convert_uniform_type, UniformType, VkDescriptorType, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-	{ UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER }
-);
-
 CONVERTER(convert_compare_op, ShaderCompareOp, VkCompareOp, VK_COMPARE_OP_NEVER,
 	{ COMPARE_NEVER, VK_COMPARE_OP_NEVER },
 	{ COMPARE_ALWAYS, VK_COMPARE_OP_ALWAYS },

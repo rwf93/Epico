@@ -3,6 +3,7 @@
 class VulkanDevice;
 class VulkanShaderManager;
 class VulkanGraphicShader;
+class VulkanLayoutManager;
 class VulkanGraphicShaderBuilder: public AbstractGraphicShaderBuilder {
 public:
 	VulkanGraphicShaderBuilder();
@@ -10,7 +11,7 @@ public:
 
 	ShaderHandle build() override;
 
-	void init(VulkanDevice *vkdevice);
+	void init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager);
 	void fini();
 
 	void clear(
@@ -42,17 +43,12 @@ public:
 		size_t size
 	) override;
 
+	AbstractGraphicShaderBuilder *add_layout(LayoutHandle layout);
+
 	AbstractGraphicShaderBuilder *add_attachment(ImageFormat format) override;
-
-	AbstractGraphicShaderBuilder *add_uniform(
-		uint32_t set,
-		uint32_t binding,
-		UniformType uniform,
-		ShaderStage stage
-	) override;
-
 private:
 	VulkanDevice *device;
+	VulkanLayoutManager *layout_manager;
 
 	ShaderHandle handle;
 	VulkanGraphicShader *shader;
@@ -72,8 +68,6 @@ private:
 
 	std::vector<VkPipelineColorBlendAttachmentState> color_states = {};
 	std::vector<VkFormat> attachment_formats = {};
-
-	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> descriptor_layout_bindings = {};
 
 	std::vector<VkDescriptorSetLayout> descriptor_layouts;
 	std::vector<VkPipelineLayout> pipeline_layouts;

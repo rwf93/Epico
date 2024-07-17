@@ -9,7 +9,7 @@ public:
 	VulkanShaderManager();
 	~VulkanShaderManager();
 
-	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice);
+	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager);
 	void fini();
 
 	AbstractGraphicShaderBuilder *create_graphic_shader();

@@ -1,14 +1,15 @@
 #include "vkdevice.h"
 #include "vkshadermanager.h"
+#include "vklayoutmanager.h"
 
 VulkanShaderManager::VulkanShaderManager() {}
 
 VulkanShaderManager::~VulkanShaderManager() {}
 
-void VulkanShaderManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice) {
+void VulkanShaderManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
 	this->device = vkdevice;
 
-	graphics_builder.init(device);
+	graphics_builder.init(device, vklayoutmanager);
 
 	queue.push([&]() { fini(); });
 }
