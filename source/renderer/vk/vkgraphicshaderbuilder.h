@@ -21,6 +21,7 @@ public:
 	AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) override;
 	AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
 	AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) override;
+	AbstractGraphicShaderBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) override;
 
 	AbstractGraphicShaderBuilder *add_binding(
         uint32_t binding,

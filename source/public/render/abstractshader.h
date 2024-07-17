@@ -36,6 +36,13 @@ enum ShaderPolygonMode {
 	MODE_POINT
 };
 
+enum ShaderCompareOp {
+	COMPARE_NEVER,
+	COMPARE_ALWAYS,
+	COMPARE_LESS_OR_EQUAL,
+	COMPARE_GREATER_OR_EQUAL,
+};
+
 class AbstractShader {
 public:
 	virtual ~AbstractShader() {}
@@ -54,6 +61,7 @@ public:
 	virtual AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) = 0;
 	virtual AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
 	virtual AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) = 0;
+	virtual AbstractGraphicShaderBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) = 0;
 
 	virtual AbstractGraphicShaderBuilder *add_binding(
 		uint32_t binding,
