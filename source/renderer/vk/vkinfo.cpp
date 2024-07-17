@@ -1,7 +1,6 @@
 #include "vkinfo.h"
 
-VkCommandPoolCreateInfo info::command_pool_create_info(uint32_t queue_family_index, VkCommandPoolCreateFlags flags)
-{
+VkCommandPoolCreateInfo info::command_pool_create_info(uint32_t queue_family_index, VkCommandPoolCreateFlags flags) {
 	VkCommandPoolCreateInfo command_pool_info = {};
 
 	command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

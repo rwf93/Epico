@@ -1,0 +1,291 @@
+diff --git a/assets/shaders/triangle.frag b/assets/shaders/triangle.frag
+deleted file mode 100644
+index 325884a..0000000
+--- a/assets/shaders/triangle.frag
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#version 450
+-
+-layout(location = 0) in vec3 in_color;
+-layout(location = 0) out vec4 out_color;
+-layout(location = 1) out vec4 out_second_color;
+-
+-void main() {
+-    out_color = vec4(in_color, 1.0);
+-    out_second_color = vec4(in_color, 1.0);
+-}
+\ No newline at end of file
+diff --git a/assets/shaders/triangle.vert b/assets/shaders/triangle.vert
+deleted file mode 100644
+index 7cf10d8..0000000
+--- a/assets/shaders/triangle.vert
++++ /dev/null
+@@ -1,11 +0,0 @@
+-#version 450
+-
+-layout(location = 0) in vec3 in_vertex;
+-layout(location = 1) in vec3 in_color;
+-
+-layout(location = 0) out vec3 frag_color;
+-
+-void main() {
+-    gl_Position = vec4(in_vertex, 1.0);
+-    frag_color = in_color;
+-}
+\ No newline at end of file
+diff --git a/source/app/main.cpp b/source/app/main.cpp
+index 032c2d4..f9cae0a 100644
+--- a/source/app/main.cpp
++++ b/source/app/main.cpp
+@@ -8,6 +8,14 @@ struct SceneData {
+ 	glm::mat4 view;
+ };
+ 
++struct RendererResizeHandles {
++	ResourceHandle position;
++	ResourceHandle albedo;
++	ResourceHandle depth;
++	ResourceHandle composition;
++};
++void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererResizeHandles *resources);
++
+ int main(int argc, char *argv[]) {
+ 	UNUSED(argc);
+ 	UNUSED(argv);
+@@ -39,9 +47,9 @@ int main(int argc, char *argv[]) {
+ 		return 0;
+ 	}
+ 
+-	auto forward_image = renderer->create_image();
++	auto position_image = renderer->create_image();
+ 	renderer->image_data(
+-		forward_image,
++		position_image,
+ 		ImageDimensions::IMAGE_2D,
+ 		ImageSamples::SAMPLE_COUNT_1_BIT,
+ 		ImageFormat::R16G16B16A16_SFLOAT,
+@@ -50,6 +58,17 @@ int main(int argc, char *argv[]) {
+ 		context.width, context.height, 1
+ 	);
+ 
++	auto albedo_image = renderer->create_image();
++	renderer->image_data(
++		albedo_image,
++		ImageDimensions::IMAGE_2D,
++		ImageSamples::SAMPLE_COUNT_1_BIT,
++		ImageFormat::R8G8B8A8_UNORM,
++		ImageFlags::IMAGE_COLOR_ATTACHMENT,
++		nullptr,
++		context.width, context.height, 1
++	);
++
+ 	auto depth_image = renderer->create_image();
+ 	renderer->image_data(
+ 		depth_image,
+@@ -61,40 +80,47 @@ int main(int argc, char *argv[]) {
+ 		context.width, context.height, 1
+ 	);
+ 
++	auto composition_image = renderer->create_image();
++	renderer->image_data(
++		composition_image,
++		ImageDimensions::IMAGE_2D,
++		ImageSamples::SAMPLE_COUNT_1_BIT,
++		ImageFormat::R16G16B16A16_SFLOAT,
++		ImageFlags::IMAGE_COLOR_ATTACHMENT,
++		nullptr,
++		context.width, context.height, 1
++	);
++
++	RendererResizeHandles resize_handles = {
++		.position = position_image,
++		.albedo = albedo_image,
++		.depth = depth_image,
++		.composition = composition_image
++	};
++
+ 	renderer->on_resize([&](AbstractRenderer* renderer) {
+-		renderer->image_data(
+-			forward_image,
+-			ImageDimensions::IMAGE_2D,
+-			ImageSamples::SAMPLE_COUNT_1_BIT,
+-			ImageFormat::R16G16B16A16_SFLOAT,
+-			ImageFlags::IMAGE_COLOR_ATTACHMENT,
+-			nullptr,
+-			context.width, context.height, 1
+-		);
+-
+-		renderer->image_data(
+-			depth_image,
+-			ImageDimensions::IMAGE_2D,
+-			ImageSamples::SAMPLE_COUNT_1_BIT,
+-			ImageFormat::D32_SFLOAT,
+-			ImageFlags::IMAGE_DEPTH_ATTACHMENT,
+-			nullptr,
+-			context.width, context.height, 1
+-		);
++		renderer_resize(&context, renderer, &resize_handles);
+ 	});
+ 
+-	auto vertex_shader_code = filesystem->read_file<char>("assets/shaders/triangle.vert.spv", true);
+-	auto fragment_shader_code = filesystem->read_file<char>("assets/shaders/triangle.frag.spv", true);
+-
+-	auto shader = renderer->create_graphic_shader()
++	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
++	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
++	auto deferred_shader = renderer->create_graphic_shader()
+ 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
++		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
+ 		->set_depth_format(ImageFormat::D32_SFLOAT)
+ 		->add_binding(0, sizeof(Vertex), BindingRate::RATE_VERTEX)
+ 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+ 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
+-		->add_stage(ShaderStage::STAGE_VERTEX, vertex_shader_code.data(), vertex_shader_code.size())
+-		->add_stage(ShaderStage::STAGE_FRAGMENT, fragment_shader_code.data(), fragment_shader_code.size())
+-		->add_uniform(0, 0, UniformType::UNIFORM_BUFFER, ShaderStage::STAGE_VERTEX)
++		->add_stage(ShaderStage::STAGE_VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
++		->add_stage(ShaderStage::STAGE_FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
++		->build();
++
++	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
++	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
++	auto composition_shader = renderer->create_graphic_shader()
++		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
++		->add_stage(ShaderStage::STAGE_VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
++		->add_stage(ShaderStage::STAGE_FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
+ 		->build();
+ 
+ 	std::vector<Vertex> triangle = {
+@@ -114,12 +140,6 @@ int main(int argc, char *argv[]) {
+ 	auto ibo_handle = renderer->create_buffer();
+ 	renderer->buffer_data(ibo_handle, BufferType::BUFFER_INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
+ 
+-	auto scene_data_handle = renderer->create_buffer();
+-	renderer->buffer_data(scene_data_handle, BufferType::BUFFER_UNIFORM, sizeof(SceneData), nullptr);
+-
+-	auto scene_data_uniform_handle = renderer->create_uniform_buffer();
+-	renderer->init_uniform_buffer(scene_data_uniform_handle, scene_data_handle);
+-
+ 	static bool quit = false;
+ 	static bool minimized = false;
+ 	while(!quit) {
+@@ -141,35 +161,47 @@ int main(int argc, char *argv[]) {
+ 			continue;
+ 		}
+ 
+-		static SceneData scene_data = {};
+-		renderer->buffer_sub_data(scene_data_handle, 0, sizeof(SceneData), &scene_data);
+-
+ 		renderer->begin();
+ 		{
+ 			renderer->clear(0, 0, 0, 0);
+ 
+-			{
+-				static std::vector<SubpassAttachment> attachments = {
+-					{ .resource = forward_image, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+-					{ .resource = depth_image,   .type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
+-				};
+-
+-				static SubpassDependencyInfo forward_dependency = {
+-					.attachments = attachments.data(),
+-					.count = static_cast<uint32_t>(attachments.size())
+-				};
+-
+-				renderer->begin_pass(&forward_dependency);
+-					renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+-					renderer->scissor(context.width, context.height);
+-					renderer->bind_graphic_shader(shader);
+-					renderer->bind_buffer(vbo_handle, BindBufferType::BIND_VERTEX);
+-					renderer->bind_buffer(ibo_handle, BindBufferType::BIND_INSTANCE);
+-					renderer->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
+-				renderer->end_pass(&forward_dependency);
+-			}
+-
+-			renderer->show_image(forward_image);
++			static std::vector<SubpassAttachment> deferred_attachments = {
++				{ .resource = position_image, 	.type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
++				{ .resource = albedo_image, 	.type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
++				{ .resource = depth_image,   	.type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
++			};
++
++			static SubpassDependencyInfo deferred_info = {
++				.attachments = deferred_attachments.data(),
++				.count = static_cast<uint32_t>(deferred_attachments.size())
++			};
++
++			renderer->begin_pass(&deferred_info);
++				renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
++				renderer->scissor(context.width, context.height);
++				renderer->bind_graphic_shader(deferred_shader);
++				renderer->bind_buffer(vbo_handle, BindBufferType::BIND_VERTEX);
++				renderer->bind_buffer(ibo_handle, BindBufferType::BIND_INSTANCE);
++				renderer->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
++			renderer->end_pass(&deferred_info);
++
++			static std::vector<SubpassAttachment> composition_attachments = {
++				{ .resource = composition_image, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
++			};
++
++			static SubpassDependencyInfo composition_info = {
++				.attachments = composition_attachments.data(),
++				.count = static_cast<uint32_t>(composition_attachments.size())
++			};
++
++			renderer->begin_pass(&composition_info);
++				renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
++				renderer->scissor(context.width, context.height);
++				renderer->bind_graphic_shader(composition_shader);
++				renderer->draw(3, 1);
++			renderer->end_pass(&composition_info);
++
++			renderer->show_image(composition_image);
+ 
+ 			static AbstractUI *ui = renderer->ui();
+ 			ui->begin_ui();
+@@ -188,3 +220,45 @@ int main(int argc, char *argv[]) {
+ 
+ 	return 0;
+ }
++
++void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererResizeHandles *resources) {
++	renderer->image_data(
++		resources->position,
++		ImageDimensions::IMAGE_2D,
++		ImageSamples::SAMPLE_COUNT_1_BIT,
++		ImageFormat::R16G16B16A16_SFLOAT,
++		ImageFlags::IMAGE_COLOR_ATTACHMENT,
++		nullptr,
++		context->width, context->height, 1
++	);
++
++	renderer->image_data(
++		resources->albedo,
++		ImageDimensions::IMAGE_2D,
++		ImageSamples::SAMPLE_COUNT_1_BIT,
++		ImageFormat::R8G8B8A8_UNORM,
++		ImageFlags::IMAGE_COLOR_ATTACHMENT,
++		nullptr,
++		context->width, context->height, 1
++	);
++
++	renderer->image_data(
++		resources->depth,
++		ImageDimensions::IMAGE_2D,
++		ImageSamples::SAMPLE_COUNT_1_BIT,
++		ImageFormat::D32_SFLOAT,
++		ImageFlags::IMAGE_DEPTH_ATTACHMENT,
++		nullptr,
++		context->width, context->height, 1
++	);
++
++	renderer->image_data(
++		resources->composition,
++		ImageDimensions::IMAGE_2D,
++		ImageSamples::SAMPLE_COUNT_1_BIT,
++		ImageFormat::R16G16B16A16_SFLOAT,
++		ImageFlags::IMAGE_COLOR_ATTACHMENT,
++		nullptr,
++		context->width, context->height, 1
++	);
++}
+\ No newline at end of file
