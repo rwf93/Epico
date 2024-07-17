@@ -17,7 +17,7 @@ void VulkanShaderManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, Vu
 void VulkanShaderManager::fini() {
 	for(auto &map: shaders) {
 		if(auto shader = map.second) {
-			if(shader->get_state() == ShaderState::SHADER_READY)
+			if(shader->get_state() == ShaderState::READY)
 				shader->fini();
 
 			delete shader;

@@ -230,10 +230,10 @@ void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
 	auto resource = resource_manager.get_buffer(handle);
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
-		case BindBufferType::BIND_VERTEX:
+		case BindBufferType::VERTEX:
 			command_pool.get_command()->bind_vertex_buffer(0, 1, &resource->get_buffer(), offset);
 			break;
-		case BindBufferType::BIND_INSTANCE:
+		case BindBufferType::INSTANCE:
 			command_pool.get_command()->bind_index_buffer(resource->get_buffer(), 0, VK_INDEX_TYPE_UINT32);
 			break;
 		default: break;
@@ -295,16 +295,16 @@ void VulkanRenderer::image_data(
 	image_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	if(flags & ImageFlags::IMAGE_COLOR_ATTACHMENT)
+	if(flags & ImageFlags::COLOR_ATTACHMENT)
 		image_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	if(flags & ImageFlags::IMAGE_DEPTH_ATTACHMENT)
+	if(flags & ImageFlags::DEPTH_ATTACHMENT)
 		image_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-	if(flags & ImageFlags::IMAGE_SAMPLED)
+	if(flags & ImageFlags::SAMPLED)
 		image_info.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-	if(flags & ImageFlags::IMAGE_MIPMAPPED)
+	if(flags & ImageFlags::MIPMAPPED)
 		image_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
 	resource_manager.image_data(handle, image_info, data);

@@ -2,19 +2,19 @@
 
 typedef uint64_t ResourceHandle;
 
-enum BufferType {
-	BUFFER_VERTEX,
-	BUFFER_INSTANCE,
-	BUFFER_UNIFORM,
-	BUFFER_STORAGE
+enum class BufferType {
+	VERTEX,
+	INSTANCE,
+	UNIFORM,
+	STORAGE
 };
 
-enum BindBufferType {
-	BIND_VERTEX,
-	BIND_INSTANCE
+enum class BindBufferType {
+	VERTEX,
+	INSTANCE
 };
 
-enum ImageFormat {
+enum class ImageFormat {
 	D32_SFLOAT,
 
 	R8G8B8A8_UNORM,
@@ -25,18 +25,22 @@ enum ImageFormat {
 	R16G16B16A16_SFLOAT,
 };
 
-enum ImageFlags {
-	IMAGE_COLOR_ATTACHMENT = 1 << 0,
-	IMAGE_DEPTH_ATTACHMENT = 1 << 1,
-	IMAGE_SAMPLED = 1 << 2,
-	IMAGE_MIPMAPPED = 1 << 3
+enum class ImageFlags {
+	COLOR_ATTACHMENT = 1 << 0,
+	DEPTH_ATTACHMENT = 1 << 1,
+	SAMPLED = 1 << 2,
+	MIPMAPPED = 1 << 3
 };
 
 inline ImageFlags operator | ( ImageFlags lhs, ImageFlags rhs ) {
 	return static_cast<ImageFlags>( static_cast<int>(lhs) | static_cast<int>(rhs) );
 }
 
-enum ImageSamples {
+inline bool operator & ( ImageFlags lhs, ImageFlags rhs ) {
+	return static_cast<bool>( static_cast<int>(lhs) & static_cast<int>(rhs) );
+}
+
+enum class ImageSamples {
 	SAMPLE_COUNT_1_BIT,
 	SAMPLE_COUNT_2_BIT,
 	SAMPLE_COUNT_4_BIT,
@@ -46,15 +50,15 @@ enum ImageSamples {
 	SAMPLE_COUNT_64_BIT,
 };
 
-enum ImageDimensions {
+enum class ImageDimensions {
 	IMAGE_1D,
 	IMAGE_2D,
 	IMAGE_3D
 };
 
-enum ResourceState {
-	RESOURCE_READY,
-	RESOURCE_UNREADY
+enum class ResourceState {
+	READY,
+	UNREADY
 };
 
 // Internal structure, expected to be used by the renderer implementation. ResourceHandles are public usage.

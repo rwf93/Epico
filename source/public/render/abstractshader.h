@@ -2,45 +2,53 @@
 
 typedef uint64_t ShaderHandle;
 
-enum BindingRate {
-	RATE_VERTEX,
-	RATE_INDEX
+enum class BindingRate {
+	VERTEX,
+	INDEX
 };
 
-enum AttributeType {
+enum class AttributeType {
 	VEC4D_SIGNED,
 	VEC3D_SIGNED,
 	VEC2D_SIGNED,
 	VEC1D_SIGNED
 };
 
-enum ShaderState {
-	SHADER_READY,
-	SHADER_UNREADY,
+enum class ShaderState {
+	READY,
+	UNREADY,
 };
 
-enum ShaderStage {
-	STAGE_VERTEX = 1 << 0,
-	STAGE_FRAGMENT = 1 << 1
+enum class ShaderStage {
+	VERTEX = 1 << 0,
+	FRAGMENT = 1 << 1
 };
 
-enum ShaderPrimitive {
+inline ShaderStage operator | ( ShaderStage lhs, ShaderStage rhs ) {
+	return static_cast<ShaderStage>( static_cast<int>(lhs) | static_cast<int>(rhs) );
+}
+
+inline bool operator & ( ShaderStage lhs, ShaderStage rhs ) {
+	return static_cast<bool>( static_cast<int>(lhs) & static_cast<int>(rhs) );
+}
+
+enum class ShaderPrimitive {
 	TRIANGLE_LIST,
 	TRIANGLE_STRIP,
 	POINT_LIST
 };
 
-enum ShaderPolygonMode {
-	MODE_FILL,
-	MODE_LINE,
-	MODE_POINT
+enum class ShaderPolygonMode {
+	FILL,
+	LINE,
+	POINT
 };
 
-enum ShaderCompareOp {
-	COMPARE_NEVER,
-	COMPARE_ALWAYS,
-	COMPARE_LESS_OR_EQUAL,
-	COMPARE_GREATER_OR_EQUAL,
+enum class ShaderCompareOp {
+	NEVER,
+	ALWAYS,
+	LESS_OR_EQUAL,
+	GREATER_OR_EQUAL,
 };
 
 class AbstractShader {

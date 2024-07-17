@@ -7,7 +7,7 @@
 
 #include <functional>
 
-enum AttachmentType {
+enum class AttachmentType {
 	COLOR,
 	DEPTH
 };

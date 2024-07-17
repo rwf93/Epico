@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
 		context.width, context.height, 1
 	);
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
 		context.width, context.height, 1
 	);
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::D32_SFLOAT,
-		ImageFlags::IMAGE_DEPTH_ATTACHMENT,
+		ImageFlags::DEPTH_ATTACHMENT,
 		nullptr,
 		context.width, context.height, 1
 	);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
 		context.width, context.height, 1
 	);
@@ -102,14 +102,14 @@ int main(int argc, char *argv[]) {
 	});
 
 	auto global_layout = renderer->create_layout()
-		->add_uniform(ShaderStage::STAGE_VERTEX)
-		->add_uniform(ShaderStage::STAGE_VERTEX)
+		->add_uniform(ShaderStage::VERTEX)
+		->add_uniform(ShaderStage::VERTEX)
 		->build();
 
 	auto composition_layout = renderer->create_layout()
-		->add_uniform(ShaderStage::STAGE_FRAGMENT) // Position
-		->add_uniform(ShaderStage::STAGE_FRAGMENT) // Albedo
-		->add_uniform(ShaderStage::STAGE_FRAGMENT) // Light Data
+		->add_uniform(ShaderStage::FRAGMENT) // Position
+		->add_uniform(ShaderStage::FRAGMENT) // Albedo
+		->add_uniform(ShaderStage::FRAGMENT) // Light Data
 		->build();
 
 	UNUSED(global_layout);
@@ -120,11 +120,11 @@ int main(int argc, char *argv[]) {
 	auto triangle_shader = renderer->create_graphic_shader()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->add_binding(0, sizeof(Vertex), BindingRate::RATE_VERTEX)
+		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
-		->add_stage(ShaderStage::STAGE_VERTEX, triangle_vertex_code.data(), triangle_vertex_code.size())
-		->add_stage(ShaderStage::STAGE_FRAGMENT, triangle_fragment_code.data(), triangle_fragment_code.size())
+		->add_stage(ShaderStage::VERTEX, triangle_vertex_code.data(), triangle_vertex_code.size())
+		->add_stage(ShaderStage::FRAGMENT, triangle_fragment_code.data(), triangle_fragment_code.size())
 		->build();
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
@@ -133,12 +133,12 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_depth_test(true, ShaderCompareOp::COMPARE_GREATER_OR_EQUAL)
-		->add_binding(0, sizeof(Vertex), BindingRate::RATE_VERTEX)
+		->set_depth_test(true, ShaderCompareOp::GREATER_OR_EQUAL)
+		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
-		->add_stage(ShaderStage::STAGE_VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
-		->add_stage(ShaderStage::STAGE_FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
+		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
+		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
 		->add_layout(global_layout)
 		->build();
 
@@ -146,8 +146,8 @@ int main(int argc, char *argv[]) {
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
 	auto composition_shader = renderer->create_graphic_shader()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->add_stage(ShaderStage::STAGE_VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
-		->add_stage(ShaderStage::STAGE_FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
+		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
+		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
 		->add_layout(composition_layout)
 		->build();
 
@@ -163,14 +163,14 @@ int main(int argc, char *argv[]) {
 	};
 
 	auto vbo_handle = renderer->create_buffer();
-	renderer->buffer_data(vbo_handle, BufferType::BUFFER_VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
+	renderer->buffer_data(vbo_handle, BufferType::VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
 
 	std::vector<uint32_t> indicies = {
 		0, 1, 2, 2, 3, 0
 	};
 
 	auto ibo_handle = renderer->create_buffer();
-	renderer->buffer_data(ibo_handle, BufferType::BUFFER_INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
+	renderer->buffer_data(ibo_handle, BufferType::INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
 
 	static bool quit = false;
 	static bool minimized = false;
@@ -213,8 +213,8 @@ int main(int argc, char *argv[]) {
 				renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				renderer->scissor(context.width, context.height);
 				renderer->bind_graphic_shader(deferred_shader);
-				renderer->bind_buffer(vbo_handle, BindBufferType::BIND_VERTEX);
-				renderer->bind_buffer(ibo_handle, BindBufferType::BIND_INSTANCE);
+				renderer->bind_buffer(vbo_handle, BindBufferType::VERTEX);
+				renderer->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
 				renderer->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
 			renderer->end_pass(&deferred_info);
 
@@ -261,7 +261,7 @@ void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererRe
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
 		context->width, context->height, 1
 	);
@@ -271,7 +271,7 @@ void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererRe
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
 		context->width, context->height, 1
 	);
@@ -281,7 +281,7 @@ void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererRe
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::D32_SFLOAT,
-		ImageFlags::IMAGE_DEPTH_ATTACHMENT,
+		ImageFlags::DEPTH_ATTACHMENT,
 		nullptr,
 		context->width, context->height, 1
 	);
@@ -291,7 +291,7 @@ void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererRe
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::IMAGE_COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
 		context->width, context->height, 1
 	);

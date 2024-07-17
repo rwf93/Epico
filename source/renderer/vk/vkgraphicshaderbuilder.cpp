@@ -188,10 +188,10 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_stage(
 
 	uint64_t stage_bits = 0;
 
-	if(stage & STAGE_VERTEX)
+	if(stage & ShaderStage::VERTEX)
 		stage_bits |= VK_SHADER_STAGE_VERTEX_BIT;
 
-	if(stage & STAGE_FRAGMENT)
+	if(stage & ShaderStage::FRAGMENT)
 		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkPipelineShaderStageCreateInfo shader_stage_info = {};

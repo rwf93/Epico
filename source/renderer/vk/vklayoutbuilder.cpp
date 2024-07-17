@@ -19,10 +19,10 @@ void VulkanLayoutBuilder::clear(LayoutHandle handle, VulkanLayout *vklayout) {
 AbstractLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage) {
 	uint64_t stage_bits = 0;
 
-	if(stage & STAGE_VERTEX)
+	if(stage & ShaderStage::VERTEX)
 		stage_bits |= VK_SHADER_STAGE_VERTEX_BIT;
 
-	if(stage & STAGE_FRAGMENT)
+	if(stage & ShaderStage::FRAGMENT)
 		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	auto info = info::descriptor_set_layout_binding(

@@ -17,7 +17,7 @@ public:
 
 private:
 	VulkanDevice *device;
-	ShaderState state = ShaderState::SHADER_UNREADY;
+	ShaderState state = ShaderState::UNREADY;
 
 	VkPipeline pipeline;
 	VkPipelineLayout layout;

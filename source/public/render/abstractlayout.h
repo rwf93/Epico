@@ -2,7 +2,7 @@
 
 typedef uint64_t LayoutHandle;
 
-enum ShaderStage;
+enum class ShaderStage;
 
 enum LayoutState {
     LAYOUT_UNREADY,
