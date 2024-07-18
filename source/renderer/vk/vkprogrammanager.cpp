@@ -1,12 +1,12 @@
 #include "vkdevice.h"
-#include "vkshadermanager.h"
+#include "vkprogrammanager.h"
 #include "vklayoutmanager.h"
 
-VulkanShaderManager::VulkanShaderManager() {}
+VulkanProgramManager::VulkanProgramManager() {}
 
-VulkanShaderManager::~VulkanShaderManager() {}
+VulkanProgramManager::~VulkanProgramManager() {}
 
-void VulkanShaderManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
+void VulkanProgramManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
 	this->device = vkdevice;
 
 	graphics_builder.init(device, vklayoutmanager);
@@ -14,7 +14,7 @@ void VulkanShaderManager::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, Vu
 	queue.push([&]() { fini(); });
 }
 
-void VulkanShaderManager::fini() {
+void VulkanProgramManager::fini() {
 	for(auto &map: shaders) {
 		if(auto shader = map.second) {
 			if(shader->get_state() == ShaderState::READY)
@@ -27,10 +27,10 @@ void VulkanShaderManager::fini() {
 	graphics_builder.fini();
 }
 
-AbstractGraphicShaderBuilder *VulkanShaderManager::create_graphic_shader() {
-	ShaderHandle last_shader_handle = advance_handle();
+AbstractGraphicProgramBuilder *VulkanProgramManager::create_graphic_shader() {
+	ShaderHandle last_shader_handle = shaders.size() + 1;
 
-	auto graphic_shader = new VulkanGraphicShader(device);
+	auto graphic_shader = new VulkanGraphicsProgram(device);
 	shaders.insert(std::make_pair(last_shader_handle, graphic_shader));
 
 	graphics_builder.clear(last_shader_handle, graphic_shader);

@@ -24,12 +24,6 @@ public:
         return nullptr;
     }
 
-protected:
-    LayoutHandle advance_handle() {
-		LayoutHandle last_layout_handle = current_layout_handle;
-		current_layout_handle++;
-		return last_layout_handle;
-	}
 private:
 	VulkanInstance *instance;
 	VulkanDevice *device;

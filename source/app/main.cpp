@@ -8,13 +8,87 @@ struct SceneData {
 	glm::mat4 view;
 };
 
-struct RendererResizeHandles {
-	ResourceHandle position;
-	ResourceHandle albedo;
-	ResourceHandle depth;
-	ResourceHandle composition;
+struct RendererPassHandles {
+	TextureHandle position;
+	TextureHandle albedo;
+	TextureHandle depth;
+	TextureHandle composition;
+
+	TextureViewHandle position_view;
+	TextureViewHandle albedo_view;
+	TextureViewHandle depth_view;
+	TextureViewHandle composition_view;
 };
-void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererResizeHandles *resources);
+
+void renderer_setup_pass_resources(AppContext *context, AbstractRenderer *renderer, RendererPassHandles *resources) {
+	renderer->texture_data(
+		resources->position,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		ImageFlags::COLOR_ATTACHMENT,
+		nullptr,
+		context->width, context->height, 1
+	);
+
+	renderer->texture_data(
+		resources->albedo,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R8G8B8A8_UNORM,
+		ImageFlags::COLOR_ATTACHMENT,
+		nullptr,
+		context->width, context->height, 1
+	);
+
+	renderer->texture_data(
+		resources->depth,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::D32_SFLOAT,
+		ImageFlags::DEPTH_ATTACHMENT,
+		nullptr,
+		context->width, context->height, 1
+	);
+
+	renderer->texture_data(
+		resources->composition,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		ImageFlags::COLOR_ATTACHMENT,
+		nullptr,
+		context->width, context->height, 1
+	);
+
+	renderer->texture_view(
+		resources->position_view,
+		resources->position,
+		ImageViewDimensions::IMAGE_2D,
+		ImageFormat::R16G16B16A16_SFLOAT
+	);
+
+	renderer->texture_view(
+		resources->albedo_view,
+		resources->albedo,
+		ImageViewDimensions::IMAGE_2D,
+		ImageFormat::R8G8B8A8_UNORM
+	);
+
+	renderer->texture_view(
+		resources->depth_view,
+		resources->depth,
+		ImageViewDimensions::IMAGE_2D,
+		ImageFormat::D32_SFLOAT
+	);
+
+	renderer->texture_view(
+		resources->composition_view,
+		resources->composition,
+		ImageViewDimensions::IMAGE_2D,
+		ImageFormat::R16G16B16A16_SFLOAT
+	);
+}
 
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
@@ -47,58 +121,31 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	auto position_image = renderer->create_image();
-	renderer->image_data(
-		position_image,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context.width, context.height, 1
-	);
+	auto position_image = renderer->create_texture();
+	auto albedo_image = renderer->create_texture();
+	auto depth_image = renderer->create_texture();
+	auto composition_image = renderer->create_texture();
 
-	auto albedo_image = renderer->create_image();
-	renderer->image_data(
-		albedo_image,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context.width, context.height, 1
-	);
+	auto position_image_view = renderer->create_texture_view();
+	auto albedo_image_view = renderer->create_texture_view();
+	auto depth_image_view = renderer->create_texture_view();
+	auto composition_image_view = renderer->create_texture_view();
 
-	auto depth_image = renderer->create_image();
-	renderer->image_data(
-		depth_image,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::D32_SFLOAT,
-		ImageFlags::DEPTH_ATTACHMENT,
-		nullptr,
-		context.width, context.height, 1
-	);
-
-	auto composition_image = renderer->create_image();
-	renderer->image_data(
-		composition_image,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context.width, context.height, 1
-	);
-
-	RendererResizeHandles resize_handles = {
+	RendererPassHandles resize_handles = {
 		.position = position_image,
 		.albedo = albedo_image,
 		.depth = depth_image,
-		.composition = composition_image
+		.composition = composition_image,
+		.position_view = position_image_view,
+		.albedo_view = albedo_image_view,
+		.depth_view = depth_image_view,
+		.composition_view = composition_image_view
 	};
+
+	renderer_setup_pass_resources(&context, renderer.interface, &resize_handles);
+	// Resizing reallocates
 	renderer->on_resize([&](AbstractRenderer* renderer) {
-		renderer_resize(&context, renderer, &resize_handles);
+		renderer_setup_pass_resources(&context, renderer, &resize_handles);
 	});
 
 	auto global_layout = renderer->create_layout()
@@ -199,9 +246,9 @@ int main(int argc, char *argv[]) {
 
 			// Offscreen/Deferred rendering (first pass)
 			std::vector<SubpassAttachment> deferred_attachments = {
-				{ .resource = position_image, 	.type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
-				{ .resource = albedo_image, 	.type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
-				{ .resource = depth_image,   	.type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
+				{ .target = position_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .target = albedo_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .target = depth_image_view, .type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
 			};
 
 			SubpassDependencyInfo deferred_info = {
@@ -220,7 +267,7 @@ int main(int argc, char *argv[]) {
 
 			// Composed pass (second pass)
 			std::vector<SubpassAttachment> composition_attachments = {
-				{ .resource = composition_image, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .target = composition_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
 			};
 
 			SubpassDependencyInfo composition_info = {
@@ -253,46 +300,4 @@ int main(int argc, char *argv[]) {
 	SDL_Quit();
 
 	return 0;
-}
-
-void renderer_resize(AppContext *context, AbstractRenderer *renderer, RendererResizeHandles *resources) {
-	renderer->image_data(
-		resources->position,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context->width, context->height, 1
-	);
-
-	renderer->image_data(
-		resources->albedo,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context->width, context->height, 1
-	);
-
-	renderer->image_data(
-		resources->depth,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::D32_SFLOAT,
-		ImageFlags::DEPTH_ATTACHMENT,
-		nullptr,
-		context->width, context->height, 1
-	);
-
-	renderer->image_data(
-		resources->composition,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context->width, context->height, 1
-	);
 }

@@ -51,46 +51,46 @@ enum class ShaderCompareOp {
 	GREATER_OR_EQUAL,
 };
 
-class AbstractShader {
+class AbstractProgram {
 public:
-	virtual ~AbstractShader() {}
+	virtual ~AbstractProgram() {}
 	virtual ShaderState get_state() = 0;
 	virtual void fini() = 0;
 };
 
-class AbstractShaderBuilder {
+class AbstractProgramBuilder {
 public:
-	virtual ~AbstractShaderBuilder() {}
+	virtual ~AbstractProgramBuilder() {}
 	virtual ShaderHandle build() = 0;
 };
 
-class AbstractGraphicShaderBuilder: public AbstractShaderBuilder {
+class AbstractGraphicProgramBuilder: public AbstractProgramBuilder {
 public:
-	virtual AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) = 0;
-	virtual AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
-	virtual AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) = 0;
-	virtual AbstractGraphicShaderBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) = 0;
+	virtual AbstractGraphicProgramBuilder *set_primitive(ShaderPrimitive type) = 0;
+	virtual AbstractGraphicProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
+	virtual AbstractGraphicProgramBuilder *set_depth_format(ImageFormat format) = 0;
+	virtual AbstractGraphicProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) = 0;
 
-	virtual AbstractGraphicShaderBuilder *add_binding(
+	virtual AbstractGraphicProgramBuilder *add_binding(
 		uint32_t binding,
 		uint32_t size,
 		BindingRate rate
 	) = 0;
 
-	virtual AbstractGraphicShaderBuilder *add_attribute(
+	virtual AbstractGraphicProgramBuilder *add_attribute(
 		uint32_t location,
 		uint32_t binding,
 		uint32_t offset,
 		AttributeType type
 	) = 0;
 
-	virtual AbstractGraphicShaderBuilder *add_attachment(ImageFormat format) = 0;
+	virtual AbstractGraphicProgramBuilder *add_attachment(ImageFormat format) = 0;
 
-	virtual AbstractGraphicShaderBuilder *add_stage(
+	virtual AbstractGraphicProgramBuilder *add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) = 0;
 
-	virtual AbstractGraphicShaderBuilder *add_layout(LayoutHandle layout) = 0;
+	virtual AbstractGraphicProgramBuilder *add_layout(LayoutHandle layout) = 0;
 };

@@ -3,9 +3,9 @@
 class VulkanDevice;
 class VulkanCommandPool;
 class VulkanBuffer;
-class VulkanImage: public AbstractResource {
+class VulkanTexture: public AbstractResource {
 public:
-	~VulkanImage() override;
+	~VulkanTexture() override;
 
 	void init(
 		VulkanDevice *vkdevice,
@@ -20,10 +20,9 @@ public:
 
 	ResourceState get_state() override { return state; }
 
-	VkExtent3D &get_extent() { return extent; }
-
 	VkImage &get_image() { return image; }
-	VkImageView &get_view() { return view; }
+
+	VkImageCreateInfo *get_info() { return &info; }
 
 	friend class VulkanResourceManager;
 	friend class VulkanDescriptorManager;
@@ -33,15 +32,12 @@ public:
 private:
 	VulkanDevice *device;
 	VulkanCommandPool *command_pool;
-
-	VmaAllocator allocator;
+	VkImageCreateInfo info;
 
 	VkImage image;
-	VkImageView view;
 
+	VmaAllocator allocator;
 	VmaAllocation allocation;
-
-	VkExtent3D extent;
 
 	ResourceState state = ResourceState::UNREADY;
 };

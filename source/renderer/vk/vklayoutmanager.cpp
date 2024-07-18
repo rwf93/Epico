@@ -28,7 +28,7 @@ void VulkanLayoutManager::fini() {
 }
 
 AbstractLayoutBuilder *VulkanLayoutManager::create_layout() {
-    auto last_layout = advance_handle();
+    auto last_layout = layouts.size() + 1;
 
     auto layout = new VulkanLayout();
     layouts.insert(std::make_pair(last_layout, layout));

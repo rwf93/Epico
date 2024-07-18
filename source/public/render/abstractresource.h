@@ -1,6 +1,8 @@
 #pragma once
 
-typedef uint64_t ResourceHandle;
+enum class TextureHandle { Invalid = 0 };
+enum class TextureViewHandle { Invalid = 0 };
+enum class BufferHandle { Invalid = 0 };
 
 enum class BufferType {
 	VERTEX,
@@ -51,6 +53,12 @@ enum class ImageSamples {
 };
 
 enum class ImageDimensions {
+	IMAGE_1D,
+	IMAGE_2D,
+	IMAGE_3D
+};
+
+enum class ImageViewDimensions {
 	IMAGE_1D,
 	IMAGE_2D,
 	IMAGE_3D

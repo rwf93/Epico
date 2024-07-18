@@ -1,19 +1,19 @@
 #include "vkdevice.h"
-#include "vkgraphicshader.h"
-#include "vkgraphicshaderbuilder.h"
+#include "vkgraphicsprogram.h"
+#include "vkprogrammanager.h"
 #include "vklayoutmanager.h"
 
-VulkanGraphicShaderBuilder::VulkanGraphicShaderBuilder() {}
-VulkanGraphicShaderBuilder::~VulkanGraphicShaderBuilder() {}
+VulkanGraphicsProgramBuilder::VulkanGraphicsProgramBuilder() {}
+VulkanGraphicsProgramBuilder::~VulkanGraphicsProgramBuilder() {}
 
-void VulkanGraphicShaderBuilder::init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
+void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
 	this->device = vkdevice;
 	this->layout_manager = vklayoutmanager;
 }
 
-void VulkanGraphicShaderBuilder::clear(
+void VulkanGraphicsProgramBuilder::clear(
 	ShaderHandle shader_handle,
-	VulkanGraphicShader *vkshader
+	VulkanGraphicsProgram *vkshader
 ) {
 	this->handle = shader_handle;
 	this->shader = vkshader;
@@ -64,7 +64,7 @@ void VulkanGraphicShaderBuilder::clear(
 	depth_format = VK_FORMAT_UNDEFINED;
 }
 
-ShaderHandle VulkanGraphicShaderBuilder::build() {
+ShaderHandle VulkanGraphicsProgramBuilder::build() {
 	VkPipelineLayout pipeline_layout;
 	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
 	VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));
@@ -105,29 +105,29 @@ ShaderHandle VulkanGraphicShaderBuilder::build() {
 	return handle;
 }
 
-void VulkanGraphicShaderBuilder::fini() {
+void VulkanGraphicsProgramBuilder::fini() {
 	for(auto &pipeline_layout: pipeline_layouts)
 		vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_primitive(ShaderPrimitive type) {
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(ShaderPrimitive type) {
 	assembly_info.topology = convert::convert_primitive_type(type);
 	assembly_info.primitiveRestartEnable = VK_FALSE;
 
 	return this;
 };
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_polygon_mode(ShaderPolygonMode mode) {
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_polygon_mode(ShaderPolygonMode mode) {
 	rasterizer_info.polygonMode = convert::convert_polygon_mode(mode);
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_depth_format(ImageFormat format) {
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_format(ImageFormat format) {
 	depth_format = convert::convert_image_format(format);
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_depth_test(bool write_enable, ShaderCompareOp compare) {
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool write_enable, ShaderCompareOp compare) {
 	stencil_info.depthTestEnable = VK_TRUE;
 	stencil_info.depthWriteEnable = write_enable;
 	stencil_info.depthCompareOp = convert::convert_compare_op(compare);
@@ -141,7 +141,7 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::set_depth_test(bool wr
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_binding(
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
 	uint32_t binding,
 	uint32_t size,
 	BindingRate rate
@@ -156,7 +156,7 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_binding(
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_attribute(
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_attribute(
 		uint32_t location,
 		uint32_t binding,
 		uint32_t offset,
@@ -172,7 +172,7 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_attribute(
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_stage(
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
 	ShaderStage stage,
 	const char *data,
 	size_t size
@@ -205,13 +205,13 @@ AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_stage(
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_layout(LayoutHandle layout_handle) {
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_layout(LayoutHandle layout_handle) {
 	auto layout_instance = layout_manager->get_layout(layout_handle);
 	descriptor_layouts.push_back(layout_instance->get_layout());
 	return this;
 }
 
-AbstractGraphicShaderBuilder *VulkanGraphicShaderBuilder::add_attachment(ImageFormat format) {
+AbstractGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_attachment(ImageFormat format) {
 	VkPipelineColorBlendAttachmentState color_blend_state = {};
 	color_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 								VK_COLOR_COMPONENT_G_BIT |

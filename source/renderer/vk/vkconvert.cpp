@@ -32,10 +32,10 @@ CONVERTER(convert_image_dimensions, ImageDimensions, VkImageType, VK_IMAGE_TYPE_
 	{ ImageDimensions::IMAGE_3D, VK_IMAGE_TYPE_3D },
 );
 
-CONVERTER(convert_image_view_dimensions, ImageDimensions, VkImageViewType, VK_IMAGE_VIEW_TYPE_1D,
-	{ ImageDimensions::IMAGE_1D, VK_IMAGE_VIEW_TYPE_1D },
-	{ ImageDimensions::IMAGE_2D, VK_IMAGE_VIEW_TYPE_2D },
-	{ ImageDimensions::IMAGE_3D, VK_IMAGE_VIEW_TYPE_3D },
+CONVERTER(convert_image_view_dimensions, ImageViewDimensions, VkImageViewType, VK_IMAGE_VIEW_TYPE_1D,
+	{ ImageViewDimensions::IMAGE_1D, VK_IMAGE_VIEW_TYPE_1D },
+	{ ImageViewDimensions::IMAGE_2D, VK_IMAGE_VIEW_TYPE_2D },
+	{ ImageViewDimensions::IMAGE_3D, VK_IMAGE_VIEW_TYPE_3D },
 );
 
 CONVERTER(convert_attribute_format, AttributeType, VkFormat, VK_FORMAT_UNDEFINED,

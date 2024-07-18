@@ -5,7 +5,7 @@
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
 #include "vklayoutmanager.h"
-#include "vkshadermanager.h"
+#include "vkprogrammanager.h"
 
 #include "vkimgui.h"
 
@@ -95,21 +95,23 @@ void VulkanRenderer::begin_pass(SubpassDependencyInfo *dependencies) {
 	std::vector<VkRenderingAttachmentInfo> depth_attachments;
 
 	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto resource = resource_manager.get_image(dependencies->attachments[i].resource);
+		auto texture = resource_manager.try_get_texture(dependencies->attachments[i].target).value_or(nullptr);
+		auto texture_view = resource_manager.try_get_texture_view(dependencies->attachments[i].target).value_or(nullptr);
+
 		VkClearValue *clear_value = reinterpret_cast<VkClearValue*>(&dependencies->attachments[i].clear);
 
 		switch(dependencies->attachments[i].type) {
 			case AttachmentType::COLOR:
 				color_attachments.push_back(
 					info::attachment_info(
-						resource->get_view(),
+						texture_view->get_view(),
 						clear_value,
 						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 					)
 				);
 
 				command_pool.transition_image(
-					resource->get_image(),
+					texture->get_image(),
 					VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 				);
@@ -117,14 +119,14 @@ void VulkanRenderer::begin_pass(SubpassDependencyInfo *dependencies) {
 			case AttachmentType::DEPTH:
 				depth_attachments.push_back(
 					info::attachment_info(
-						resource->get_view(),
+						texture_view->get_view(),
 						clear_value,
 						VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
 					)
 				);
 
 				command_pool.transition_image(
-					resource->get_image(),
+					texture->get_image(),
 					VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
 				);
@@ -146,7 +148,7 @@ void VulkanRenderer::end_pass(SubpassDependencyInfo *dependencies) {
 	command_pool.get_command()->end_rendering();
 
 	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto resource = resource_manager.get_image(dependencies->attachments[i].resource);
+		auto resource = resource_manager.try_get_texture(dependencies->attachments[i].target).value_or(nullptr);
 		switch(dependencies->attachments[i].type) {
 			case AttachmentType::COLOR:
 				command_pool.transition_image(
@@ -188,8 +190,8 @@ void VulkanRenderer::clear(float r, float g, float b, float a) {
 	command_pool.clear_image(swapchain.get_swapchain_image(), r, g, b, a);
 }
 
-void VulkanRenderer::clear(ResourceHandle handle, float r, float g, float b, float a) {
-	auto image = resource_manager.get_image(handle);
+void VulkanRenderer::clear(TextureHandle handle, float r, float g, float b, float a) {
+	auto image = resource_manager.try_get_texture(handle).value_or(nullptr);
 	command_pool.clear_image(image->get_image(), r, g, b, a);
 }
 
@@ -214,20 +216,20 @@ void VulkanRenderer::scissor(uint32_t width, uint32_t height, int32_t x, int32_t
 	command_pool.get_command()->scissor(0, scissors);
 }
 
-void VulkanRenderer::show_image(ResourceHandle handle) {
-	auto resource = resource_manager.get_image(handle);
+void VulkanRenderer::show_image(TextureHandle handle) {
+	auto resource = resource_manager.try_get_texture(handle).value_or(nullptr);
 
 	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-	command_pool.copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_extent(), VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
+	command_pool.copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
 
 	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
-void VulkanRenderer::bind_buffer(ResourceHandle handle, BindBufferType type) {
-	auto resource = resource_manager.get_buffer(handle);
+void VulkanRenderer::bind_buffer(BufferHandle handle, BindBufferType type) {
+	auto resource = resource_manager.try_get_buffer(handle).value_or(nullptr);
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
 		case BindBufferType::VERTEX:
@@ -253,11 +255,15 @@ void VulkanRenderer::draw_instanced(uint32_t index_count, uint32_t instance_coun
 	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, index);
 }
 
-ResourceHandle VulkanRenderer::create_image() {
-	return resource_manager.create_image();
+TextureHandle VulkanRenderer::create_texture() {
+	return resource_manager.create_texture();
 }
 
-ResourceHandle VulkanRenderer::create_buffer() {
+TextureViewHandle VulkanRenderer::create_texture_view() {
+	return resource_manager.create_texture_view();
+}
+
+BufferHandle VulkanRenderer::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
@@ -265,20 +271,20 @@ AbstractLayoutBuilder *VulkanRenderer::create_layout() {
 	return layout_manager.create_layout();
 }
 
-AbstractGraphicShaderBuilder *VulkanRenderer::create_graphic_shader() {
+AbstractGraphicProgramBuilder *VulkanRenderer::create_graphic_shader() {
 	return shader_manager.create_graphic_shader();
 }
 
-void VulkanRenderer::buffer_data(ResourceHandle handle, BufferType type, size_t size, void *data) {
+void VulkanRenderer::buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) {
 	resource_manager.buffer_data(handle, convert::convert_buffer_type(type), data, size);
 }
 
-void VulkanRenderer::buffer_sub_data(ResourceHandle handle, size_t offset, size_t size, void *data) {
+void VulkanRenderer::buffer_sub_data(BufferHandle handle, size_t offset, size_t size, void *data) {
 	resource_manager.buffer_sub_data(handle, offset, data, size);
 }
 
-void VulkanRenderer::image_data(
-	ResourceHandle handle,
+void VulkanRenderer::texture_data(
+	TextureHandle handle,
 	ImageDimensions dimensions,
 	ImageSamples samples,
 	ImageFormat format,
@@ -307,8 +313,26 @@ void VulkanRenderer::image_data(
 	if(flags & ImageFlags::MIPMAPPED)
 		image_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-	resource_manager.image_data(handle, image_info, data);
+	resource_manager.texture_data(handle, image_info, data);
 }
+
+void VulkanRenderer::texture_view(
+	TextureViewHandle view_handle,
+	TextureHandle image_handle,
+	ImageViewDimensions dimensions,
+	ImageFormat format
+) {
+	VkImageViewCreateInfo view_info = {};
+	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_info.viewType = convert::convert_image_view_dimensions(dimensions);
+	view_info.format = convert::convert_image_format(format);
+	view_info.subresourceRange.baseMipLevel = 0;
+    view_info.subresourceRange.baseArrayLayer = 0;
+    view_info.subresourceRange.layerCount = 1;
+
+	resource_manager.texture_view(view_handle, image_handle, view_info);
+}
+
 
 void VulkanRenderer::rebuild() {
 	int width, height;

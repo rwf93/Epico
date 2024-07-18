@@ -13,17 +13,17 @@ add_library(renderer_vk SHARED
 		vkcommand.cpp
 
 		vkresourcemanager.cpp
-		vkimage.cpp
+		vktexture.cpp
+		vktextureview.cpp
 		vkbuffer.cpp
 
 		vklayoutmanager.cpp
 		vklayoutbuilder.cpp
 		vklayout.cpp
 
-		vkshadermanager.cpp
-
-		vkgraphicshaderbuilder.cpp
-		vkgraphicshader.cpp
+		vkprogrammanager.cpp
+		vkgraphicsprogrambuilder.cpp
+		vkgraphicsprogram.cpp
 
 		vkimgui.cpp
 

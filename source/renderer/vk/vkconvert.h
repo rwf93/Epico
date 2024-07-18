@@ -24,7 +24,7 @@ CONVERTER_HEADER(convert_image_format, ImageFormat, VkFormat);
 CONVERTER_HEADER(convert_sample_bits, ImageSamples, VkSampleCountFlagBits);
 CONVERTER_HEADER(convert_buffer_type, BufferType, VkBufferUsageFlagBits);
 CONVERTER_HEADER(convert_image_dimensions, ImageDimensions, VkImageType);
-CONVERTER_HEADER(convert_image_view_dimensions, ImageDimensions, VkImageViewType);
+CONVERTER_HEADER(convert_image_view_dimensions, ImageViewDimensions, VkImageViewType);
 CONVERTER_HEADER(convert_attribute_format, AttributeType, VkFormat);
 CONVERTER_HEADER(convert_binding_rate, BindingRate, VkVertexInputRate);
 CONVERTER_HEADER(convert_primitive_type, ShaderPrimitive, VkPrimitiveTopology);

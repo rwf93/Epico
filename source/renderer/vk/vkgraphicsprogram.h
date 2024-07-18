@@ -1,10 +1,10 @@
 #pragma once
 
 class VulkanDevice;
-class VulkanGraphicShader: public AbstractShader {
+class VulkanGraphicsProgram: public AbstractProgram {
 public:
-	VulkanGraphicShader(VulkanDevice *vkdevice);
-	~VulkanGraphicShader() override;
+	VulkanGraphicsProgram(VulkanDevice *vkdevice);
+	~VulkanGraphicsProgram() override;
 
 	ShaderState get_state() override { return state; };
 	VkPipeline get_pipeline() { return pipeline; }

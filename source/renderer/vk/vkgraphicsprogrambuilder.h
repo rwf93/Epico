@@ -1,13 +1,13 @@
 #pragma once
 
 class VulkanDevice;
-class VulkanShaderManager;
-class VulkanGraphicShader;
+class VulkanProgramManager;
+class VulkanGraphicsProgram;
 class VulkanLayoutManager;
-class VulkanGraphicShaderBuilder: public AbstractGraphicShaderBuilder {
+class VulkanGraphicsProgramBuilder: public AbstractGraphicProgramBuilder {
 public:
-	VulkanGraphicShaderBuilder();
-	~VulkanGraphicShaderBuilder() override;
+	VulkanGraphicsProgramBuilder();
+	~VulkanGraphicsProgramBuilder() override;
 
 	ShaderHandle build() override;
 
@@ -16,42 +16,42 @@ public:
 
 	void clear(
 		ShaderHandle shader_handle,
-    	VulkanGraphicShader *vkshader
+    	VulkanGraphicsProgram *vkshader
 	);
 
-	AbstractGraphicShaderBuilder *set_primitive(ShaderPrimitive type) override;
-	AbstractGraphicShaderBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
-	AbstractGraphicShaderBuilder *set_depth_format(ImageFormat format) override;
-	AbstractGraphicShaderBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) override;
+	AbstractGraphicProgramBuilder *set_primitive(ShaderPrimitive type) override;
+	AbstractGraphicProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
+	AbstractGraphicProgramBuilder *set_depth_format(ImageFormat format) override;
+	AbstractGraphicProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) override;
 
-	AbstractGraphicShaderBuilder *add_binding(
+	AbstractGraphicProgramBuilder *add_binding(
         uint32_t binding,
         uint32_t size,
         BindingRate rate
     ) override;
 
-	AbstractGraphicShaderBuilder *add_attribute(
+	AbstractGraphicProgramBuilder *add_attribute(
 		uint32_t location,
 		uint32_t binding,
 		uint32_t offset,
 		AttributeType type
 	) override;
 
-	AbstractGraphicShaderBuilder *add_stage(
+	AbstractGraphicProgramBuilder *add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) override;
 
-	AbstractGraphicShaderBuilder *add_layout(LayoutHandle layout);
+	AbstractGraphicProgramBuilder *add_layout(LayoutHandle layout);
 
-	AbstractGraphicShaderBuilder *add_attachment(ImageFormat format) override;
+	AbstractGraphicProgramBuilder *add_attachment(ImageFormat format) override;
 private:
 	VulkanDevice *device;
 	VulkanLayoutManager *layout_manager;
 
 	ShaderHandle handle;
-	VulkanGraphicShader *shader;
+	VulkanGraphicsProgram *shader;
 
     VkPipelineInputAssemblyStateCreateInfo assembly_info = {};
 	VkPipelineViewportStateCreateInfo viewport_info = {};

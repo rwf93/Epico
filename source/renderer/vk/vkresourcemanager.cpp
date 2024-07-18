@@ -47,95 +47,48 @@ void VulkanResourceManager::init(
 	queue.push([&] { fini(); });
 }
 
+#define DELETE_RESOURCE(res) 								\
+	for(auto &resource: res) { 								\
+		if(auto second = resource.second) { 				\
+			if(second->get_state() == ResourceState::READY) \
+				second->fini(); 							\
+			delete second; 									\
+		} 													\
+	} 														\
+
 void VulkanResourceManager::fini() {
-	for(auto &resource: resources) {
-		if(auto second = resource.second) {
-			if(second->get_state() == ResourceState::READY)
-				second->fini();
-			delete second;
-		}
-	}
+	DELETE_RESOURCE(texture_resources);
+	DELETE_RESOURCE(texture_view_resources);
+	DELETE_RESOURCE(buffer_resources);
 
 	vmaDestroyAllocator(allocator);
 }
 
-ResourceHandle VulkanResourceManager::create_image() {
-	ResourceHandle last_resource_handle = advance_handle();
-	resources.insert(std::make_pair(last_resource_handle, new VulkanImage()));
+TextureHandle VulkanResourceManager::create_texture() {
+	TextureHandle last_resource_handle = static_cast<TextureHandle>(texture_resources.size() + 1);
+	texture_resources.insert(std::make_pair(last_resource_handle, new VulkanTexture()));
 	return last_resource_handle;
 }
 
-ResourceHandle VulkanResourceManager::create_buffer() {
-	ResourceHandle last_resource_handle = advance_handle();
-	resources.insert(std::make_pair(last_resource_handle, new VulkanBuffer()));
+TextureViewHandle VulkanResourceManager::create_texture_view() {
+	TextureViewHandle last_resource_handle = static_cast<TextureViewHandle>(texture_view_resources.size() + 1);
+	texture_view_resources.insert(std::make_pair(last_resource_handle, new VulkanTextureView()));
 	return last_resource_handle;
 }
 
-void VulkanResourceManager::buffer_data(ResourceHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size) {
-	auto resource = get_buffer(handle);
-	assert(resource);
-
-	if(!resource) {
-		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
-		return;
-	}
-
-	if(resource->get_state() == ResourceState::READY)
-		resource->fini();
-
-	auto staging_buffer_info = info::buffer_create_info(size);
-	auto buffer_info = info::buffer_create_info(
-		size,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | type
-	);
-
-	auto allocate_info = info::allocation_create_info();
-
-	resource->init(
-		device,
-		command_pool,
-		allocator,
-		&buffer_info,
-		&allocate_info
-	);
-
-	// Skip initalizing the buffer with data, just create the buffer object's metadata.
-	if(!data)
-		return;
-
-	VulkanBuffer staging_buffer;
-	staging_buffer.init(
-		device,
-		command_pool,
-		allocator,
-		&staging_buffer_info,
-		&allocate_info
-	);
-
-	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
-	resource->stage(&staging_buffer, size);
-
-	staging_buffer.fini();
+BufferHandle VulkanResourceManager::create_buffer() {
+	BufferHandle last_resource_handle = static_cast<BufferHandle>(buffer_resources.size() + 1);
+	buffer_resources.insert(std::make_pair(last_resource_handle, new VulkanBuffer()));
+	return last_resource_handle;
 }
 
-void VulkanResourceManager::buffer_sub_data(ResourceHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
-	auto resource = get_buffer(handle);
-	assert(resource);
 
-	if(!resource) {
-		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
-		return;
-	}
-
-	resource->update(offset, size, data);
-}
-
-void VulkanResourceManager::image_data(
-	ResourceHandle handle,
+void VulkanResourceManager::texture_data(
+	TextureHandle handle,
 	VkImageCreateInfo image_info,
 	void *data
 ) {
-	auto resource = get_image(handle);
+	auto resource = try_get_texture(handle).value_or(nullptr);
 	assert(resource);
 
 	if(!resource) {
@@ -183,9 +136,92 @@ void VulkanResourceManager::image_data(
 	staging_buffer.fini();
 }
 
-void VulkanResourceManager::image_sub_data(ResourceHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset) {
+void VulkanResourceManager::texture_sub_data(TextureHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset) {
 	UNUSED(handle);
 	UNUSED(data);
 	UNUSED(size);
 	UNUSED(offset);
+}
+
+void VulkanResourceManager::texture_view(
+	TextureViewHandle view_handle,
+	TextureHandle image_handle,
+	VkImageViewCreateInfo image_view_info
+) {
+	auto image_view = try_get_texture_view(view_handle).value_or(nullptr);
+	auto image = try_get_texture(image_handle).value_or(nullptr);
+
+	assert(image_view);
+	assert(image);
+
+	if(image_view->get_state() != ResourceState::UNREADY)
+		image_view->fini();
+
+	image_view_info.image = image->get_image();
+	image_view_info.subresourceRange.levelCount = image->get_info()->mipLevels;
+	image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	if(image->get_info()->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+	image_view->init(device, image, &image_view_info);
+	texture_view_cross[view_handle] = image;
+}
+
+void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size) {
+	auto resource = try_get_buffer(handle).value_or(nullptr);
+	assert(resource);
+
+	if(!resource) {
+		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
+		return;
+	}
+
+	if(resource->get_state() == ResourceState::READY)
+		resource->fini();
+
+	auto staging_buffer_info = info::buffer_create_info(size);
+	auto buffer_info = info::buffer_create_info(
+		size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | type
+	);
+
+	auto allocate_info = info::allocation_create_info();
+
+	resource->init(
+		device,
+		command_pool,
+		allocator,
+		&buffer_info,
+		&allocate_info
+	);
+
+	// Skip initalizing the buffer with data, just create the buffer object's metadata.
+	if(!data)
+		return;
+
+	VulkanBuffer staging_buffer;
+	staging_buffer.init(
+		device,
+		command_pool,
+		allocator,
+		&staging_buffer_info,
+		&allocate_info
+	);
+
+	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
+	resource->stage(&staging_buffer, size);
+
+	staging_buffer.fini();
+}
+
+void VulkanResourceManager::buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
+	auto resource = try_get_buffer(handle).value_or(nullptr);
+	assert(resource);
+
+	if(!resource) {
+		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
+		return;
+	}
+
+	resource->update(offset, size, data);
 }
