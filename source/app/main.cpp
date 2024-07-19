@@ -20,7 +20,7 @@ struct RendererPassHandles {
 	TextureViewHandle composition_view;
 };
 
-void renderer_setup_pass_resources(AppContext *context, AbstractRenderer *renderer, RendererPassHandles *resources) {
+void renderer_setup_pass_resources(AppContext *context, RenderAPI *renderer, RendererPassHandles *resources) {
 	renderer->texture_data(
 		resources->position,
 		ImageDimensions::IMAGE_2D,
@@ -65,28 +65,32 @@ void renderer_setup_pass_resources(AppContext *context, AbstractRenderer *render
 		resources->position_view,
 		resources->position,
 		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R16G16B16A16_SFLOAT
+		ImageFormat::R16G16B16A16_SFLOAT,
+		0, 0
 	);
 
 	renderer->texture_view(
 		resources->albedo_view,
 		resources->albedo,
 		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R8G8B8A8_UNORM
+		ImageFormat::R8G8B8A8_UNORM,
+		0, 0
 	);
 
 	renderer->texture_view(
 		resources->depth_view,
 		resources->depth,
 		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::D32_SFLOAT
+		ImageFormat::D32_SFLOAT,
+		0, 0
 	);
 
 	renderer->texture_view(
 		resources->composition_view,
 		resources->composition,
 		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R16G16B16A16_SFLOAT
+		ImageFormat::R16G16B16A16_SFLOAT,
+		0, 0
 	);
 }
 
@@ -103,7 +107,7 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = get_factory<AbstractFilesystem*>("filesystem_std");
+	auto filesystem = get_factory<Filesystem*>("filesystem_std");
 	if(!filesystem.good) {
 		spdlog::error("Couldn't load VFS");
 		return 0;
@@ -115,7 +119,7 @@ int main(int argc, char *argv[]) {
 	filesystem->mount("assets/textures/", "../assets/textures/");
 	filesystem->mount("assets/shaders/", "./assets/shaders/");
 
-	auto renderer = get_factory<AbstractRenderer*>("renderer_vk", &context);
+	auto renderer = get_factory<RenderAPI*>("api_vk", &context);
 	if(!renderer.good) {
 		spdlog::error("Couldn't load renderer");
 		return 0;
@@ -142,9 +146,9 @@ int main(int argc, char *argv[]) {
 		.composition_view = composition_image_view
 	};
 
+	// Initalizes the subpass dependencies, resizing recreates those dependencies.
 	renderer_setup_pass_resources(&context, renderer.interface, &resize_handles);
-	// Resizing reallocates
-	renderer->on_resize([&](AbstractRenderer* renderer) {
+	renderer->on_resize([&](RenderAPI* renderer) {
 		renderer_setup_pass_resources(&context, renderer, &resize_handles);
 	});
 
@@ -246,9 +250,9 @@ int main(int argc, char *argv[]) {
 
 			// Offscreen/Deferred rendering (first pass)
 			std::vector<SubpassAttachment> deferred_attachments = {
-				{ .target = position_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
-				{ .target = albedo_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
-				{ .target = depth_image_view, .type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
+				{ .texture = position_image, .view = position_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .texture = albedo_image, .view = albedo_image_view,  .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .texture = depth_image, .view = depth_image_view,  .type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
 			};
 
 			SubpassDependencyInfo deferred_info = {
@@ -267,7 +271,7 @@ int main(int argc, char *argv[]) {
 
 			// Composed pass (second pass)
 			std::vector<SubpassAttachment> composition_attachments = {
-				{ .target = composition_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .texture = composition_image, .view = composition_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
 			};
 
 			SubpassDependencyInfo composition_info = {
@@ -282,9 +286,9 @@ int main(int argc, char *argv[]) {
 				renderer->draw(3, 1);
 			renderer->end_pass(&composition_info);
 
-			renderer->show_image(albedo_image);
+			renderer->show_image(composition_image);
 
-			static AbstractUI *ui = renderer->ui();
+			static RenderUI *ui = renderer->ui();
 			ui->begin_ui();
 				ui->show_demo_window();
 				ui->begin("Shader Picker");

@@ -1,6 +1,6 @@
 #pragma once
 
-class StandardFilesystem: public AbstractFilesystem {
+class StandardFilesystem: public Filesystem {
 public:
 	StandardFilesystem();
 
