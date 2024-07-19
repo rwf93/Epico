@@ -1,5 +1,7 @@
 #pragma once
 
+#define LOGGER spdlog::get("api_vulkan")
+
 #include <magic_enum.hpp>
 
 // Queue of functions, destroy() iterates the queue in reverse and calls them.
@@ -47,7 +49,7 @@ struct fmt::formatter<VkResult> : fmt::formatter<std::string> {
 	VkResult result = (f);                                          \
 	assert(result == VK_SUCCESS);                                   \
 	if(result != VK_SUCCESS) {                                      \
-		spdlog::get("renderer")->error("VkResult is {} in {} @ {}", result, __FILE__, __LINE__);  \
+		LOGGER->error("VkResult is {} in {} @ {}", result, __FILE__, __LINE__);  \
 		std::abort();                                               \
 	}                                                               \
 }

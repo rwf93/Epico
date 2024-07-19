@@ -19,7 +19,7 @@ public:
 	void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) override;
 
 	void bind_buffer(BufferHandle handle, BindBufferType type) override;
-	void bind_graphic_shader(ShaderHandle handle) override;
+	void bind_graphic_shader(GraphicsProgramHandle handle) override;
 
 	void draw(uint32_t vertex_count, uint32_t instance_count) override;
 	void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) override;
@@ -59,7 +59,7 @@ public:
 	) override;
 
 	RenderLayoutBuilder *create_layout() override;
-	RenderGraphicProgramBuilder *create_graphic_shader() override;
+	RenderGraphicProgramBuilder *create_graphic_program() override;
 
 	RenderUI *ui() { return &ui_imgui; };
 

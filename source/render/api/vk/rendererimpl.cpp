@@ -19,10 +19,8 @@ VulkanAPI::VulkanAPI(AppContext *app_context) {
 		TracyMessage(msg.payload.data(), msg.payload.size());
 	});
 
-	auto console = spdlog::stdout_color_mt("renderer");
+	auto console = spdlog::stdout_color_mt("api_vulkan");
 	console->sinks().push_back(tracy_log_sink);
-
-	UNUSED(console);
 
 	VK_CHECK(volkInitialize());
 
@@ -242,8 +240,9 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 	}
 }
 
-void VulkanAPI::bind_graphic_shader(ShaderHandle handle) {
-	auto shader = shader_manager.get_graphic_shader(handle);
+void VulkanAPI::bind_graphic_shader(GraphicsProgramHandle handle) {
+	auto shader = shader_manager.try_get_graphics_program(handle).value_or(nullptr);
+	assert(shader);
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
@@ -271,8 +270,8 @@ RenderLayoutBuilder *VulkanAPI::create_layout() {
 	return layout_manager.create_layout();
 }
 
-RenderGraphicProgramBuilder *VulkanAPI::create_graphic_shader() {
-	return shader_manager.create_graphic_shader();
+RenderGraphicProgramBuilder *VulkanAPI::create_graphic_program() {
+	return shader_manager.create_graphic_program();
 }
 
 void VulkanAPI::buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) {

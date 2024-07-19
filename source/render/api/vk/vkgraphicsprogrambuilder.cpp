@@ -12,7 +12,7 @@ void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanLayoutMana
 }
 
 void VulkanGraphicsProgramBuilder::clear(
-	ShaderHandle shader_handle,
+	GraphicsProgramHandle shader_handle,
 	VulkanGraphicsProgram *vkshader
 ) {
 	this->handle = shader_handle;
@@ -64,7 +64,7 @@ void VulkanGraphicsProgramBuilder::clear(
 	depth_format = VK_FORMAT_UNDEFINED;
 }
 
-ShaderHandle VulkanGraphicsProgramBuilder::build() {
+GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	VkPipelineLayout pipeline_layout;
 	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
 	VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));

@@ -15,9 +15,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 
 	switch(serverity) {
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: 		spdlog::get("renderer")->info(callback_data->pMessage); break;
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: 	spdlog::get("renderer")->warn(callback_data->pMessage); break;
-	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: 	spdlog::get("renderer")->error(callback_data->pMessage); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: 		LOGGER->info(callback_data->pMessage); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: 	LOGGER->warn(callback_data->pMessage); break;
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: 	LOGGER->error(callback_data->pMessage); break;
 	default: break;
 	}
 
@@ -25,7 +25,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 }
 
 void VulkanInstance::init(FunctorQueue<> &queue) {
-	 vkb::InstanceBuilder builder;
+	vkb::InstanceBuilder builder;
 	auto builder_ret = builder
 						.set_app_name("Epico")
 						.set_engine_name("Epico Engine")
@@ -36,7 +36,7 @@ void VulkanInstance::init(FunctorQueue<> &queue) {
 						.build();
 
 	if(!builder_ret.has_value()) {
-		spdlog::get("renderer")->error("Failed to create Vulkan Instance: {}", builder_ret.error().message());
+		LOGGER->error("Failed to create Vulkan Instance: {}", builder_ret.error().message());
 		std::abort();
 	}
 

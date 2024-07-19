@@ -90,11 +90,6 @@ void VulkanResourceManager::texture_data(
 	auto resource = try_get_texture(handle).value_or(nullptr);
 	assert(resource);
 
-	if(!resource) {
-		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
-		return;
-	}
-
 	if(resource->get_state() == ResourceState::READY)
 		resource->fini();
 
@@ -169,7 +164,7 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferCreateFlags
 	assert(resource);
 
 	if(!resource) {
-		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
+		LOGGER->error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 
@@ -216,7 +211,7 @@ void VulkanResourceManager::buffer_sub_data(BufferHandle handle, VkDeviceSize of
 	assert(resource);
 
 	if(!resource) {
-		spdlog::get("renderer")->error("Invalid resource or resource is the wrong type.");
+		LOGGER->error("Invalid resource or resource is the wrong type.");
 		return;
 	}
 

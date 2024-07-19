@@ -12,32 +12,22 @@ public:
 	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager);
 	void fini();
 
-	RenderGraphicProgramBuilder *create_graphic_shader();
+	RenderGraphicProgramBuilder *create_graphic_program();
 
-	VulkanGraphicsProgram *get_graphic_shader(ShaderHandle handle) {
-		return get_shader<VulkanGraphicsProgram*>(handle);
-	}
+	std::optional<VulkanGraphicsProgram*> try_get_graphics_program(GraphicsProgramHandle handle) {
+		if(!graphics_programs.contains(handle))
+			return std::nullopt;
 
-	template<typename T>
-	T get_shader(ShaderHandle handle) {
-		RenderProgram *shader = nullptr;
-		if(!shaders.contains(handle))
-			goto err;
+		auto resource = graphics_programs.at(handle);
+		if(!resource)
+			return std::nullopt;
 
-		shader = shaders.at(handle);
-		if(!shader)
-			goto err;
-
-		return dynamic_cast<T>(shader);
-	err:
-		return nullptr;
+		return dynamic_cast<VulkanGraphicsProgram*>(resource);
 	}
 
 private:
 	VulkanDevice *device;
 	VulkanGraphicsProgramBuilder graphics_builder;
 
-	std::map<ShaderHandle, RenderProgram*> shaders;
-
-	ShaderHandle current_shader_handle = 0;
+	std::map<GraphicsProgramHandle, RenderProgram*> graphics_programs;
 };

@@ -9,13 +9,13 @@ public:
 	VulkanGraphicsProgramBuilder();
 	~VulkanGraphicsProgramBuilder() override;
 
-	ShaderHandle build() override;
+	GraphicsProgramHandle build() override;
 
 	void init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager);
 	void fini();
 
 	void clear(
-		ShaderHandle shader_handle,
+		GraphicsProgramHandle shader_handle,
     	VulkanGraphicsProgram *vkshader
 	);
 
@@ -50,7 +50,7 @@ private:
 	VulkanDevice *device;
 	VulkanLayoutManager *layout_manager;
 
-	ShaderHandle handle;
+	GraphicsProgramHandle handle;
 	VulkanGraphicsProgram *shader;
 
     VkPipelineInputAssemblyStateCreateInfo assembly_info = {};

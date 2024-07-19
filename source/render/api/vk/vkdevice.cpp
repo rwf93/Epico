@@ -39,7 +39,7 @@ void VulkanDevice::retreive_device() {
 							.select();
 
 	if(!selector_ret.has_value()) {
-		spdlog::get("renderer")->error("Couldn't create Physical Device Selector", selector_ret.error().message());
+		LOGGER->error("Couldn't create Physical Device Selector", selector_ret.error().message());
 		std::abort();
 	}
 
@@ -48,7 +48,7 @@ void VulkanDevice::retreive_device() {
 		.build();
 
 	if(!builder_ret.has_value()) {
-		spdlog::get("renderer")->error("Couldn't create Device Builder", builder_ret.error().message());
+		LOGGER->error("Couldn't create Device Builder", builder_ret.error().message());
 		std::abort();
 	}
 
@@ -56,7 +56,7 @@ void VulkanDevice::retreive_device() {
 
 	volkLoadDevice(this->device);
 
-	spdlog::get("renderer")->info("{}: {}",
+	LOGGER->info("{}: {}",
 		rand() % 15 == 1
 			? "ze vuwlkan dewice is weady to wender"
 			: "Found capable render device",
@@ -71,17 +71,17 @@ void VulkanDevice::retreive_queues() {
 	auto gqi = device.get_queue_index(vkb::QueueType::graphics);
 
 	if (!gq.has_value()) {
-		spdlog::get("renderer")->error("Failed to get Vulkan Graphics Queue");
+		LOGGER->error("Failed to get Vulkan Graphics Queue");
 		std::abort();
 	}
 
 	if(!pq.has_value()) {
-		spdlog::get("renderer")->error("Failed to get Vulkan Present Queue");
+		LOGGER->error("Failed to get Vulkan Present Queue");
 		std::abort();
 	}
 
 	if (!gqi.has_value()) {
-		spdlog::get("renderer")->error("Failed to get Vulkan Graphics Queue Index");
+		LOGGER->error("Failed to get Vulkan Graphics Queue Index");
 		std::abort();
 	}
 

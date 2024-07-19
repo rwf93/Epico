@@ -119,21 +119,21 @@ int main(int argc, char *argv[]) {
 	filesystem->mount("assets/textures/", "../assets/textures/");
 	filesystem->mount("assets/shaders/", "./assets/shaders/");
 
-	auto renderer = get_factory<RenderAPI*>("api_vk", &context);
-	if(!renderer.good) {
+	auto render_api = get_factory<RenderAPI*>("api_vk", &context);
+	if(!render_api.good) {
 		spdlog::error("Couldn't load renderer");
 		return 0;
 	}
 
-	auto position_image = renderer->create_texture();
-	auto albedo_image = renderer->create_texture();
-	auto depth_image = renderer->create_texture();
-	auto composition_image = renderer->create_texture();
+	auto position_image = render_api->create_texture();
+	auto albedo_image = render_api->create_texture();
+	auto depth_image = render_api->create_texture();
+	auto composition_image = render_api->create_texture();
 
-	auto position_image_view = renderer->create_texture_view();
-	auto albedo_image_view = renderer->create_texture_view();
-	auto depth_image_view = renderer->create_texture_view();
-	auto composition_image_view = renderer->create_texture_view();
+	auto position_image_view = render_api->create_texture_view();
+	auto albedo_image_view = render_api->create_texture_view();
+	auto depth_image_view = render_api->create_texture_view();
+	auto composition_image_view = render_api->create_texture_view();
 
 	RendererPassHandles resize_handles = {
 		.position = position_image,
@@ -147,17 +147,17 @@ int main(int argc, char *argv[]) {
 	};
 
 	// Initalizes the subpass dependencies, resizing recreates those dependencies.
-	renderer_setup_pass_resources(&context, renderer.interface, &resize_handles);
-	renderer->on_resize([&](RenderAPI* renderer) {
+	renderer_setup_pass_resources(&context, render_api.interface, &resize_handles);
+	render_api->on_resize([&](RenderAPI* renderer) {
 		renderer_setup_pass_resources(&context, renderer, &resize_handles);
 	});
 
-	auto global_layout = renderer->create_layout()
+	auto global_layout = render_api->create_layout()
 		->add_uniform(ShaderStage::VERTEX)
 		->add_uniform(ShaderStage::VERTEX)
 		->build();
 
-	auto composition_layout = renderer->create_layout()
+	auto composition_layout = render_api->create_layout()
 		->add_uniform(ShaderStage::FRAGMENT) // Position
 		->add_uniform(ShaderStage::FRAGMENT) // Albedo
 		->add_uniform(ShaderStage::FRAGMENT) // Light Data
@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
 
 	auto triangle_vertex_code = filesystem->read_file<char>("assets/shaders/triangle.vert.spv", true);
 	auto triangle_fragment_code = filesystem->read_file<char>("assets/shaders/triangle.frag.spv", true);
-	auto triangle_shader = renderer->create_graphic_shader()
+	auto triangle_shader = render_api->create_graphic_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
 		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
-	auto deferred_shader = renderer->create_graphic_shader()
+	auto deferred_shader = render_api->create_graphic_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
 
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
-	auto composition_shader = renderer->create_graphic_shader()
+	auto composition_shader = render_api->create_graphic_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
@@ -213,15 +213,15 @@ int main(int argc, char *argv[]) {
 		{ {-0.5, 0.5, 0}, {1.0, 1.0, 1.0} },
 	};
 
-	auto vbo_handle = renderer->create_buffer();
-	renderer->buffer_data(vbo_handle, BufferType::VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
-
 	std::vector<uint32_t> indicies = {
 		0, 1, 2, 2, 3, 0
 	};
 
-	auto ibo_handle = renderer->create_buffer();
-	renderer->buffer_data(ibo_handle, BufferType::INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
+	auto vbo_handle = render_api->create_buffer();
+	auto ibo_handle = render_api->create_buffer();
+
+	render_api->buffer_data(vbo_handle, BufferType::VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
+	render_api->buffer_data(ibo_handle, BufferType::INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
 
 	static bool quit = false;
 	static bool minimized = false;
@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
 			if(event.window.event == SDL_WINDOWEVENT_RESTORED)
 				minimized = false;
 
-			renderer->ui()->process_event(&event);
+			render_api->ui()->process_event(&event);
 		}
 
 		if(minimized) {
@@ -244,9 +244,9 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		renderer->begin();
+		render_api->begin();
 		{
-			renderer->clear(0, 0, 0, 0);
+			render_api->clear(0, 0, 0, 0);
 
 			// Offscreen/Deferred rendering (first pass)
 			std::vector<SubpassAttachment> deferred_attachments = {
@@ -260,14 +260,14 @@ int main(int argc, char *argv[]) {
 				.count = static_cast<uint32_t>(deferred_attachments.size())
 			};
 
-			renderer->begin_pass(&deferred_info);
-				renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-				renderer->scissor(context.width, context.height);
-				renderer->bind_graphic_shader(deferred_shader);
-				renderer->bind_buffer(vbo_handle, BindBufferType::VERTEX);
-				renderer->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
-				renderer->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
-			renderer->end_pass(&deferred_info);
+			render_api->begin_pass(&deferred_info);
+				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+				render_api->scissor(context.width, context.height);
+				render_api->bind_graphic_shader(deferred_shader);
+				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
+				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
+				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
+			render_api->end_pass(&deferred_info);
 
 			// Composed pass (second pass)
 			std::vector<SubpassAttachment> composition_attachments = {
@@ -279,27 +279,27 @@ int main(int argc, char *argv[]) {
 				.count = static_cast<uint32_t>(composition_attachments.size())
 			};
 
-			renderer->begin_pass(&composition_info);
-				renderer->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-				renderer->scissor(context.width, context.height);
-				renderer->bind_graphic_shader(composition_shader);
-				renderer->draw(3, 1);
-			renderer->end_pass(&composition_info);
+			render_api->begin_pass(&composition_info);
+				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+				render_api->scissor(context.width, context.height);
+				render_api->bind_graphic_shader(composition_shader);
+				render_api->draw(3, 1);
+			render_api->end_pass(&composition_info);
 
-			renderer->show_image(composition_image);
+			render_api->show_image(albedo_image);
 
-			static RenderUI *ui = renderer->ui();
+			static RenderUI *ui = render_api->ui();
 			ui->begin_ui();
 				ui->show_demo_window();
 				ui->begin("Shader Picker");
 				ui->end();
 			ui->end_ui();
 		}
-		renderer->end();
-		renderer->present();
+		render_api->end();
+		render_api->present();
 	}
 
-	renderer.release();
+	render_api.release();
 	filesystem.release();
 	SDL_Quit();
 

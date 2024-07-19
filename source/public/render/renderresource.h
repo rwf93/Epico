@@ -1,8 +1,8 @@
 #pragma once
 
-enum class TextureHandle { Invalid = 0 };
-enum class TextureViewHandle { Invalid = 0 };
-enum class BufferHandle { Invalid = 0 };
+enum class TextureHandle: 		size_t { Invalid = 0 };
+enum class TextureViewHandle: 	size_t { Invalid = 0 };
+enum class BufferHandle: 		size_t { Invalid = 0 };
 
 enum class BufferType {
 	VERTEX,

@@ -1,6 +1,6 @@
 #pragma once
 
-typedef uint64_t ShaderHandle;
+enum class GraphicsProgramHandle: size_t { Invalid = 0 };
 
 enum class BindingRate {
 	VERTEX,
@@ -58,14 +58,11 @@ public:
 	virtual void fini() = 0;
 };
 
-class RenderProgramBuilder {
+class RenderGraphicProgramBuilder {
 public:
-	virtual ~RenderProgramBuilder() {}
-	virtual ShaderHandle build() = 0;
-};
+	virtual ~RenderGraphicProgramBuilder() {}
+	virtual GraphicsProgramHandle build() = 0;
 
-class RenderGraphicProgramBuilder: public RenderProgramBuilder {
-public:
 	virtual RenderGraphicProgramBuilder *set_primitive(ShaderPrimitive type) = 0;
 	virtual RenderGraphicProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
 	virtual RenderGraphicProgramBuilder *set_depth_format(ImageFormat format) = 0;
