@@ -1,3 +1,6 @@
+#ifndef STDAFX_H
+#define STDAFX_H
+
 #include <deque>
 #include <functional>
 #include <map>
@@ -5,11 +8,6 @@
 
 #define EAPI_EXPORT
 #include <platform/platform.h>
-
-// Some random library forgot to push before popping for MSVC...
-#if defined(PLATFORM_WINDOWS)
-    #pragma warning(push)
-#endif
 
 #define VK_NO_PROTOTYPES
 
@@ -35,3 +33,5 @@
 #include "vktools.h"
 #include "vkinfo.h"
 #include "vkconvert.h"
+
+#endif

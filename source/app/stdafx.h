@@ -1,3 +1,6 @@
+#ifndef STDAFX_H
+#define STDAFX_H
+
 #include <platform/platform.h>
 
 #include <public/appcontext.h>
@@ -10,3 +13,5 @@
 #include <math.h>
 
 #include <glm/glm.hpp>
+
+#endif

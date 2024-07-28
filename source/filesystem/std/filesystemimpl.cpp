@@ -33,14 +33,10 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
 	// Relative paths consider the current directory!
 	auto cwd = std::filesystem::weakly_canonical(std::filesystem::path(context->argv[0])).parent_path();
 	for(auto &item: mounts[path]) {
-		auto path_name = cwd.append(item.string() + name).make_preferred();
-
-		std::ifstream check(path_name);
-		if(check.good())
-			physical_dir = path_name;
+		physical_dir = cwd.append(item.string() + name).make_preferred();
 	}
 
-	return std::filesystem::canonical(physical_dir);
+	return physical_dir;
 }
 
 static StandardFilesystem *singleton;
