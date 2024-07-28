@@ -11,8 +11,8 @@
 
 #include "rendererimpl.h"
 
-VulkanAPI::VulkanAPI(AppContext *app_context) {
-	this->app_context = app_context;
+void VulkanAPI::init(AppContext *app_context) {
+	this->context = app_context;
 
 	auto tracy_log_sink = std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg &msg) {
 		UNUSED(msg); // Disabling tracy causes issues.
@@ -23,16 +23,15 @@ VulkanAPI::VulkanAPI(AppContext *app_context) {
 	console->sinks().push_back(tracy_log_sink);
 
 	VK_CHECK(volkInitialize());
-
 	instance.init(cleanup_queue);
-	surface.init(cleanup_queue, app_context, &instance);
+	surface.init(cleanup_queue, context, &instance);
 	device.init(cleanup_queue, &instance, &surface);
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
 	layout_manager.init(cleanup_queue, &instance, &device, &command_pool);
 	shader_manager.init(cleanup_queue, &device, &layout_manager);
-	ui_imgui.init(cleanup_queue, app_context, &instance, &device, &swapchain, &command_pool);
+	ui_imgui.init(cleanup_queue, context, &instance, &device, &swapchain, &command_pool);
 }
 
 VulkanAPI::~VulkanAPI() {
@@ -340,9 +339,9 @@ void VulkanAPI::texture_view(
 
 void VulkanAPI::rebuild() {
 	int width, height;
-	SDL_GetWindowSize(app_context->window, &width, &height);
-	app_context->width = width;
-	app_context->height = height;
+	SDL_GetWindowSize(context->window, &width, &height);
+	context->width = width;
+	context->height = height;
 
 	device.wait();
 	swapchain.rebuild();
@@ -351,10 +350,4 @@ void VulkanAPI::rebuild() {
 		resize_event(this);
 }
 
-static VulkanAPI *singleton;
-
-extern "C" EAPI RenderAPI *create_factory(void *user_data) {
-	if(!singleton)
-		singleton = new VulkanAPI(reinterpret_cast<AppContext*>(user_data));
-	return singleton;
-}
+CREATE_FACTORY(VulkanAPI);

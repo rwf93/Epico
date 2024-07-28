@@ -48,6 +48,6 @@ void VulkanInstance::init(FunctorQueue<> &queue) {
 }
 
 void VulkanInstance::fini() {
-	vkb::destroy_instance(instance);
+	//vkb::destroy_instance(instance);
 }
 

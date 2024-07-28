@@ -23,6 +23,4 @@ void BlankRenderer::end() {
 
 }
 
-extern "C" EAPI RenderAPI *create_factory() {
-	return new BlankRenderer();
-}
+CREATE_FACTORY(BlankRenderer);

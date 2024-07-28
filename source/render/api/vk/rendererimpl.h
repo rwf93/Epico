@@ -2,8 +2,9 @@
 
 class VulkanAPI: public RenderAPI {
 public:
-	VulkanAPI(AppContext *app_context);
 	~VulkanAPI() override;
+
+	void init(AppContext *context) override;
 
 	void begin() override;
 	void end() override;
@@ -66,7 +67,7 @@ public:
 protected:
 	void rebuild();
 private:
-	AppContext *app_context = nullptr;
+	AppContext *context = nullptr;
 
 	FunctorQueue<> cleanup_queue;
 

@@ -109,23 +109,27 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = get_factory<Filesystem*>("filesystem_std", &context);
+	auto filesystem = get_factory<Filesystem*>("filesystem_std");
+	auto render_api = get_factory<RenderAPI*>("api_vk");
+
 	if(!filesystem.good) {
 		spdlog::error("Couldn't load VFS");
 		return 0;
 	}
+
+	if(!render_api.good) {
+		spdlog::error("Couldn't load renderer");
+		return 0;
+	}
+
+	filesystem->init(&context);
+	render_api->init(&context);
 
 	filesystem->mount("assets/", "../../assets/");
 	filesystem->mount("assets/models/", "../../assets/models/");
 	filesystem->mount("assets/fonts/", "../assets/fonts/");
 	filesystem->mount("assets/textures/", "../../assets/textures/");
 	filesystem->mount("assets/shaders/", "../assets/shaders/");
-
-	auto render_api = get_factory<RenderAPI*>("api_vk", &context);
-	if(!render_api.good) {
-		spdlog::error("Couldn't load renderer");
-		return 0;
-	}
 
 	auto position_image = render_api->create_texture();
 	auto albedo_image = render_api->create_texture();

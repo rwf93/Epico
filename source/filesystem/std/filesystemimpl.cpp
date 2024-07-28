@@ -1,6 +1,6 @@
 #include "filesystemimpl.h"
 
-StandardFilesystem::StandardFilesystem(AppContext *app_context) {
+void StandardFilesystem::init(AppContext *app_context) {
 	this->context = app_context;
 	auto console = spdlog::stdout_color_mt("filesystem");
 	UNUSED(console);
@@ -39,10 +39,4 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
 	return physical_dir;
 }
 
-static StandardFilesystem *singleton;
-
-extern "C" EAPI StandardFilesystem *create_factory(void *user_data) {
-	if(!singleton)
-		singleton = new StandardFilesystem(reinterpret_cast<AppContext*>(user_data));
-	return singleton;
-}
+CREATE_FACTORY(StandardFilesystem);

@@ -6,7 +6,6 @@
 #include <map>
 #include <span>
 
-#define EAPI_EXPORT
 #include <platform/platform.h>
 
 #define VK_NO_PROTOTYPES

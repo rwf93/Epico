@@ -29,10 +29,14 @@ struct SubpassDependencyInfo {
 	uint32_t count;
 };
 
+struct AppContext;
+
 class RenderUI;
 class RenderAPI {
 public:
 	virtual ~RenderAPI() {};
+
+	virtual void init(AppContext *context) = 0;
 
 	virtual void begin() = 0;
 	virtual void end() = 0;
