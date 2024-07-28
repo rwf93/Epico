@@ -1,7 +1,7 @@
 {
     "cmake.generator": "Ninja Multi-Config",
     "files.associations": {
-        "*.lua": "glua",
+        "*.lua": "xmake",
         "algorithm": "cpp",
         "array": "cpp",
         "atomic": "cpp",
@@ -94,6 +94,8 @@
         "random": "cpp",
         "any": "cpp",
         "bitset": "cpp",
-        "complex": "cpp"
-    }
+        "complex": "cpp",
+        "expected": "cpp"
+    },
+    "cmake.ignoreCMakeListsMissing": true
 }

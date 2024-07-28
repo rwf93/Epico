@@ -3,3 +3,5 @@ output/
 output.zip
 .cache/
 .vs
+.xmake
+compile_commands.json

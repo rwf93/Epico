@@ -1,0 +1,7 @@
+target("filesystem_std")
+	set_kind("shared")
+	set_languages("cxx20")
+	add_files("*.cpp")
+	add_includedirs("$(projectdir)/source")
+	add_packages("fmt", "spdlog")
+	add_rules("defaults_rule", { precompiled_header = path.absolute("./stdafx.h") })

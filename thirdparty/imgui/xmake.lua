@@ -1,0 +1,7 @@
+target("imgui")
+	set_kind("static")
+	set_languages("cxx20")
+	add_files("*.cpp")
+	add_packages("libsdl", "vulkan-headers", "volk")
+	add_defines("IMGUI_IMPL_VULKAN_NO_PROTOTYPES")
+	add_rules("defaults_rule")

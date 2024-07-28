@@ -1,6 +1,7 @@
 #include "filesystemimpl.h"
 
-StandardFilesystem::StandardFilesystem() {
+StandardFilesystem::StandardFilesystem(AppContext *app_context) {
+	this->context = app_context;
 	auto console = spdlog::stdout_color_mt("filesystem");
 	UNUSED(console);
 }
@@ -27,8 +28,12 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
 
 	std::filesystem::path physical_dir = "";
 
+	// C++ does not provide a standard way of getting the executable directory...
+	// This is required if you want to call the executable from *any* location.
+	// Relative paths consider the current directory!
+	auto cwd = std::filesystem::path(context->argv[0]).append("../");
 	for(auto &item: mounts[path]) {
-		auto path_name = item.string() + name;
+		auto path_name = cwd.append(item.string() + name).make_preferred();
 
 		std::ifstream check(path_name);
 		if(check.good())
@@ -42,6 +47,6 @@ static StandardFilesystem *singleton;
 
 extern "C" EAPI StandardFilesystem *create_factory(void *user_data) {
 	if(!singleton)
-		singleton = new StandardFilesystem();
+		singleton = new StandardFilesystem(reinterpret_cast<AppContext*>(user_data));
 	return singleton;
 }

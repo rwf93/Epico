@@ -99,6 +99,8 @@ int main(int argc, char *argv[]) {
 	UNUSED(argv);
 
 	AppContext context;
+	context.argc = argc;
+	context.argv = argv;
 	context.width = 1280;
 	context.height = 762;
 
@@ -107,17 +109,17 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = get_factory<Filesystem*>("filesystem_std");
+	auto filesystem = get_factory<Filesystem*>("filesystem_std", &context);
 	if(!filesystem.good) {
 		spdlog::error("Couldn't load VFS");
 		return 0;
 	}
 
-	filesystem->mount("assets/", "../assets/");
-	filesystem->mount("assets/models/", "../assets/models/");
+	filesystem->mount("assets/", "../../assets/");
+	filesystem->mount("assets/models/", "../../assets/models/");
 	filesystem->mount("assets/fonts/", "../assets/fonts/");
-	filesystem->mount("assets/textures/", "../assets/textures/");
-	filesystem->mount("assets/shaders/", "./assets/shaders/");
+	filesystem->mount("assets/textures/", "../../assets/textures/");
+	filesystem->mount("assets/shaders/", "../assets/shaders/");
 
 	auto render_api = get_factory<RenderAPI*>("api_vk", &context);
 	if(!render_api.good) {

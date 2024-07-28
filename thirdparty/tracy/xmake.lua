@@ -1,0 +1,5 @@
+target("tracy")
+	set_kind("static")
+	set_languages("cxx20")
+	add_files("TracyClient.cpp")
+	add_rules("defaults_rule")
