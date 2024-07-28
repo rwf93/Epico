@@ -19,7 +19,7 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
 	std::string virtual_dir = virtual_path.string();
 	int path_index = 0;
 
-	for(int i = 0; i < virtual_dir.size(); i++)
+	for(size_t i = 0; i < virtual_dir.size(); i++)
 		if(virtual_dir[i] == '/')
 			path_index = i;
 
@@ -31,7 +31,7 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
 	// C++ does not provide a standard way of getting the executable directory...
 	// This is required if you want to call the executable from *any* location.
 	// Relative paths consider the current directory!
-	auto cwd = std::filesystem::path(context->argv[0]).append("../");
+	auto cwd = std::filesystem::weakly_canonical(std::filesystem::path(context->argv[0])).parent_path();
 	for(auto &item: mounts[path]) {
 		auto path_name = cwd.append(item.string() + name).make_preferred();
 

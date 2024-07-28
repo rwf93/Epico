@@ -252,8 +252,8 @@ int main(int argc, char *argv[]) {
 
 			// Offscreen/Deferred rendering (first pass)
 			std::vector<SubpassAttachment> deferred_attachments = {
-				{ .texture = position_image, .view = position_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
-				{ .texture = albedo_image, .view = albedo_image_view,  .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .texture = position_image, .view = position_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1, 0.0f, 0 } },
+				{ .texture = albedo_image, .view = albedo_image_view,  .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1, 0.0f, 0 } },
 				{ .texture = depth_image, .view = depth_image_view,  .type = AttachmentType::DEPTH, .clear = { 0, 0, 0, 0, 1.0f, 0 } }
 			};
 
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
 
 			// Composed pass (second pass)
 			std::vector<SubpassAttachment> composition_attachments = {
-				{ .texture = composition_image, .view = composition_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1 } },
+				{ .texture = composition_image, .view = composition_image_view, .type = AttachmentType::COLOR, .clear = { 0, 0, 0, 1, 0.0f, 0 } },
 			};
 
 			SubpassDependencyInfo composition_info = {

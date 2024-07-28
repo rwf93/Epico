@@ -9,5 +9,4 @@
 
 #include <math.h>
 
-#pragma warning(push) // what the fuck...
 #include <glm/glm.hpp>

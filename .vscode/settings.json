@@ -95,7 +95,12 @@
         "any": "cpp",
         "bitset": "cpp",
         "complex": "cpp",
-        "expected": "cpp"
+        "expected": "cpp",
+        "*.tcc": "cpp",
+        "cwctype": "cpp",
+        "memory_resource": "cpp",
+        "string_view": "cpp",
+        "numbers": "cpp"
     },
     "cmake.ignoreCMakeListsMissing": true
 }
