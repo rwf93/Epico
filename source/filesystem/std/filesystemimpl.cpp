@@ -17,7 +17,7 @@ void StandardFilesystem::unmount(std::filesystem::path virtual_dir) {
 
 std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::path virtual_path) {
 	std::string virtual_dir = virtual_path.string();
-	int path_index = 0;
+	size_t path_index = 0;
 
 	for(size_t i = 0; i < virtual_dir.size(); i++)
 		if(virtual_dir[i] == '/')

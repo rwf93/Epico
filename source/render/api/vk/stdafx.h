@@ -3,6 +3,14 @@
 #include <map>
 #include <span>
 
+#define EAPI_EXPORT
+#include <platform/platform.h>
+
+// Some random library forgot to push before popping for MSVC...
+#if defined(PLATFORM_WINDOWS)
+    #pragma warning(push)
+#endif
+
 #define VK_NO_PROTOTYPES
 
 #include <volk.h>
@@ -19,9 +27,6 @@
 
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyVulkan.hpp>
-
-#define EAPI_EXPORT
-#include <platform/platform.h>
 
 #include <public/render/renderapi.h>
 
