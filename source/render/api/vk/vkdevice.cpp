@@ -2,9 +2,6 @@
 #include "vkinstance.h"
 #include "vksurface.h"
 
-VulkanDevice::VulkanDevice() {}
-VulkanDevice::~VulkanDevice() {}
-
 void VulkanDevice::init(FunctorQueue<> &queue, VulkanInstance *vkinstance, VulkanSurface *vksurface) {
 	this->instance = vkinstance;
 	this->surface = vksurface;
@@ -36,6 +33,7 @@ void VulkanDevice::retreive_device() {
 							.set_minimum_version(1, 3)
 							.set_required_features_13(features_13)
 							.set_required_features_12(features_12)
+							.add_required_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
 							.select();
 
 	if(!selector_ret.has_value()) {

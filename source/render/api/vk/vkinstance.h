@@ -2,8 +2,8 @@
 
 class VulkanInstance {
 public:
-	VulkanInstance();
-	~VulkanInstance();
+	VulkanInstance() = default;
+	~VulkanInstance() = default;
 
 	void init(FunctorQueue<> &queue);
 	void fini();

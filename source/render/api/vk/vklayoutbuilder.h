@@ -9,7 +9,7 @@ public:
 
 	void clear(LayoutHandle handle, VulkanLayout *vklayout);
 
-	RenderLayoutBuilder *add_uniform(ShaderStage stage);
+	RenderLayoutBuilder *add_uniform(ShaderStage stage, UniformType type) override;
 	LayoutHandle build();
 
 private:

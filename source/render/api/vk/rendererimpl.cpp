@@ -11,6 +11,8 @@
 
 #include "rendererimpl.h"
 
+CREATE_FACTORY(VulkanAPI);
+
 void VulkanAPI::init(AppContext *app_context) {
 	this->context = app_context;
 
@@ -239,11 +241,32 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 	}
 }
 
-void VulkanAPI::bind_graphic_shader(GraphicsProgramHandle handle) {
+void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
 	auto shader = shader_manager.try_get_graphics_program(handle).value_or(nullptr);
 	assert(shader);
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
+
+void VulkanAPI::bind_uniform(GraphicsProgramHandle program, BufferHandle handle, size_t offset, size_t range) {
+	auto shader = shader_manager.try_get_graphics_program(program).value_or(nullptr);
+	auto buffer = resource_manager.try_get_buffer(handle).value_or(nullptr);
+
+	VkDescriptorBufferInfo buffer_info = {};
+	buffer_info.buffer = buffer->get_buffer();
+	buffer_info.offset = offset;
+	buffer_info.range = range;
+
+	VkWriteDescriptorSet write_info = {};
+	write_info.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	write_info.dstSet = 0;
+	write_info.dstBinding = 0;
+	write_info.dstArrayElement = 0;
+	write_info.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	write_info.descriptorCount = 1;
+	write_info.pBufferInfo = &buffer_info;
+
+	vkCmdPushDescriptorSetKHR(command_pool.get_command()->get_command(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_layout(), 0, 1, &write_info);
+}
 
 void VulkanAPI::draw(uint32_t vertex_count, uint32_t instance_count) {
 	command_pool.get_command()->draw(vertex_count, instance_count, 0, 0);
@@ -336,7 +359,6 @@ void VulkanAPI::texture_view(
 	resource_manager.texture_view(view_handle, image_handle, view_info);
 }
 
-
 void VulkanAPI::rebuild() {
 	int width, height;
 	SDL_GetWindowSize(context->window, &width, &height);
@@ -349,5 +371,3 @@ void VulkanAPI::rebuild() {
 	if(resize_event)
 		resize_event(this);
 }
-
-CREATE_FACTORY(VulkanAPI);

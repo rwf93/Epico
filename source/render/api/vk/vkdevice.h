@@ -4,8 +4,8 @@ class VulkanInstance;
 class VulkanSurface;
 class VulkanDevice {
 public:
-	VulkanDevice();
-	~VulkanDevice();
+	VulkanDevice() = default;
+	~VulkanDevice() = default;
 
 	void init(FunctorQueue<> &queue, VulkanInstance *instance, VulkanSurface *surface);
 	void fini();

@@ -16,7 +16,7 @@ void VulkanLayoutBuilder::clear(LayoutHandle handle, VulkanLayout *vklayout) {
 	binding_infos.clear();
 }
 
-RenderLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage) {
+RenderLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage, UniformType type) {
 	uint64_t stage_bits = 0;
 
 	if(stage & ShaderStage::VERTEX)
@@ -26,9 +26,9 @@ RenderLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage) {
 		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	auto info = info::descriptor_set_layout_binding(
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		convert::convert_uniform_type(type),
 		static_cast<VkShaderStageFlagBits>(stage_bits),
-		static_cast<uint32_t>(binding_infos.size() + 1)
+		static_cast<uint32_t>(binding_infos.size())
 	);
 
 	binding_infos.push_back(info);
@@ -37,8 +37,7 @@ RenderLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage) {
 }
 
 LayoutHandle VulkanLayoutBuilder::build() {
-	auto layout_info = info::descriptor_set_layout_info(binding_infos);
-
+	auto layout_info = info::descriptor_set_layout_info(binding_infos, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 	layout->init(device, &layout_info);
 
 	return layout_handle;

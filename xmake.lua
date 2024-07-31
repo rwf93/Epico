@@ -35,7 +35,7 @@ rule("defaults_rule")
 
 		local precompiled_header = target:extraconf("rules", "defaults_rule", "precompiled_header") or nil
 		if precompiled_header then
-			--target:add("forceincludes", precompiled_header)
+			target:add("forceincludes", precompiled_header)
 			target:set("pcxxheader", precompiled_header)
 		end
 

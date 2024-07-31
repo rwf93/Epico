@@ -1,7 +1,5 @@
 #include "vkinstance.h"
 
-VulkanInstance::VulkanInstance() {}
-VulkanInstance::~VulkanInstance() {};
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT serverity,
@@ -12,6 +10,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 	UNUSED(serverity);
 	UNUSED(message_types);
 	UNUSED(user_data);
+	UNUSED(callback_data)
 
 	switch(serverity) {
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
@@ -48,6 +47,6 @@ void VulkanInstance::init(FunctorQueue<> &queue) {
 }
 
 void VulkanInstance::fini() {
-	//vkb::destroy_instance(instance);
+	vkb::destroy_instance(instance);
 }
 

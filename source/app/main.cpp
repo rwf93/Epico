@@ -4,8 +4,7 @@ struct Vertex {
 };
 
 struct SceneData {
-	glm::mat4 projection;
-	glm::mat4 view;
+	glm::vec3 color;
 };
 
 struct RendererPassHandles {
@@ -159,18 +158,10 @@ int main(int argc, char *argv[]) {
 	});
 
 	auto global_layout = render_api->create_layout()
-		->add_uniform(ShaderStage::VERTEX)
-		->add_uniform(ShaderStage::VERTEX)
-		->build();
-
-	auto composition_layout = render_api->create_layout()
-		->add_uniform(ShaderStage::FRAGMENT) // Position
-		->add_uniform(ShaderStage::FRAGMENT) // Albedo
-		->add_uniform(ShaderStage::FRAGMENT) // Light Data
+		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
 		->build();
 
 	UNUSED(global_layout);
-	UNUSED(composition_layout)
 
 	auto triangle_vertex_code = filesystem->read_file<char>("assets/shaders/triangle.vert.spv", true);
 	auto triangle_fragment_code = filesystem->read_file<char>("assets/shaders/triangle.frag.spv", true);
@@ -205,7 +196,6 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
-		->add_layout(composition_layout)
 		->build();
 
 	UNUSED(triangle_shader);
@@ -229,6 +219,9 @@ int main(int argc, char *argv[]) {
 	render_api->buffer_data(vbo_handle, BufferType::VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
 	render_api->buffer_data(ibo_handle, BufferType::INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
 
+	auto scene_data_handle = render_api->create_buffer();
+	render_api->buffer_data(scene_data_handle, BufferType::UNIFORM, sizeof(SceneData), nullptr);
+
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {
@@ -250,6 +243,10 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
+		SceneData scene_data = {};
+		scene_data.color = glm::vec3(1, 0, 0);
+		render_api->buffer_sub_data(scene_data_handle, 0, sizeof(SceneData), &scene_data);
+
 		render_api->begin();
 		{
 			render_api->clear(0, 0, 0, 0);
@@ -269,7 +266,8 @@ int main(int argc, char *argv[]) {
 			render_api->begin_pass(&deferred_info);
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
-				render_api->bind_graphic_shader(deferred_shader);
+				render_api->bind_uniform(deferred_shader, scene_data_handle, 0, sizeof(SceneData));
+				render_api->bind_shader(deferred_shader);
 				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
 				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
 				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
@@ -288,7 +286,7 @@ int main(int argc, char *argv[]) {
 			render_api->begin_pass(&composition_info);
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
-				render_api->bind_graphic_shader(composition_shader);
+				render_api->bind_shader(composition_shader);
 				render_api->draw(3, 1);
 			render_api->end_pass(&composition_info);
 

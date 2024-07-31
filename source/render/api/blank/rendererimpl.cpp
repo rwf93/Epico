@@ -7,6 +7,8 @@
 
 #include <spdlog/spdlog.h>
 
+CREATE_FACTORY(BlankRenderer);
+
 BlankRenderer::BlankRenderer() {
 	spdlog::info("Unused Renderer... What are you doing??");
 }
@@ -22,5 +24,3 @@ void BlankRenderer::begin() {
 void BlankRenderer::end() {
 
 }
-
-CREATE_FACTORY(BlankRenderer);

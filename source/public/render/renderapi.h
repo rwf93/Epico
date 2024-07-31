@@ -53,7 +53,8 @@ public:
 	virtual void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) = 0;
 
 	virtual void bind_buffer(BufferHandle handle, BindBufferType type) = 0;
-	virtual void bind_graphic_shader(GraphicsProgramHandle handle) = 0;
+	virtual void bind_shader(GraphicsProgramHandle handle) = 0;
+	virtual void bind_uniform(GraphicsProgramHandle shader, BufferHandle handle, size_t offset, size_t range) = 0;
 
 	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;
 	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) = 0;
@@ -82,7 +83,6 @@ public:
 		void *data,
 		int width, int height, int depth = 1
 	) = 0;
-
 
 	virtual void texture_view(
 		TextureViewHandle view_handle,

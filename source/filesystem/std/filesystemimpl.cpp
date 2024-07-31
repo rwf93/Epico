@@ -1,5 +1,7 @@
 #include "filesystemimpl.h"
 
+CREATE_FACTORY(StandardFilesystem);
+
 void StandardFilesystem::init(AppContext *app_context) {
 	this->context = app_context;
 	auto console = spdlog::stdout_color_mt("filesystem");
@@ -38,5 +40,3 @@ std::filesystem::path StandardFilesystem::resolve_physical_dir(std::filesystem::
 
 	return physical_dir;
 }
-
-CREATE_FACTORY(StandardFilesystem);
