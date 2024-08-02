@@ -152,6 +152,8 @@ int main(int argc, char *argv[]) {
 	auto test_handle = render_api->create_buffer();
 	render_api->buffer_data(test_handle, BufferType::UNIFORM, sizeof(SceneData), nullptr);
 
+	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
+
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {
@@ -228,12 +230,15 @@ int main(int argc, char *argv[]) {
 
 			render_api->show_image(albedo_image);
 
-			static RenderUI *ui = render_api->ui();
-			ui->begin_ui();
-				ui->show_demo_window();
-				ui->begin("Shader Picker");
-				ui->end();
-			ui->end_ui();
+			render_api->ui()->begin();
+				ImGui::NewFrame();
+
+				ImGui::Begin("fart");
+				ImGui::End();
+				ImGui::ShowDemoWindow();
+
+				ImGui::Render();
+			render_api->ui()->end();
 		}
 		render_api->end();
 		render_api->present();

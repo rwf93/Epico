@@ -81,7 +81,7 @@ private:
 	VulkanLayoutManager layout_manager = {};
 	VulkanProgramManager shader_manager = {};
 
-	VulkanImGUI ui_imgui = {};
+	VulkanUI ui_imgui = {};
 
 	ResizeEventFunction resize_event;
 };

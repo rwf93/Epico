@@ -18,4 +18,6 @@
 #include <glm/ext.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include <imgui.h>
+
 #endif

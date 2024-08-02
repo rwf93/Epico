@@ -8,10 +8,10 @@
 #include "vkcommandpool.h"
 #include "vkimgui.h"
 
-VulkanImGUI::VulkanImGUI() {}
-VulkanImGUI::~VulkanImGUI() {}
+VulkanUI::VulkanUI() {}
+VulkanUI::~VulkanUI() {}
 
-void VulkanImGUI::init(
+void VulkanUI::init(
 	FunctorQueue<> &queue,
 	AppContext *app_context,
 	VulkanInstance *vkinstance ,
@@ -80,20 +80,21 @@ void VulkanImGUI::init(
 	queue.push([&]() { fini(); });
 }
 
-void VulkanImGUI::fini() {
+void VulkanUI::fini() {
 	ImGui_ImplVulkan_Shutdown();
 	vkDestroyDescriptorPool(device->get_device(), descriptor_pool, nullptr);
 }
 
-void VulkanImGUI::begin_ui() {
+void VulkanUI::begin() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
-	ImGui::NewFrame();
 }
 
-void VulkanImGUI::end_ui() {
-	ImGui::Render();
+void *VulkanUI::get_context() {
+	return static_cast<void*>(ImGui::GetCurrentContext());
+}
 
+void VulkanUI::end() {
 	auto color_attachment = info::attachment_info(swapchain->get_swapchain_image_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	auto rendering_info = info::rendering_info(swapchain->get_swapchain().extent, &color_attachment, nullptr);
 
@@ -114,18 +115,6 @@ void VulkanImGUI::end_ui() {
 	);
 }
 
-void VulkanImGUI::begin(const char *name) {
-	ImGui::Begin(name);
-}
-
-void VulkanImGUI::end() {
-	ImGui::End();
-}
-
-void VulkanImGUI::show_demo_window() {
-	ImGui::ShowDemoWindow();
-}
-
-void VulkanImGUI::process_event(SDL_Event *event) {
+void VulkanUI::process_event(SDL_Event *event) {
 	ImGui_ImplSDL2_ProcessEvent(event);
 }

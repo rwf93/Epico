@@ -4,18 +4,17 @@ class VulkanInstance;
 class VulkanDevice;
 class VulkanSwapchain;
 class VulkanCommandPool;
-class VulkanImGUI: public RenderUI {
+class VulkanUI: public RenderUI {
 public:
-	VulkanImGUI();
-	~VulkanImGUI() override;
+	VulkanUI();
+	~VulkanUI() override;
 
 	void process_event(SDL_Event *event);
 
-	void begin_ui() override;
-	void end_ui() override;
-
-	void begin(const char *name) override;
+	void begin() override;
 	void end() override;
+
+	void *get_context() override;
 
 	void init(
 		FunctorQueue<> &queue,
@@ -27,7 +26,6 @@ public:
 	);
 	void fini();
 
-	void show_demo_window() override;
 private:
 	AppContext *context = nullptr;
 	VulkanInstance *instance = nullptr;
