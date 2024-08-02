@@ -3,7 +3,6 @@ set_defaultmode("debug")
 set_warnings("allextra", "error")
 
 add_requires(
-	"fmt 11.0.1",
 	"stb 2024.06.01",
 	"spdlog v1.14.1",
 	"vulkan-headers",
@@ -13,6 +12,18 @@ add_requires(
 	"vulkan-memory-allocator",
 	"glm"
 )
+
+add_requires("fmt 11.0.1", {
+	configs = {
+		shared = true
+	}
+})
+
+add_requires("assimp", {
+	configs = {
+		shared = true
+	}
+})
 
 add_requires("glslang 1.3.283+0", {
 	configs = {

@@ -6,6 +6,8 @@
 #include <public/render/renderui.h>
 
 #include <functional>
+#include <span>
+#include <array>
 
 enum class AttachmentType {
 	COLOR,
@@ -18,15 +20,20 @@ struct SubpassAttachment {
 	AttachmentType type;
 
 	struct ClearValue {
-		float r, g, b, a;
+		std::array<float, 4> rgba = { 0.0f, 0.0f, 0.0f, 1.0f };
 		float depth;
 		uint32_t stencil;
 	} clear;
 };
 
-struct SubpassDependencyInfo {
-	SubpassAttachment *attachments;
-	uint32_t count;
+struct UniformBind {
+	union {
+		BufferHandle buffer;
+		TextureHandle texture;
+	};
+	UniformType type;
+	size_t offset;
+	size_t range;
 };
 
 struct AppContext;
@@ -41,8 +48,8 @@ public:
 	virtual void begin() = 0;
 	virtual void end() = 0;
 
-	virtual void begin_pass(SubpassDependencyInfo *dependencies) = 0;
-	virtual void end_pass(SubpassDependencyInfo *dependencies) = 0;
+	virtual void begin_pass(std::span<SubpassAttachment> dependencies) = 0;
+	virtual void end_pass(std::span<SubpassAttachment> dependencies) = 0;
 
 	virtual void present() = 0;
 
@@ -54,7 +61,7 @@ public:
 
 	virtual void bind_buffer(BufferHandle handle, BindBufferType type) = 0;
 	virtual void bind_shader(GraphicsProgramHandle handle) = 0;
-	virtual void bind_uniform(GraphicsProgramHandle shader, BufferHandle handle, size_t offset, size_t range) = 0;
+	virtual void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) = 0;
 
 	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;
 	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) = 0;

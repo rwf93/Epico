@@ -10,6 +10,14 @@ layout(binding = 0) uniform SceneData {
     vec3 color;
 } scene;
 
+//struct StorageData {
+//    vec3 color;
+//};
+//
+//layout(std140, set = 0, binding = 1) readonly buffer StorageDataUniform {
+//    StorageData objects[];
+//} storage;
+
 void main() {
     gl_Position = vec4(in_vertex, 1.0);
     out_vertex = in_vertex;

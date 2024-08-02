@@ -36,6 +36,10 @@ void VulkanDevice::retreive_device() {
 							.add_required_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
 							.select();
 
+	VkPhysicalDeviceShaderDrawParametersFeatures draw_features = {};
+	draw_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    draw_features.shaderDrawParameters = VK_TRUE;
+
 	if(!selector_ret.has_value()) {
 		LOGGER->error("Couldn't create Physical Device Selector", selector_ret.error().message());
 		std::abort();
@@ -43,6 +47,7 @@ void VulkanDevice::retreive_device() {
 
 	vkb::DeviceBuilder builder(selector_ret.value());
 	auto builder_ret = builder
+		.add_pNext(&draw_features)
 		.build();
 
 	if(!builder_ret.has_value()) {

@@ -43,7 +43,7 @@ public:
 		size_t size
 	) override;
 
-	RenderGraphicProgramBuilder *add_layout(LayoutHandle layout);
+	RenderGraphicProgramBuilder *set_layout(LayoutHandle layout);
 
 	RenderGraphicProgramBuilder *add_attachment(ImageFormat format) override;
 private:
@@ -69,8 +69,8 @@ private:
 	std::vector<VkPipelineColorBlendAttachmentState> color_states = {};
 	std::vector<VkFormat> attachment_formats = {};
 
-	std::vector<VkDescriptorSetLayout> descriptor_layouts;
-	std::vector<VkPipelineLayout> pipeline_layouts;
+	LayoutHandle current_pipeline_layout;
+	LayoutHandle default_pipeline_layout; // Default layout.
 
 	VkFormat depth_format = {};
 };

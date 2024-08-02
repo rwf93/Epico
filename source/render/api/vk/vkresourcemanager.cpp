@@ -87,7 +87,7 @@ void VulkanResourceManager::texture_data(
 	VkImageCreateInfo image_info,
 	void *data
 ) {
-	auto resource = try_get_texture(handle).value_or(nullptr);
+	auto resource = try_get_texture(handle).value();
 	assert(resource);
 
 	if(resource->get_state() == ResourceState::READY)
@@ -142,8 +142,8 @@ void VulkanResourceManager::texture_view(
 	TextureHandle image_handle,
 	VkImageViewCreateInfo image_view_info
 ) {
-	auto image_view = try_get_texture_view(view_handle).value_or(nullptr);
-	auto image = try_get_texture(image_handle).value_or(nullptr);
+	auto image_view = try_get_texture_view(view_handle).value();
+	auto image = try_get_texture(image_handle).value();
 
 	assert(image_view);
 	assert(image);
@@ -160,7 +160,7 @@ void VulkanResourceManager::texture_view(
 }
 
 void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size) {
-	auto resource = try_get_buffer(handle).value_or(nullptr);
+	auto resource = try_get_buffer(handle).value();
 	assert(resource);
 
 	if(!resource) {
@@ -207,7 +207,7 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferCreateFlags
 }
 
 void VulkanResourceManager::buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
-	auto resource = try_get_buffer(handle).value_or(nullptr);
+	auto resource = try_get_buffer(handle).value();
 	assert(resource);
 
 	if(!resource) {

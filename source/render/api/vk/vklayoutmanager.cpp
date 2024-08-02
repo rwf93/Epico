@@ -28,7 +28,7 @@ void VulkanLayoutManager::fini() {
 }
 
 RenderLayoutBuilder *VulkanLayoutManager::create_layout() {
-    auto last_layout = layouts.size() + 1;
+    LayoutHandle last_layout = static_cast<LayoutHandle>(layouts.size() + 1);
 
     auto layout = new VulkanLayout();
     layouts.insert(std::make_pair(last_layout, layout));

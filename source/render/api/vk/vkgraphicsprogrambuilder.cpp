@@ -9,6 +9,7 @@ VulkanGraphicsProgramBuilder::~VulkanGraphicsProgramBuilder() {}
 void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
 	this->device = vkdevice;
 	this->layout_manager = vklayoutmanager;
+	this->default_pipeline_layout = layout_manager->create_layout()->build();
 }
 
 void VulkanGraphicsProgramBuilder::clear(
@@ -24,7 +25,8 @@ void VulkanGraphicsProgramBuilder::clear(
 	shader_stages.clear();
 	color_states.clear();
 	attachment_formats.clear();
-	descriptor_layouts.clear();
+
+	current_pipeline_layout = LayoutHandle::Invalid;
 
 	assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -65,10 +67,6 @@ void VulkanGraphicsProgramBuilder::clear(
 }
 
 GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
-	VkPipelineLayout pipeline_layout;
-	auto pipeline_layout_info = info::pipeline_layout_info(descriptor_layouts);
-	VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));
-
 	auto input_info = info::input_vertex_info(bindings, attributes);
 	auto rendering_create_info = info::rendering_create_info(attachment_formats, depth_format);
 
@@ -95,7 +93,10 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	pipeline_info.pColorBlendState = &color_info;
 	pipeline_info.pDepthStencilState = &stencil_info;
 	pipeline_info.pDynamicState = &dynamic_info;
-	pipeline_info.layout = pipeline_layout;
+	pipeline_info.layout = layout_manager
+								->try_get_layout(current_pipeline_layout)
+								.value_or(layout_manager->try_get_layout(default_pipeline_layout).value())
+								->get_pipeline_layout();
 
 	shader->init(&pipeline_info);
 
@@ -106,8 +107,6 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 }
 
 void VulkanGraphicsProgramBuilder::fini() {
-	for(auto &pipeline_layout: pipeline_layouts)
-		vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
 }
 
 RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(ShaderPrimitive type) {
@@ -205,9 +204,8 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_layout(LayoutHandle layout_handle) {
-	auto layout_instance = layout_manager->get_layout(layout_handle);
-	descriptor_layouts.push_back(layout_instance->get_layout());
+RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_layout(LayoutHandle layout_handle) {
+	current_pipeline_layout = layout_handle;
 	return this;
 }
 

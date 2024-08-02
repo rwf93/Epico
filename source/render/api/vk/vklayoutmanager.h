@@ -18,11 +18,16 @@ public:
 
     RenderLayoutBuilder *create_layout();
 
-    VulkanLayout *get_layout(LayoutHandle handle) {
-        if(layouts.contains(handle))
-            return dynamic_cast<VulkanLayout*>(layouts.at(handle));
-        return nullptr;
-    }
+	std::optional<VulkanLayout*> try_get_layout(LayoutHandle handle) {
+		if(!layouts.contains(handle))
+			return std::nullopt;
+
+		auto resource = layouts.at(handle);
+		if(!resource)
+			return std::nullopt;
+
+		return dynamic_cast<VulkanLayout*>(resource);
+	}
 
 private:
 	VulkanInstance *instance;
@@ -32,5 +37,5 @@ private:
     VulkanLayoutBuilder layout_builder;
 
     std::map<LayoutHandle, RenderLayout*> layouts;
-	LayoutHandle current_layout_handle = 0;
+	LayoutHandle current_layout_handle = LayoutHandle::Invalid;
 };

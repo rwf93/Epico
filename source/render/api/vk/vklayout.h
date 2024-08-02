@@ -9,10 +9,12 @@ public:
     LayoutState get_state() { return state; }
 
     VkDescriptorSetLayout get_layout() { return layout; }
+    VkPipelineLayout get_pipeline_layout() { return pipeline_layout; }
 
 private:
     VulkanDevice *device;
     VkDescriptorSetLayout layout;
+    VkPipelineLayout pipeline_layout;
 
     LayoutState state = LayoutState::LAYOUT_UNREADY;
 };

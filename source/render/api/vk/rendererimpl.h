@@ -10,8 +10,8 @@ public:
 	void end() override;
 	void present() override;
 
-	void begin_pass(SubpassDependencyInfo *dependencies) override;
-	void end_pass(SubpassDependencyInfo *dependencies) override;
+	void begin_pass(std::span<SubpassAttachment> dependencies) override;
+	void end_pass(std::span<SubpassAttachment> dependencies) override;
 
 	void clear(float r, float g, float b, float a) override;
 	void clear(TextureHandle handle, float r, float g, float b, float a) override;
@@ -21,7 +21,7 @@ public:
 
 	void bind_buffer(BufferHandle handle, BindBufferType type) override;
 	void bind_shader(GraphicsProgramHandle handle) override;
-	void bind_uniform(GraphicsProgramHandle shader, BufferHandle handle, size_t offset, size_t range) override;
+	void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) override;
 
 	void draw(uint32_t vertex_count, uint32_t instance_count) override;
 	void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) override;

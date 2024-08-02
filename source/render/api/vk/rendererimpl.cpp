@@ -87,19 +87,19 @@ void VulkanAPI::end() {
 	VK_CHECK(vkQueueSubmit2(device.get_graphics_queue(), 1, &submit_info, command_pool.get_fence()));
 }
 
-void VulkanAPI::begin_pass(SubpassDependencyInfo *dependencies) {
+void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	ZoneScoped;
 
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
 	std::vector<VkRenderingAttachmentInfo> depth_attachments;
 
-	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto texture = resource_manager.try_get_texture(dependencies->attachments[i].texture).value_or(nullptr);
-		auto texture_view = resource_manager.try_get_texture_view(dependencies->attachments[i].view).value_or(nullptr);
+	for(auto &dependency: dependencies) {
+		auto texture = resource_manager.try_get_texture(dependency.texture).value();
+		auto texture_view = resource_manager.try_get_texture_view(dependency.view).value();
 
-		VkClearValue *clear_value = reinterpret_cast<VkClearValue*>(&dependencies->attachments[i].clear);
+		VkClearValue *clear_value = reinterpret_cast<VkClearValue*>(&dependency.clear);
 
-		switch(dependencies->attachments[i].type) {
+		switch(dependency.type) {
 			case AttachmentType::COLOR:
 				color_attachments.push_back(
 					info::attachment_info(
@@ -143,12 +143,12 @@ void VulkanAPI::begin_pass(SubpassDependencyInfo *dependencies) {
 	command_pool.get_command()->begin_rendering(&rendering_info);
 }
 
-void VulkanAPI::end_pass(SubpassDependencyInfo *dependencies) {
+void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
 	command_pool.get_command()->end_rendering();
 
-	for(uint32_t i = 0; i < dependencies->count; i++) {
-		auto resource = resource_manager.try_get_texture(dependencies->attachments[i].texture).value_or(nullptr);
-		switch(dependencies->attachments[i].type) {
+	for(auto &dependency: dependencies) {
+		auto resource = resource_manager.try_get_texture(dependency.texture).value();
+		switch(dependency.type) {
 			case AttachmentType::COLOR:
 				command_pool.transition_image(
 					resource->get_image(),
@@ -190,7 +190,7 @@ void VulkanAPI::clear(float r, float g, float b, float a) {
 }
 
 void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) {
-	auto image = resource_manager.try_get_texture(handle).value_or(nullptr);
+	auto image = resource_manager.try_get_texture(handle).value();
 	command_pool.clear_image(image->get_image(), r, g, b, a);
 }
 
@@ -216,7 +216,7 @@ void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
 }
 
 void VulkanAPI::show_image(TextureHandle handle) {
-	auto resource = resource_manager.try_get_texture(handle).value_or(nullptr);
+	auto resource = resource_manager.try_get_texture(handle).value();
 
 	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -228,7 +228,7 @@ void VulkanAPI::show_image(TextureHandle handle) {
 }
 
 void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
-	auto resource = resource_manager.try_get_buffer(handle).value_or(nullptr);
+	auto resource = resource_manager.try_get_buffer(handle).value();
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
 		case BindBufferType::VERTEX:
@@ -242,30 +242,69 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 }
 
 void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
-	auto shader = shader_manager.try_get_graphics_program(handle).value_or(nullptr);
+	auto shader = shader_manager.try_get_graphics_program(handle).value();
 	assert(shader);
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
-void VulkanAPI::bind_uniform(GraphicsProgramHandle program, BufferHandle handle, size_t offset, size_t range) {
-	auto shader = shader_manager.try_get_graphics_program(program).value_or(nullptr);
-	auto buffer = resource_manager.try_get_buffer(handle).value_or(nullptr);
+void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
+	auto layout = layout_manager.try_get_layout(layout_handle).value();
+	assert(layout);
+	std::vector<VkWriteDescriptorSet> write_sets = {};
 
-	VkDescriptorBufferInfo buffer_info = {};
-	buffer_info.buffer = buffer->get_buffer();
-	buffer_info.offset = offset;
-	buffer_info.range = range;
+	for(uint32_t i = 0; i < binds.size(); i++) {
+		UniformBind &bind = binds[i];
 
-	VkWriteDescriptorSet write_info = {};
-	write_info.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	write_info.dstSet = 0;
-	write_info.dstBinding = 0;
-	write_info.dstArrayElement = 0;
-	write_info.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	write_info.descriptorCount = 1;
-	write_info.pBufferInfo = &buffer_info;
+		switch(bind.type) {
+			case UniformType::BUFFER: {
+				auto resource = resource_manager.try_get_buffer(bind.buffer).value();
 
-	vkCmdPushDescriptorSetKHR(command_pool.get_command()->get_command(), VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_layout(), 0, 1, &write_info);
+				VkDescriptorBufferInfo buffer_info = {};
+				buffer_info.buffer = resource->get_buffer();
+				buffer_info.offset = bind.offset;
+				buffer_info.range = bind.range;
+
+				VkWriteDescriptorSet descriptor_write = {};
+				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptor_write.dstSet = 0;
+				descriptor_write.dstBinding = i;
+				descriptor_write.dstArrayElement = 0;
+				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptor_write.descriptorCount = 1;
+				descriptor_write.pBufferInfo = &buffer_info;
+
+				write_sets.push_back(descriptor_write);
+			} break;
+			case UniformType::STORAGE: {
+				auto resource = resource_manager.try_get_buffer(bind.buffer).value();
+
+				VkDescriptorBufferInfo buffer_info = {};
+				buffer_info.buffer = resource->get_buffer();
+				buffer_info.offset = bind.offset;
+				buffer_info.range = bind.range;
+
+				VkWriteDescriptorSet descriptor_write = {};
+				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptor_write.dstSet = 0;
+				descriptor_write.dstBinding = i;
+				descriptor_write.dstArrayElement = 0;
+				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				descriptor_write.descriptorCount = 1;
+				descriptor_write.pBufferInfo = &buffer_info;
+
+				write_sets.push_back(descriptor_write);
+			} break;
+			default: break;
+		}
+	}
+
+	vkCmdPushDescriptorSetKHR(
+		command_pool.get_command()->get_command(),
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		layout->get_pipeline_layout(),
+		0,
+		static_cast<uint32_t>(write_sets.size()), write_sets.data()
+	);
 }
 
 void VulkanAPI::draw(uint32_t vertex_count, uint32_t instance_count) {
@@ -352,9 +391,9 @@ void VulkanAPI::texture_view(
 	view_info.viewType = convert::convert_image_view_dimensions(dimensions);
 	view_info.format = convert::convert_image_format(format);
 	view_info.subresourceRange.baseMipLevel = min_level;
-    view_info.subresourceRange.baseArrayLayer = min_layer;
+	view_info.subresourceRange.baseArrayLayer = min_layer;
 	view_info.subresourceRange.levelCount = num_levels;
-    view_info.subresourceRange.layerCount = num_layers;
+	view_info.subresourceRange.layerCount = num_layers;
 
 	resource_manager.texture_view(view_handle, image_handle, view_info);
 }

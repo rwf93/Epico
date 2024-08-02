@@ -44,6 +44,7 @@ struct FactoryHandle {
 
 	void release() {
 		if(good) {
+			delete interface;
 			platform_freelibrary(handle);
 		}
 	}
@@ -83,6 +84,9 @@ fail:
 	return {nullptr, nullptr, false};
 };
 
-#define CREATE_FACTORY(CONCRETE_IMPL) \
-	static CONCRETE_IMPL factory_impl; \
-	extern "C" EAPI CONCRETE_IMPL *create_factory() { return &factory_impl; }
+#define CREATE_FACTORY(CONCRETE_IMPL) 							\
+	extern "C" EAPI CONCRETE_IMPL *create_factory() { 			\
+		static CONCRETE_IMPL *factory_impl = nullptr; 			\
+		if(!factory_impl) factory_impl = new CONCRETE_IMPL##(); \
+		return factory_impl; 									\
+	}

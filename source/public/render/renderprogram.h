@@ -89,5 +89,5 @@ public:
 		size_t size
 	) = 0;
 
-	virtual RenderGraphicProgramBuilder *add_layout(LayoutHandle layout) = 0;
+	virtual RenderGraphicProgramBuilder *set_layout(LayoutHandle layout) = 0;
 };

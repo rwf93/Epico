@@ -1,6 +1,6 @@
 #pragma once
 
-typedef uint64_t LayoutHandle;
+enum class LayoutHandle { Invalid = 0 };
 
 enum class ShaderStage;
 
@@ -8,7 +8,6 @@ enum LayoutState {
     LAYOUT_UNREADY,
     LAYOUT_READY
 };
-
 
 enum class UniformType {
     BUFFER,
