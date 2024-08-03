@@ -247,6 +247,7 @@ void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
+// MSVC is for some optimizing this function oddly casuing weird behaviour with vk.
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
 	auto layout = layout_manager.try_get_layout(layout_handle).value();
 	assert(layout);
@@ -257,43 +258,45 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 
 		switch(bind.type) {
 			case UniformType::BUFFER: {
-				auto resource = resource_manager.try_get_buffer(bind.buffer).value();
-
-				VkDescriptorBufferInfo buffer_info = {};
-				buffer_info.buffer = resource->get_buffer();
-				buffer_info.offset = bind.offset;
-				buffer_info.range = bind.range;
-
 				VkWriteDescriptorSet descriptor_write = {};
 				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				descriptor_write.dstSet = 0;
 				descriptor_write.dstBinding = i;
 				descriptor_write.dstArrayElement = 0;
+				descriptor_write.descriptorCount = 1;
+
+				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer).value();
+
+				VkDescriptorBufferInfo buffer_info = {};
+				buffer_info.buffer = buffer_resource->get_buffer();
+				buffer_info.offset = bind.offset;
+				buffer_info.range = bind.range;
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptor_write.descriptorCount = 1;
 				descriptor_write.pBufferInfo = &buffer_info;
 
 				write_sets.push_back(descriptor_write);
-			} break;
+				break;
+			}
 			case UniformType::STORAGE: {
-				auto resource = resource_manager.try_get_buffer(bind.buffer).value();
-
-				VkDescriptorBufferInfo buffer_info = {};
-				buffer_info.buffer = resource->get_buffer();
-				buffer_info.offset = bind.offset;
-				buffer_info.range = bind.range;
-
 				VkWriteDescriptorSet descriptor_write = {};
 				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				descriptor_write.dstSet = 0;
 				descriptor_write.dstBinding = i;
 				descriptor_write.dstArrayElement = 0;
-				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 				descriptor_write.descriptorCount = 1;
+
+				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer).value();
+
+				VkDescriptorBufferInfo buffer_info = {};
+				buffer_info.buffer = buffer_resource->get_buffer();
+				buffer_info.offset = bind.offset;
+				buffer_info.range = bind.range;
+				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 				descriptor_write.pBufferInfo = &buffer_info;
 
 				write_sets.push_back(descriptor_write);
-			} break;
+				break;
+			}
 			default: break;
 		}
 	}

@@ -5,11 +5,15 @@ enum class TextureViewHandle: 	size_t { Invalid = 0 };
 enum class BufferHandle: 		size_t { Invalid = 0 };
 
 enum class BufferType {
-	VERTEX,
-	INSTANCE,
-	UNIFORM,
-	STORAGE
+	VERTEX  = 1 << 0,
+	INSTANCE = 1 << 1,
+	UNIFORM = 1 << 2,
+	STORAGE = 1 << 3
 };
+
+inline bool operator & ( BufferType lhs, BufferType rhs ) {
+	return static_cast<bool>( static_cast<int>(lhs) & static_cast<int>(rhs) );
+}
 
 enum class BindBufferType {
 	VERTEX,

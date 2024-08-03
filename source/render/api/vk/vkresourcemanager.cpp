@@ -159,7 +159,7 @@ void VulkanResourceManager::texture_view(
 	image_view->init(device, image, &image_view_info);
 }
 
-void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size) {
+void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size) {
 	auto resource = try_get_buffer(handle).value();
 	assert(resource);
 
@@ -172,11 +172,11 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferCreateFlags
 		resource->fini();
 
 	auto staging_buffer_info = info::buffer_create_info(size);
+
 	auto buffer_info = info::buffer_create_info(
 		size,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | type
+		type | VK_BUFFER_USAGE_TRANSFER_DST_BIT
 	);
-
 	auto allocate_info = info::allocation_create_info();
 
 	resource->init(

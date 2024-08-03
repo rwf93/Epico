@@ -34,7 +34,7 @@ public:
 		VkImageViewCreateInfo image_view_info
 	);
 
-	void buffer_data(BufferHandle handle, VkBufferCreateFlags type, void *data, VkDeviceSize size);
+	void buffer_data(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size);
 	void buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
 	std::optional<VulkanTexture*> try_get_texture(TextureHandle handle) {

@@ -4,11 +4,14 @@ struct Vertex {
 };
 
 struct SceneData {
+	glm::mat4 view;
+	glm::mat4 projection;
+	glm::mat4 model;
 	glm::vec3 color;
 };
 
 struct StorageData {
-	glm::vec3 color;
+	glm::mat4 model;
 };
 
 struct RendererPassHandles {
@@ -99,6 +102,7 @@ int main(int argc, char *argv[]) {
 
 	auto global_layout = render_api->create_layout()
 		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
+		->add_uniform(ShaderStage::VERTEX, UniformType::STORAGE)
 		->build();
 
 	UNUSED(global_layout);
@@ -149,14 +153,22 @@ int main(int argc, char *argv[]) {
 	auto scene_data_handle = render_api->create_buffer();
 	render_api->buffer_data(scene_data_handle, BufferType::UNIFORM, sizeof(SceneData), nullptr);
 
-	auto test_handle = render_api->create_buffer();
-	render_api->buffer_data(test_handle, BufferType::UNIFORM, sizeof(SceneData), nullptr);
+	auto storage_data_handle = render_api->create_buffer();
+	render_api->buffer_data(storage_data_handle, BufferType::STORAGE, sizeof(StorageData) * 1024, nullptr);
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
+
+	clock_t start_time = std::clock();
+	float time_delta = 0;
+	float time = 0;
 
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {
+		clock_t current_time = std::clock();
+		time_delta = static_cast<float>(current_time - start_time) / CLOCKS_PER_SEC;
+		time = static_cast<float>(current_time) / CLOCKS_PER_SEC;
+
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
 			if(event.type == SDL_QUIT) quit = true;
@@ -177,12 +189,82 @@ int main(int argc, char *argv[]) {
 
 		glm::vec3 camPos = { 0.f,0.f,-2.f };
 
-		glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
-		glm::mat4 projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
+		static float frame = 0;
+		frame += 0.01f;
+
+		static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
+		static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
+		static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+		static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
+
+		{
+			int mx = 0, my = 0;
+
+			SDL_PumpEvents();
+			const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
+			const Uint8* key_state = SDL_GetKeyboardState(NULL);
+
+			static float pitch = 0.0f;
+			static float yaw = -90.0f;
+			const float sensitivity = 0.1f;
+
+			static float last_mx = 400.0f, last_my = 300.0f;
+
+			float offset_mx = (float)mx - last_mx;
+			float offset_my = last_my - (float)my;
+
+			last_mx = static_cast<float>(mx);
+			last_my = static_cast<float>(my);
+
+			if(mouse_state & SDL_BUTTON(3)) {
+				offset_mx *= sensitivity;
+				offset_my *= sensitivity;
+
+				yaw += offset_mx;
+				pitch += offset_my;
+			}
+
+			static glm::vec3 camera_direction = {};
+
+			camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+			camera_direction.y = sin(glm::radians(pitch));
+			camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+			camera_front = glm::normalize(camera_direction);
+			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
+
+			float camera_speed = 0.3f;
+
+			if(key_state[SDL_SCANCODE_LSHIFT])
+				camera_speed *= 6.0f;
+
+			if(key_state[SDL_SCANCODE_W])
+				camera_position += camera_front * (time_delta * camera_speed);
+
+			if(key_state[SDL_SCANCODE_S])
+				camera_position -= camera_front * (time_delta * camera_speed);
+
+			if(key_state[SDL_SCANCODE_D])
+				camera_position += camera_right * (time_delta * camera_speed);
+
+			if(key_state[SDL_SCANCODE_A])
+				camera_position -= camera_right * (time_delta * camera_speed);
+		}
 
 		SceneData scene_data = {};
-		scene_data.color = glm::vec3(0, 0, 1);
+		scene_data.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+		scene_data.projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
+		scene_data.projection[1][1] *= -1;
+		scene_data.model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, frame, 0), glm::vec3(1));
+		scene_data.color = glm::vec3(1);
+
 		render_api->buffer_sub_data(scene_data_handle, 0, sizeof(SceneData), &scene_data);
+
+		StorageData storage_data = {};
+		storage_data.model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1));
+		render_api->buffer_sub_data(storage_data_handle, 0, sizeof(StorageData), &storage_data);
+		storage_data.model = calculate_model_matrix(glm::vec3(0, 1.5, 0), glm::vec3(0, 0, 0), glm::vec3(1));
+		render_api->buffer_sub_data(storage_data_handle, sizeof(StorageData), sizeof(StorageData), &storage_data);
 
 		render_api->begin();
 		{
@@ -216,6 +298,12 @@ int main(int argc, char *argv[]) {
 					.offset = 0,
 					.range = sizeof(SceneData)
 				},
+				{
+					.buffer = storage_data_handle,
+					.type = UniformType::STORAGE,
+					.offset = 0,
+					.range = sizeof(StorageData) * 1024
+				},
 			};
 
 			render_api->begin_pass(deferred_attachments);
@@ -226,6 +314,7 @@ int main(int argc, char *argv[]) {
 				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
 				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
 				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
+				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 1);
 			render_api->end_pass(deferred_attachments);
 
 			render_api->show_image(albedo_image);
@@ -242,6 +331,8 @@ int main(int argc, char *argv[]) {
 		}
 		render_api->end();
 		render_api->present();
+
+		start_time = current_time;
 	}
 
 	render_api.release();
