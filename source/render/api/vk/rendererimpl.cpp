@@ -177,7 +177,7 @@ void VulkanAPI::present() {
 	present_info.waitSemaphoreCount = 1;
 	present_info.pImageIndices = &swapchain.get_image_index();
 
-	VkResult present_result = vkQueuePresentKHR(device.get_graphics_queue(), &present_info);
+	VkResult present_result = vkQueuePresentKHR(device.get_present_queue(), &present_info);
 	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
 		rebuild();
 

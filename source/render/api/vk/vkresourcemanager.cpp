@@ -175,7 +175,7 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBi
 
 	auto buffer_info = info::buffer_create_info(
 		size,
-		type | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		(type == VK_BUFFER_USAGE_VERTEX_BUFFER_BIT || type == VK_BUFFER_USAGE_INDEX_BUFFER_BIT) ? type | VK_BUFFER_USAGE_TRANSFER_DST_BIT : type
 	);
 	auto allocate_info = info::allocation_create_info();
 
@@ -187,23 +187,27 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBi
 		&allocate_info
 	);
 
-	// Skip initalizing the buffer with data, just create the buffer object's metadata.
 	if(!data)
 		return;
 
-	VulkanBuffer staging_buffer;
-	staging_buffer.init(
-		device,
-		command_pool,
-		allocator,
-		&staging_buffer_info,
-		&allocate_info
-	);
+	if(buffer_info.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
+		VulkanBuffer staging_buffer;
+		staging_buffer.init(
+			device,
+			command_pool,
+			allocator,
+			&staging_buffer_info,
+			&allocate_info
+		);
 
-	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
-	resource->stage(&staging_buffer, size);
+		memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
 
-	staging_buffer.fini();
+		resource->stage(&staging_buffer, size);
+
+		staging_buffer.fini();
+	} else {
+		memcpy(resource->get_allocation_info().pMappedData, data, size);
+	}
 }
 
 void VulkanResourceManager::buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {

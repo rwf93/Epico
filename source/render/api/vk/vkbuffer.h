@@ -41,5 +41,7 @@ private:
 	VmaAllocation allocation;
 	VmaAllocationInfo allocation_info = {};
 
+	VkBufferCreateInfo *create_info;
+
 	ResourceState state = ResourceState::UNREADY;
 };
