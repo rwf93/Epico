@@ -96,6 +96,7 @@ CONVERTER(convert_polygon_mode, ShaderPolygonMode, VkPolygonMode, VK_POLYGON_MOD
 
 CONVERTER(convert_compare_op, ShaderCompareOp, VkCompareOp, VK_COMPARE_OP_NEVER,
 	{ ShaderCompareOp::NEVER, VK_COMPARE_OP_NEVER },
+	{ ShaderCompareOp::LESS, VK_COMPARE_OP_LESS },
 	{ ShaderCompareOp::ALWAYS, VK_COMPARE_OP_ALWAYS },
 	{ ShaderCompareOp::LESS_OR_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL },
 	{ ShaderCompareOp::GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL },

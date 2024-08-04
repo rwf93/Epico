@@ -130,12 +130,6 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool w
 	stencil_info.depthTestEnable = VK_TRUE;
 	stencil_info.depthWriteEnable = write_enable;
 	stencil_info.depthCompareOp = convert::convert_compare_op(compare);
-	stencil_info.depthBoundsTestEnable = VK_FALSE;
-	stencil_info.stencilTestEnable = VK_FALSE;
-	stencil_info.front = {};
-	stencil_info.back = {};
-	stencil_info.minDepthBounds = 0.f;
-	stencil_info.maxDepthBounds = 1.f;
 
 	return this;
 }

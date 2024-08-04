@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_depth_test(true, ShaderCompareOp::GREATER_OR_EQUAL)
+		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
 		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
 					.texture = depth_image,
 					.view = depth_image_view,
 					.type = AttachmentType::DEPTH,
-					.clear = { .depth = 0.0f, .stencil = 0 }
+					.clear = { .rgba = { 1.0f }, .depth = 0.0f, .stencil = 0 }
 				}
 			};
 

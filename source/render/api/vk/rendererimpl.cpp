@@ -98,7 +98,6 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 		auto texture_view = resource_manager.try_get_texture_view(dependency.view).value();
 
 		VkClearValue *clear_value = reinterpret_cast<VkClearValue*>(&dependency.clear);
-
 		switch(dependency.type) {
 			case AttachmentType::COLOR:
 				color_attachments.push_back(

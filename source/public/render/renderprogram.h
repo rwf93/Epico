@@ -46,6 +46,7 @@ enum class ShaderPolygonMode {
 
 enum class ShaderCompareOp {
 	NEVER,
+	LESS,
 	ALWAYS,
 	LESS_OR_EQUAL,
 	GREATER_OR_EQUAL,
