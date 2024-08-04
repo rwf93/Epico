@@ -34,6 +34,7 @@ public:
 
 	TextureHandle create_texture() override;
 	TextureViewHandle create_texture_view() override;
+	SamplerHandle create_sampler() override;
 	BufferHandle create_buffer() override;
 
 	void buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) override;
@@ -48,6 +49,13 @@ public:
 		void *data,
 		int width, int height, int depth
 	);
+
+	void sampler(
+		SamplerHandle handle,
+		SamplerAddressMode u,
+		SamplerAddressMode v,
+		SamplerAddressMode w
+	) override;
 
 	void texture_view(
 		TextureViewHandle view_handle,

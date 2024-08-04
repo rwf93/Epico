@@ -13,6 +13,9 @@ struct StorageData {
 	glm::mat4 model;
 };
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 struct RendererPassHandles {
 	TextureHandle position;
 	TextureHandle albedo;
@@ -82,6 +85,18 @@ int main(int argc, char *argv[]) {
 	auto depth_image_view = render_api->create_texture_view();
 	auto composition_image_view = render_api->create_texture_view();
 
+	auto test_texture = render_api->create_texture();
+	auto test_texture_view = render_api->create_texture_view();
+
+	int width, height, nrchannels;
+	unsigned char *data = stbi_load(filesystem->resolve_physical_dir("assets/textures/bliss.jpg").string().c_str(), &width, &height, &nrchannels, 4);
+
+	render_api->texture_data(test_texture, ImageDimensions::IMAGE_2D, ImageSamples::SAMPLE_COUNT_1_BIT, ImageFormat::R8G8B8A8_UNORM, ImageFlags::SAMPLED, data, width, height, 1);
+	render_api->texture_view(test_texture_view, test_texture, ImageViewDimensions::IMAGE_2D, ImageFormat::R8G8B8A8_UNORM, 0, 0);
+
+	auto composition_sampler = render_api->create_sampler();
+	render_api->sampler(composition_sampler, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER);
+
 	RendererPassHandles resize_handles = {
 		.position = position_image,
 		.albedo = albedo_image,
@@ -102,6 +117,10 @@ int main(int argc, char *argv[]) {
 	auto global_layout = render_api->create_layout()
 		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
 		->add_uniform(ShaderStage::VERTEX, UniformType::STORAGE)
+		->build();
+
+	auto composition_layout = render_api->create_layout()
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->build();
 
 	UNUSED(global_layout);
@@ -127,6 +146,7 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
+		->set_layout(composition_layout)
 		->build();
 
 	UNUSED(deferred_shader);
@@ -321,7 +341,37 @@ int main(int argc, char *argv[]) {
 				}
 			render_api->end_pass(deferred_attachments);
 
-			render_api->show_image(position_image);
+			std::vector<SubpassAttachment> composition_attachments = {
+				{
+					.texture = composition_image,
+					.view = composition_image_view,
+					.type = AttachmentType::COLOR,
+				},
+				{
+					.texture = position_image,
+					.view = position_image_view,
+					.type = AttachmentType::SHADER
+				}
+			};
+
+			std::vector<UniformBind> composition_binds = {
+				{
+					.texture = position_image,
+					.texture_view = position_image_view,
+					.sampler = composition_sampler,
+					.type = UniformType::TEXTURE
+				}
+			};
+
+			render_api->begin_pass(composition_attachments);
+				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+				render_api->scissor(context.width, context.height);
+				render_api->bind_uniform(composition_layout, composition_binds);
+				render_api->bind_shader(composition_shader);
+				render_api->draw(3, 1);
+			render_api->end_pass(composition_attachments);
+
+			render_api->show_image(composition_image);
 
 			render_api->ui()->begin();
 				ImGui::NewFrame();
@@ -352,7 +402,7 @@ void renderer_setup_pass_resources(AppContext *context, RenderAPI *renderer, Ren
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
 		nullptr,
 		context->width, context->height, 1
 	);
@@ -362,7 +412,7 @@ void renderer_setup_pass_resources(AppContext *context, RenderAPI *renderer, Ren
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::COLOR_ATTACHMENT,
+		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
 		nullptr,
 		context->width, context->height, 1
 	);

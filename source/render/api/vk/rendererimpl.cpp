@@ -91,7 +91,7 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	ZoneScoped;
 
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
-	VkRenderingAttachmentInfo depth_attachment = {};
+	std::vector<VkRenderingAttachmentInfo> depth_attachment;
 
 	for(auto &dependency: dependencies) {
 		auto texture = resource_manager.try_get_texture(dependency.texture).value();
@@ -115,10 +115,12 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 				);
 				break;
 			case AttachmentType::DEPTH:
-				depth_attachment = info::attachment_info(
-					texture_view->get_view(),
-					clear_value,
-					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+				depth_attachment.push_back(
+					info::attachment_info(
+						texture_view->get_view(),
+						clear_value,
+						VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+					)
 				);
 
 				command_pool.transition_image(
@@ -127,13 +129,20 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
 				);
 				break;
+			case AttachmentType::SHADER:
+				command_pool.transition_image(
+					texture->get_image(),
+					VK_IMAGE_LAYOUT_GENERAL,
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+				);
+				break;
 			default: break;
 		}
 	}
 
 	auto rendering_info = info::rendering_info(
 		swapchain.get_swapchain().extent,
-		color_attachments.data(), &depth_attachment,
+		color_attachments.data(), depth_attachment.data(),
 		static_cast<uint32_t>(color_attachments.size())
 	);
 
@@ -157,6 +166,13 @@ void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
 				command_pool.transition_image(
 					resource->get_image(),
 					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_GENERAL
+				);
+				break;
+			case AttachmentType::SHADER:
+				command_pool.transition_image(
+					resource->get_image(),
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 					VK_IMAGE_LAYOUT_GENERAL
 				);
 				break;
@@ -255,19 +271,19 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 
 		switch(bind.type) {
 			case UniformType::BUFFER: {
-				VkWriteDescriptorSet descriptor_write = {};
-				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptor_write.dstSet = 0;
-				descriptor_write.dstBinding = i;
-				descriptor_write.dstArrayElement = 0;
-				descriptor_write.descriptorCount = 1;
-
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer).value();
 
 				VkDescriptorBufferInfo buffer_info = {};
 				buffer_info.buffer = buffer_resource->get_buffer();
 				buffer_info.offset = bind.offset;
 				buffer_info.range = bind.range;
+
+				VkWriteDescriptorSet descriptor_write = {};
+				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptor_write.dstSet = 0;
+				descriptor_write.dstBinding = i;
+				descriptor_write.dstArrayElement = 0;
+				descriptor_write.descriptorCount = 1;
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 				descriptor_write.pBufferInfo = &buffer_info;
 
@@ -275,21 +291,45 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				break;
 			}
 			case UniformType::STORAGE: {
-				VkWriteDescriptorSet descriptor_write = {};
-				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptor_write.dstSet = 0;
-				descriptor_write.dstBinding = i;
-				descriptor_write.dstArrayElement = 0;
-				descriptor_write.descriptorCount = 1;
-
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer).value();
 
 				VkDescriptorBufferInfo buffer_info = {};
 				buffer_info.buffer = buffer_resource->get_buffer();
 				buffer_info.offset = bind.offset;
 				buffer_info.range = bind.range;
+
+				VkWriteDescriptorSet descriptor_write = {};
+				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptor_write.dstSet = 0;
+				descriptor_write.dstBinding = i;
+				descriptor_write.dstArrayElement = 0;
+				descriptor_write.descriptorCount = 1;
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 				descriptor_write.pBufferInfo = &buffer_info;
+
+				write_sets.push_back(descriptor_write);
+				break;
+			}
+			case UniformType::TEXTURE: {
+				auto texture_resource = resource_manager.try_get_texture(bind.texture).value();
+				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture_view).value();
+				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.sampler).value();
+
+				UNUSED(texture_resource);
+
+				VkDescriptorImageInfo image_info = {};
+				image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				image_info.imageView = texture_view_resource->get_view();
+				image_info.sampler = sampler_resource->get_sampler();
+
+				VkWriteDescriptorSet descriptor_write = {};
+				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptor_write.dstSet = 0;
+				descriptor_write.dstBinding = i;
+				descriptor_write.dstArrayElement = 0;
+				descriptor_write.descriptorCount = 1;
+				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				descriptor_write.pImageInfo = &image_info;
 
 				write_sets.push_back(descriptor_write);
 				break;
@@ -317,6 +357,10 @@ void VulkanAPI::draw_instanced(uint32_t index_count, uint32_t instance_count, ui
 
 TextureHandle VulkanAPI::create_texture() {
 	return resource_manager.create_texture();
+}
+
+SamplerHandle VulkanAPI::create_sampler() {
+	return resource_manager.create_sampler();
 }
 
 TextureViewHandle VulkanAPI::create_texture_view() {
@@ -396,6 +440,24 @@ void VulkanAPI::texture_view(
 	view_info.subresourceRange.layerCount = num_layers;
 
 	resource_manager.texture_view(view_handle, image_handle, view_info);
+}
+
+void VulkanAPI::sampler(
+		SamplerHandle handle,
+		SamplerAddressMode u,
+		SamplerAddressMode v,
+		SamplerAddressMode w
+) {
+	VkSamplerCreateInfo sampler_info = {};
+	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.magFilter = VK_FILTER_NEAREST;
+	sampler_info.minFilter = VK_FILTER_NEAREST;
+
+	sampler_info.addressModeU = convert::convert_address_mode(u);
+	sampler_info.addressModeV = convert::convert_address_mode(v);
+	sampler_info.addressModeW = convert::convert_address_mode(w);
+
+	resource_manager.sampler(handle, sampler_info);
 }
 
 void VulkanAPI::rebuild() {

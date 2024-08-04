@@ -2,6 +2,7 @@
 
 enum class TextureHandle: 		size_t { Invalid = 0 };
 enum class TextureViewHandle: 	size_t { Invalid = 0 };
+enum class SamplerHandle:		size_t { Invalid = 0 };
 enum class BufferHandle: 		size_t { Invalid = 0 };
 
 enum class BufferType {
@@ -68,12 +69,19 @@ enum class ImageViewDimensions {
 	IMAGE_3D
 };
 
+enum class SamplerAddressMode {
+	REPEAT,
+	MIRRORED_REPEAT,
+	CLAMP_EDGE,
+	CLAMP_BORDER
+};
+
 enum class ResourceState {
 	READY,
 	UNREADY
 };
 
-// Internal structure, expected to be used by the renderer implementation. ResourceHandles are public usage.
+// Internal structure, expected to be used by the API implementation. ResourceHandles are public usage.
 class RenderResource {
 public:
 	virtual ~RenderResource() {}

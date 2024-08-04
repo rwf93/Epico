@@ -45,7 +45,7 @@ void VulkanTexture::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent)
 			copy_regions
 		);
 
-		command->transition_image(get_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+		command->transition_image(get_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	});
 }
 

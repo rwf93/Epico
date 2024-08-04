@@ -11,7 +11,8 @@
 
 enum class AttachmentType {
 	COLOR,
-	DEPTH
+	DEPTH,
+	SHADER // Dependency that is used in shaders (i.e textures)
 };
 
 struct SubpassAttachment {
@@ -27,10 +28,10 @@ struct SubpassAttachment {
 };
 
 struct UniformBind {
-	union {
-		BufferHandle buffer;
-		TextureHandle texture;
-	};
+	BufferHandle buffer;
+	TextureHandle texture;
+	TextureViewHandle texture_view;
+	SamplerHandle sampler;
 	UniformType type;
 	size_t offset;
 	size_t range;
@@ -73,6 +74,7 @@ public:
 
 	virtual TextureHandle create_texture() = 0;
 	virtual TextureViewHandle create_texture_view() = 0;
+	virtual SamplerHandle create_sampler() = 0;
 	virtual BufferHandle create_buffer() = 0;
 
 	virtual RenderLayoutBuilder *create_layout() = 0;
@@ -90,6 +92,8 @@ public:
 		void *data,
 		int width, int height, int depth = 1
 	) = 0;
+
+	virtual void sampler(SamplerHandle, SamplerAddressMode u, SamplerAddressMode v, SamplerAddressMode w) = 0;
 
 	virtual void texture_view(
 		TextureViewHandle view_handle,

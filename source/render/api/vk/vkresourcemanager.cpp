@@ -59,6 +59,7 @@ void VulkanResourceManager::init(
 void VulkanResourceManager::fini() {
 	DELETE_RESOURCE(texture_resources);
 	DELETE_RESOURCE(texture_view_resources);
+	DELETE_RESOURCE(sampler_resources);
 	DELETE_RESOURCE(buffer_resources);
 
 	vmaDestroyAllocator(allocator);
@@ -73,6 +74,12 @@ TextureHandle VulkanResourceManager::create_texture() {
 TextureViewHandle VulkanResourceManager::create_texture_view() {
 	TextureViewHandle last_resource_handle = static_cast<TextureViewHandle>(texture_view_resources.size() + 1);
 	texture_view_resources.insert(std::make_pair(last_resource_handle, new VulkanTextureView()));
+	return last_resource_handle;
+}
+
+SamplerHandle VulkanResourceManager::create_sampler() {
+	SamplerHandle last_resource_handle = static_cast<SamplerHandle>(sampler_resources.size() + 1);
+	sampler_resources.insert(std::make_pair(last_resource_handle, new VulkanSampler()));
 	return last_resource_handle;
 }
 
@@ -130,13 +137,6 @@ void VulkanResourceManager::texture_data(
 	staging_buffer.fini();
 }
 
-void VulkanResourceManager::texture_sub_data(TextureHandle handle, void *data, VkDeviceSize size, VkDeviceSize offset) {
-	UNUSED(handle);
-	UNUSED(data);
-	UNUSED(size);
-	UNUSED(offset);
-}
-
 void VulkanResourceManager::texture_view(
 	TextureViewHandle view_handle,
 	TextureHandle image_handle,
@@ -157,6 +157,19 @@ void VulkanResourceManager::texture_view(
 		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
 	image_view->init(device, image, &image_view_info);
+}
+
+void VulkanResourceManager::sampler(
+	SamplerHandle handle,
+	VkSamplerCreateInfo sampler_create_info
+) {
+	auto sampler = try_get_sampler_resource(handle).value();
+	assert(sampler);
+
+	if(sampler->get_state() != ResourceState::UNREADY)
+		sampler->fini();
+
+	sampler->init(device, &sampler_create_info);
 }
 
 void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size) {
