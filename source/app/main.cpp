@@ -6,7 +6,6 @@ struct Vertex {
 struct SceneData {
 	glm::mat4 view;
 	glm::mat4 projection;
-	glm::mat4 model;
 	glm::vec3 color;
 };
 
@@ -255,16 +254,20 @@ int main(int argc, char *argv[]) {
 		scene_data.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 		scene_data.projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
 		scene_data.projection[1][1] *= -1;
-		scene_data.model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, frame, 0), glm::vec3(1));
 		scene_data.color = glm::vec3(1);
 
 		render_api->buffer_sub_data(scene_data_handle, 0, sizeof(SceneData), &scene_data);
 
-		StorageData storage_data = {};
-		storage_data.model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1));
-		render_api->buffer_sub_data(storage_data_handle, 0, sizeof(StorageData), &storage_data);
-		storage_data.model = calculate_model_matrix(glm::vec3(0, 1.5, 0), glm::vec3(0, 0, 0), glm::vec3(1));
-		render_api->buffer_sub_data(storage_data_handle, sizeof(StorageData), sizeof(StorageData), &storage_data);
+		static StorageData storage_data[1024] = {};
+		static bool init = false;
+		if(!init) {
+			for(int i = 0; i < 1024; i++) {
+				storage_data[i].model = calculate_model_matrix(glm::ballRand(100.0f), glm::vec3(0, 0, 0), glm::vec3(1));
+			}
+			init = true;
+		}
+
+		render_api->buffer_sub_data(storage_data_handle, 0, sizeof(StorageData) * 1024, &storage_data);
 
 		render_api->begin();
 		{
@@ -287,7 +290,7 @@ int main(int argc, char *argv[]) {
 					.texture = depth_image,
 					.view = depth_image_view,
 					.type = AttachmentType::DEPTH,
-					.clear = { .depth = 1.0f, .stencil = 0 }
+					.clear = { .depth = 0.0f, .stencil = 0 }
 				}
 			};
 
@@ -313,11 +316,12 @@ int main(int argc, char *argv[]) {
 				render_api->bind_shader(deferred_shader);
 				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
 				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
-				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
-				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 1);
+				for(int i = 0; i < 1024; i++) {
+					render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, i);
+				}
 			render_api->end_pass(deferred_attachments);
 
-			render_api->show_image(albedo_image);
+			render_api->show_image(position_image);
 
 			render_api->ui()->begin();
 				ImGui::NewFrame();

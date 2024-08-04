@@ -9,7 +9,6 @@ layout(location = 1) out vec3 out_color;
 layout(binding = 0) uniform SceneData {
     mat4 view;
     mat4 projection;
-    mat4 model;
     vec3 color;
 } scene;
 

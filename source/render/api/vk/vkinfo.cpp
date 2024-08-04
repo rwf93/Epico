@@ -222,7 +222,7 @@ VkRenderingAttachmentInfo info::attachment_info(VkImageView view, VkClearValue *
 	VkRenderingAttachmentInfo attachment_info = {};
 	attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 	attachment_info.imageView = view;
-	attachment_info.loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+	attachment_info.loadOp = (clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
 	attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachment_info.imageLayout = layout;
 	attachment_info.clearValue = clear ? *clear : attachment_info.clearValue;

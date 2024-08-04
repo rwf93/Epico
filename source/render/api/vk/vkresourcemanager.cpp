@@ -165,6 +165,7 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBi
 
 	if(!resource) {
 		LOGGER->error("Invalid resource or resource is the wrong type.");
+		std::abort();
 		return;
 	}
 
