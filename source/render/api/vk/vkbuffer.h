@@ -15,8 +15,6 @@ public:
 		VkDeviceSize dst_offset = 0
 	);
 
-	void update(VkDeviceSize offset, VkDeviceSize size, void *data);
-
 	ResourceState get_state() override { return state; }
 
 	void init(

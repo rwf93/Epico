@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/output/windows_x64/epico.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}/output/windows_x64",
             "environment": [],
             "console": "externalTerminal"
         },

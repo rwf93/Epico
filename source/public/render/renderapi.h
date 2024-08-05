@@ -27,14 +27,24 @@ struct SubpassAttachment {
 	} clear;
 };
 
-struct UniformBind {
-	BufferHandle buffer;
-	TextureHandle texture;
-	TextureViewHandle texture_view;
-	SamplerHandle sampler;
-	UniformType type;
+struct BufferBind {
+	BufferHandle buffer_handle;
 	size_t offset;
 	size_t range;
+};
+
+struct TextureBind {
+	TextureHandle texture_handle;
+	TextureViewHandle texture_view_handle;
+	SamplerHandle sampler_handle;
+};
+
+struct UniformBind {
+	union {
+		BufferBind buffer;
+		TextureBind texture;
+	};
+	UniformType type;
 };
 
 struct AppContext;

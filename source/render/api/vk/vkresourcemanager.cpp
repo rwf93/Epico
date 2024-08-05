@@ -233,5 +233,24 @@ void VulkanResourceManager::buffer_sub_data(BufferHandle handle, VkDeviceSize of
 		return;
 	}
 
-	resource->update(offset, size, data);
+	if(resource->create_info->usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
+		auto allocate_info = info::allocation_create_info();
+		auto staging_buffer_info = info::buffer_create_info(size);
+
+		VulkanBuffer staging_buffer;
+		staging_buffer.init(
+			device,
+			command_pool,
+			allocator,
+			&staging_buffer_info,
+			&allocate_info
+		);
+
+		memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
+		resource->stage(&staging_buffer, size, 0, offset);
+
+		staging_buffer.fini();
+	} else {
+		memcpy(reinterpret_cast<char*>(resource->get_allocation_info().pMappedData) + offset, data, size);
+	}
 }

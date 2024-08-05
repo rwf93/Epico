@@ -271,12 +271,12 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 
 		switch(bind.type) {
 			case UniformType::BUFFER: {
-				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer).value();
+				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
 				VkDescriptorBufferInfo buffer_info = {};
 				buffer_info.buffer = buffer_resource->get_buffer();
-				buffer_info.offset = bind.offset;
-				buffer_info.range = bind.range;
+				buffer_info.offset = bind.buffer.offset;
+				buffer_info.range = bind.buffer.range;
 
 				VkWriteDescriptorSet descriptor_write = {};
 				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -291,12 +291,12 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				break;
 			}
 			case UniformType::STORAGE: {
-				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer).value();
+				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
 				VkDescriptorBufferInfo buffer_info = {};
 				buffer_info.buffer = buffer_resource->get_buffer();
-				buffer_info.offset = bind.offset;
-				buffer_info.range = bind.range;
+				buffer_info.offset = bind.buffer.offset;
+				buffer_info.range = bind.buffer.range;
 
 				VkWriteDescriptorSet descriptor_write = {};
 				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -311,11 +311,8 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				break;
 			}
 			case UniformType::TEXTURE: {
-				auto texture_resource = resource_manager.try_get_texture(bind.texture).value();
-				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture_view).value();
-				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.sampler).value();
-
-				UNUSED(texture_resource);
+				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture.texture_view_handle).value();
+				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.texture.sampler_handle).value();
 
 				VkDescriptorImageInfo image_info = {};
 				image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

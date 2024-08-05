@@ -46,18 +46,6 @@ void VulkanBuffer::stage(
 	});
 }
 
-void VulkanBuffer::update(VkDeviceSize offset, VkDeviceSize size, void *data) {
-	assert(get_state() == ResourceState::READY);
-
-	if(create_info->usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
-		command_pool->submit_command([&](VulkanCommand *command) {
-			command->update_buffer(buffer, offset, size, data);
-		});
-	} else {
-		memcpy(static_cast<char*>(allocation_info.pMappedData) + offset, data, size);
-	}
-}
-
 void VulkanBuffer::fini() {
 	assert(get_state() == ResourceState::READY);
 
