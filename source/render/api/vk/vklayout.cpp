@@ -10,12 +10,12 @@ void VulkanLayout::init(VulkanDevice *vkdevice, VkDescriptorSetLayoutCreateInfo 
     auto pipeline_layout_info = info::pipeline_layout_info(layouts);
 	VK_CHECK(vkCreatePipelineLayout(device->get_device(), &pipeline_layout_info, nullptr, &pipeline_layout));
 
-    state = LayoutState::LAYOUT_READY;
+    state = ResourceState::READY;
 }
 
 void VulkanLayout::fini() {
     vkDestroyPipelineLayout(device->get_device(), pipeline_layout, nullptr);
     vkDestroyDescriptorSetLayout(device->get_device(), layout, nullptr);
 
-    state = LayoutState::LAYOUT_UNREADY;
+    state = ResourceState::UNREADY;
 }

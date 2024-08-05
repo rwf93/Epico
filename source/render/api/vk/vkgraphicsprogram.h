@@ -1,23 +1,23 @@
 #pragma once
 
 class VulkanDevice;
-class VulkanGraphicsProgram: public RenderProgram {
+class VulkanGraphicsProgram: public RenderResource {
 public:
-	VulkanGraphicsProgram(VulkanDevice *vkdevice);
-	~VulkanGraphicsProgram() override;
+	VulkanGraphicsProgram() = default;
+	~VulkanGraphicsProgram() override = default;
 
-	ShaderState get_state() override { return state; };
+	ResourceState get_state() override { return state; };
 	VkPipeline get_pipeline() { return pipeline; }
 	VkPipelineLayout get_layout() { return layout; }
 
-	void init(VkGraphicsPipelineCreateInfo *pipeline_create_info);
+	void init(VulkanDevice *vkdevice, VkGraphicsPipelineCreateInfo *pipeline_create_info);
 	void fini() override;
 
 	VK_TRACY_MEMORY_OVERLOADS;
 
 private:
 	VulkanDevice *device;
-	ShaderState state = ShaderState::UNREADY;
+	ResourceState state = ResourceState::UNREADY;
 
 	VkPipeline pipeline;
 	VkPipelineLayout layout;

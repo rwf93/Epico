@@ -1,15 +1,15 @@
 #include "vkdevice.h"
 #include "vkgraphicsprogram.h"
-#include "vkprogrammanager.h"
-#include "vklayoutmanager.h"
+#include "vkresourcemanager.h"
+#include "vkgraphicsprogrambuilder.h"
 
 VulkanGraphicsProgramBuilder::VulkanGraphicsProgramBuilder() {}
 VulkanGraphicsProgramBuilder::~VulkanGraphicsProgramBuilder() {}
 
-void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager) {
+void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager) {
 	this->device = vkdevice;
-	this->layout_manager = vklayoutmanager;
-	this->default_pipeline_layout = layout_manager->create_layout()->build();
+	this->resource_manager = vkresourcemanager;
+	this->default_pipeline_layout = resource_manager->create_layout()->build();
 }
 
 void VulkanGraphicsProgramBuilder::clear(
@@ -93,12 +93,12 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	pipeline_info.pColorBlendState = &color_info;
 	pipeline_info.pDepthStencilState = &stencil_info;
 	pipeline_info.pDynamicState = &dynamic_info;
-	pipeline_info.layout = layout_manager
+	pipeline_info.layout = resource_manager
 								->try_get_layout(current_pipeline_layout)
-								.value_or(layout_manager->try_get_layout(default_pipeline_layout).value())
+								.value_or(resource_manager->try_get_layout(default_pipeline_layout).value())
 								->get_pipeline_layout();
 
-	shader->init(&pipeline_info);
+	shader->init(device, &pipeline_info);
 
 	for(auto &module: shader_modules)
 		vkDestroyShaderModule(device->get_device(), module, nullptr);

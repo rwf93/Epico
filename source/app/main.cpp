@@ -146,11 +146,12 @@ int main(int argc, char *argv[]) {
 
 	auto composition_layout = render_api->create_layout()
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->build();
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
-	auto deferred_shader = render_api->create_graphic_program()
+	auto deferred_shader = render_api->create_graphics_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
@@ -166,7 +167,7 @@ int main(int argc, char *argv[]) {
 
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
-	auto composition_shader = render_api->create_graphic_program()
+	auto composition_shader = render_api->create_graphics_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
@@ -389,11 +390,18 @@ int main(int argc, char *argv[]) {
 			std::vector<UniformBind> composition_binds = {
 				{
 					.texture = {
-						.texture_view_handle = albedo_image_view,
+						.texture_view_handle = position_image_view,
 						.sampler_handle = position_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
+				{
+					.texture = {
+						.texture_view_handle = albedo_image_view,
+						.sampler_handle = albedo_sampler
+					},
+					.type = UniformType::TEXTURE,
+				}
 			};
 
 			render_api->begin_pass(composition_attachments);

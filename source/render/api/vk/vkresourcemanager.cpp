@@ -44,12 +44,23 @@ void VulkanResourceManager::init(
 
 	VK_CHECK(vmaCreateAllocator(&allocator_info, &allocator));
 
+	texture_resources.resize(1);
+	texture_view_resources.resize(1);
+	sampler_resources.resize(1);
+	buffer_resources.resize(1);
+
+	layout_resources.resize(1);
+	graphics_program_resources.resize(1);
+
+	layout_builder.init(device);
+	graphics_program_builder.init(device, this);
+
 	queue.push([&] { fini(); });
 }
 
 #define DELETE_RESOURCE(res) 								\
 	for(auto &resource: res) { 								\
-		if(auto second = resource.second) { 				\
+		if(auto second = resource) { 						\
 			if(second->get_state() == ResourceState::READY) \
 				second->fini(); 							\
 			delete second; 									\
@@ -66,27 +77,43 @@ void VulkanResourceManager::fini() {
 }
 
 TextureHandle VulkanResourceManager::create_texture() {
-	TextureHandle last_resource_handle = static_cast<TextureHandle>(texture_resources.size() + 1);
-	texture_resources.insert(std::make_pair(last_resource_handle, new VulkanTexture()));
+	TextureHandle last_resource_handle = static_cast<TextureHandle>(texture_resources.size());
+	texture_resources.push_back(new VulkanTexture());
 	return last_resource_handle;
 }
 
 TextureViewHandle VulkanResourceManager::create_texture_view() {
-	TextureViewHandle last_resource_handle = static_cast<TextureViewHandle>(texture_view_resources.size() + 1);
-	texture_view_resources.insert(std::make_pair(last_resource_handle, new VulkanTextureView()));
+	TextureViewHandle last_resource_handle = static_cast<TextureViewHandle>(texture_view_resources.size());
+	texture_view_resources.push_back(new VulkanTextureView());
 	return last_resource_handle;
 }
 
 SamplerHandle VulkanResourceManager::create_sampler() {
-	SamplerHandle last_resource_handle = static_cast<SamplerHandle>(sampler_resources.size() + 1);
-	sampler_resources.insert(std::make_pair(last_resource_handle, new VulkanSampler()));
+	SamplerHandle last_resource_handle = static_cast<SamplerHandle>(sampler_resources.size());
+	sampler_resources.push_back(new VulkanSampler());
 	return last_resource_handle;
 }
 
 BufferHandle VulkanResourceManager::create_buffer() {
-	BufferHandle last_resource_handle = static_cast<BufferHandle>(buffer_resources.size() + 1);
-	buffer_resources.insert(std::make_pair(last_resource_handle, new VulkanBuffer()));
+	BufferHandle last_resource_handle = static_cast<BufferHandle>(buffer_resources.size());
+	buffer_resources.push_back(new VulkanBuffer());
 	return last_resource_handle;
+}
+
+RenderLayoutBuilder *VulkanResourceManager::create_layout() {
+	LayoutHandle last_resource_handle = static_cast<LayoutHandle>(layout_resources.size());
+	auto layout = new VulkanLayout();
+	layout_resources.push_back(layout);
+	layout_builder.clear(last_resource_handle, layout);
+	return &layout_builder;
+}
+
+RenderGraphicProgramBuilder *VulkanResourceManager::create_graphics_program() {
+	GraphicsProgramHandle last_resource_handle = static_cast<GraphicsProgramHandle>(graphics_program_resources.size());
+	auto graphics_program = new VulkanGraphicsProgram();
+	graphics_program_resources.push_back(graphics_program);
+	graphics_program_builder.clear(last_resource_handle, graphics_program);
+	return &graphics_program_builder;
 }
 
 void VulkanResourceManager::texture_data(

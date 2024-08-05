@@ -4,8 +4,6 @@
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
-#include "vklayoutmanager.h"
-#include "vkprogrammanager.h"
 
 #include "vkimgui.h"
 
@@ -31,8 +29,6 @@ void VulkanAPI::init(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	layout_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	shader_manager.init(cleanup_queue, &device, &layout_manager);
 	ui_imgui.init(cleanup_queue, context, &instance, &device, &swapchain, &command_pool);
 }
 
@@ -255,19 +251,26 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 }
 
 void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
-	auto shader = shader_manager.try_get_graphics_program(handle).value();
+	auto shader = resource_manager.try_get_graphics_program(handle).value();
 	assert(shader);
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
 // MSVC is for some optimizing this function oddly casuing weird behaviour with vk.
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
-	auto layout = layout_manager.try_get_layout(layout_handle).value();
+	auto layout = resource_manager.try_get_layout(layout_handle).value();
 	assert(layout);
 	std::vector<VkWriteDescriptorSet> write_sets = {};
 
 	for(uint32_t i = 0; i < binds.size(); i++) {
 		UniformBind &bind = binds[i];
+
+		VkWriteDescriptorSet descriptor_write = {};
+		descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptor_write.dstSet = 0;
+		descriptor_write.dstBinding = i;
+		descriptor_write.dstArrayElement = 0;
+		descriptor_write.descriptorCount = 1;
 
 		switch(bind.type) {
 			case UniformType::BUFFER: {
@@ -278,18 +281,9 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				buffer_info.offset = bind.buffer.offset;
 				buffer_info.range = bind.buffer.range;
 
-				VkWriteDescriptorSet descriptor_write = {};
-				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptor_write.dstSet = 0;
-				descriptor_write.dstBinding = i;
-				descriptor_write.dstArrayElement = 0;
-				descriptor_write.descriptorCount = 1;
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 				descriptor_write.pBufferInfo = &buffer_info;
-
-				write_sets.push_back(descriptor_write);
-				break;
-			}
+			} break;
 			case UniformType::STORAGE: {
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
@@ -298,18 +292,9 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				buffer_info.offset = bind.buffer.offset;
 				buffer_info.range = bind.buffer.range;
 
-				VkWriteDescriptorSet descriptor_write = {};
-				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptor_write.dstSet = 0;
-				descriptor_write.dstBinding = i;
-				descriptor_write.dstArrayElement = 0;
-				descriptor_write.descriptorCount = 1;
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 				descriptor_write.pBufferInfo = &buffer_info;
-
-				write_sets.push_back(descriptor_write);
-				break;
-			}
+			} break;
 			case UniformType::TEXTURE: {
 				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture.texture_view_handle).value();
 				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.texture.sampler_handle).value();
@@ -319,20 +304,13 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				image_info.imageView = texture_view_resource->get_view();
 				image_info.sampler = sampler_resource->get_sampler();
 
-				VkWriteDescriptorSet descriptor_write = {};
-				descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptor_write.dstSet = 0;
-				descriptor_write.dstBinding = i;
-				descriptor_write.dstArrayElement = 0;
-				descriptor_write.descriptorCount = 1;
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 				descriptor_write.pImageInfo = &image_info;
-
-				write_sets.push_back(descriptor_write);
-				break;
-			}
+			} break;
 			default: break;
 		}
+
+		write_sets.push_back(descriptor_write);
 	}
 
 	vkCmdPushDescriptorSetKHR(
@@ -369,11 +347,11 @@ BufferHandle VulkanAPI::create_buffer() {
 }
 
 RenderLayoutBuilder *VulkanAPI::create_layout() {
-	return layout_manager.create_layout();
+	return resource_manager.create_layout();
 }
 
-RenderGraphicProgramBuilder *VulkanAPI::create_graphic_program() {
-	return shader_manager.create_graphic_program();
+RenderGraphicProgramBuilder *VulkanAPI::create_graphics_program() {
+	return resource_manager.create_graphics_program();
 }
 
 void VulkanAPI::buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) {

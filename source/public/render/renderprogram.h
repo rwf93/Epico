@@ -1,7 +1,5 @@
 #pragma once
 
-enum class GraphicsProgramHandle: size_t { Invalid = 0 };
-
 enum class BindingRate {
 	VERTEX,
 	INDEX
@@ -12,11 +10,6 @@ enum class AttributeType {
 	VEC3D_SIGNED,
 	VEC2D_SIGNED,
 	VEC1D_SIGNED
-};
-
-enum class ShaderState {
-	READY,
-	UNREADY,
 };
 
 enum class ShaderStage {
@@ -50,13 +43,6 @@ enum class ShaderCompareOp {
 	ALWAYS,
 	LESS_OR_EQUAL,
 	GREATER_OR_EQUAL,
-};
-
-class RenderProgram {
-public:
-	virtual ~RenderProgram() {}
-	virtual ShaderState get_state() = 0;
-	virtual void fini() = 0;
 };
 
 class RenderGraphicProgramBuilder {

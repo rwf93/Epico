@@ -5,9 +5,11 @@
 #include "vksampler.h"
 #include "vkbuffer.h"
 
-enum CreateBufferFlags {
-	CREATE_BUFFER_COHERENT = 1 << 0,
-};
+#include "vklayoutbuilder.h"
+#include "vklayout.h"
+
+#include "vkgraphicsprogrambuilder.h"
+#include "vkgraphicsprogram.h"
 
 class VulkanDevice;
 class VulkanResource;
@@ -21,6 +23,9 @@ public:
 	TextureViewHandle create_texture_view();
 	SamplerHandle create_sampler();
 	BufferHandle create_buffer();
+
+	RenderLayoutBuilder *create_layout();
+	RenderGraphicProgramBuilder *create_graphics_program();
 
 	void texture_data(
 		TextureHandle handle,
@@ -40,10 +45,7 @@ public:
 	void buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
 	std::optional<VulkanTexture*> try_get_texture(TextureHandle handle) {
-		if(!texture_resources.contains(handle))
-			return std::nullopt;
-
-		auto resource = texture_resources.at(handle);
+		auto resource = texture_resources[static_cast<size_t>(handle)];
 		if(!resource)
 			return std::nullopt;
 
@@ -51,10 +53,7 @@ public:
 	}
 
 	std::optional<VulkanTextureView*> try_get_texture_view(TextureViewHandle handle) {
-		if(!texture_view_resources.contains(handle))
-			return std::nullopt;
-
-		auto resource = texture_view_resources.at(handle);
+		auto resource = texture_view_resources[static_cast<size_t>(handle)];
 		if(!resource)
 			return std::nullopt;
 
@@ -62,10 +61,7 @@ public:
 	}
 
 	std::optional<VulkanSampler*> try_get_sampler_resource(SamplerHandle handle) {
-		if(!sampler_resources.contains(handle))
-			return std::nullopt;
-
-		auto resource = sampler_resources.at(handle);
+		auto resource = sampler_resources[static_cast<size_t>(handle)];
 		if(!resource)
 			return std::nullopt;
 
@@ -73,14 +69,27 @@ public:
 	}
 
 	std::optional<VulkanBuffer*> try_get_buffer(BufferHandle handle) {
-		if(!buffer_resources.contains(handle))
-			return std::nullopt;
-
-		auto resource = buffer_resources.at(handle);
+		auto resource = buffer_resources[static_cast<size_t>(handle)];
 		if(!resource)
 			return std::nullopt;
 
 		return dynamic_cast<VulkanBuffer*>(resource);
+	}
+
+	std::optional<VulkanLayout*> try_get_layout(LayoutHandle handle) {
+		auto resource = layout_resources[static_cast<size_t>(handle)];
+		if(!resource)
+			return std::nullopt;
+
+		return dynamic_cast<VulkanLayout*>(resource);
+	}
+
+	std::optional<VulkanGraphicsProgram*> try_get_graphics_program(GraphicsProgramHandle handle) {
+		auto resource = graphics_program_resources[static_cast<size_t>(handle)];
+		if(!resource)
+			return std::nullopt;
+
+		return dynamic_cast<VulkanGraphicsProgram*>(resource);
 	}
 
 private:
@@ -90,8 +99,17 @@ private:
 
 	VmaAllocator allocator;
 
-	std::map<TextureHandle, RenderResource*> texture_resources;
-	std::map<TextureViewHandle, RenderResource*> texture_view_resources;
-	std::map<SamplerHandle, RenderResource*> sampler_resources;
-	std::map<BufferHandle, RenderResource*> buffer_resources;
+
+	std::vector<RenderResource*> texture_resources;
+	std::vector<RenderResource*> texture_view_resources;
+	std::vector<RenderResource*> sampler_resources;
+	std::vector<RenderResource*> buffer_resources;
+
+	// Builders
+
+	VulkanLayoutBuilder layout_builder;
+	std::vector<RenderResource*> layout_resources;
+
+	VulkanGraphicsProgramBuilder graphics_program_builder;
+	std::vector<RenderResource*> graphics_program_resources;
 };

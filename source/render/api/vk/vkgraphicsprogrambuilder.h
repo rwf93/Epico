@@ -3,7 +3,7 @@
 class VulkanDevice;
 class VulkanProgramManager;
 class VulkanGraphicsProgram;
-class VulkanLayoutManager;
+class VulkanResourceManager;
 class VulkanGraphicsProgramBuilder: public RenderGraphicProgramBuilder {
 public:
 	VulkanGraphicsProgramBuilder();
@@ -11,7 +11,7 @@ public:
 
 	GraphicsProgramHandle build() override;
 
-	void init(VulkanDevice *vkdevice, VulkanLayoutManager *vklayoutmanager);
+	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
 	void fini();
 
 	void clear(
@@ -48,7 +48,7 @@ public:
 	RenderGraphicProgramBuilder *add_attachment(ImageFormat format) override;
 private:
 	VulkanDevice *device;
-	VulkanLayoutManager *layout_manager;
+	VulkanResourceManager *resource_manager;
 
 	GraphicsProgramHandle handle;
 	VulkanGraphicsProgram *shader;

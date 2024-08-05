@@ -1,12 +1,12 @@
 #pragma once
 
 class VulkanDevice;
-class VulkanLayout: public RenderLayout {
+class VulkanLayout: public RenderResource {
 public:
     void init(VulkanDevice *vkdevice, VkDescriptorSetLayoutCreateInfo *layout_info);
     void fini() override;
 
-    LayoutState get_state() { return state; }
+    ResourceState get_state() { return state; }
 
     VkDescriptorSetLayout get_layout() { return layout; }
     VkPipelineLayout get_pipeline_layout() { return pipeline_layout; }
@@ -16,5 +16,5 @@ private:
     VkDescriptorSetLayout layout;
     VkPipelineLayout pipeline_layout;
 
-    LayoutState state = LayoutState::LAYOUT_UNREADY;
+    ResourceState state = ResourceState::UNREADY;
 };

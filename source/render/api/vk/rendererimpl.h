@@ -69,7 +69,7 @@ public:
 	) override;
 
 	RenderLayoutBuilder *create_layout() override;
-	RenderGraphicProgramBuilder *create_graphic_program() override;
+	RenderGraphicProgramBuilder *create_graphics_program() override;
 
 	RenderUI *ui() { return &ui_imgui; };
 
@@ -86,8 +86,6 @@ private:
 	VulkanSwapchain swapchain = {};
 	VulkanCommandPool command_pool = {};
 	VulkanResourceManager resource_manager = {};
-	VulkanLayoutManager layout_manager = {};
-	VulkanProgramManager shader_manager = {};
 
 	VulkanUI ui_imgui = {};
 
