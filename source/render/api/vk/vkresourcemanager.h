@@ -99,14 +99,12 @@ private:
 
 	VmaAllocator allocator;
 
-
 	std::vector<RenderResource*> texture_resources;
 	std::vector<RenderResource*> texture_view_resources;
 	std::vector<RenderResource*> sampler_resources;
 	std::vector<RenderResource*> buffer_resources;
 
 	// Builders
-
 	VulkanLayoutBuilder layout_builder;
 	std::vector<RenderResource*> layout_resources;
 

@@ -44,14 +44,6 @@ void VulkanResourceManager::init(
 
 	VK_CHECK(vmaCreateAllocator(&allocator_info, &allocator));
 
-	texture_resources.resize(1);
-	texture_view_resources.resize(1);
-	sampler_resources.resize(1);
-	buffer_resources.resize(1);
-
-	layout_resources.resize(1);
-	graphics_program_resources.resize(1);
-
 	layout_builder.init(device);
 	graphics_program_builder.init(device, this);
 
@@ -60,18 +52,21 @@ void VulkanResourceManager::init(
 
 #define DELETE_RESOURCE(res) 								\
 	for(auto &resource: res) { 								\
-		if(auto second = resource) { 						\
-			if(second->get_state() == ResourceState::READY) \
-				second->fini(); 							\
-			delete second; 									\
-		} 													\
-	} 														\
+		if(resource->get_state() == ResourceState::READY) \
+			resource->fini(); 							\
+		delete resource; 									\
+	}
 
 void VulkanResourceManager::fini() {
 	DELETE_RESOURCE(texture_resources);
 	DELETE_RESOURCE(texture_view_resources);
 	DELETE_RESOURCE(sampler_resources);
 	DELETE_RESOURCE(buffer_resources);
+	DELETE_RESOURCE(layout_resources);
+	DELETE_RESOURCE(graphics_program_resources)
+
+	graphics_program_builder.fini();
+	layout_builder.fini();
 
 	vmaDestroyAllocator(allocator);
 }

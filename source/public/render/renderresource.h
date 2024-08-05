@@ -1,11 +1,11 @@
 #pragma once
 
-enum class TextureHandle: 			size_t { Invalid = 0 };
-enum class TextureViewHandle: 		size_t { Invalid = 0 };
-enum class SamplerHandle:			size_t { Invalid = 0 };
-enum class BufferHandle: 			size_t { Invalid = 0 };
-enum class LayoutHandle: 			size_t { Invalid = 0 };
-enum class GraphicsProgramHandle: 	size_t { Invalid = 0 };
+enum class TextureHandle: 			uint32_t { Invalid = UINT32_MAX };
+enum class TextureViewHandle: 		uint32_t { Invalid = UINT32_MAX };
+enum class SamplerHandle:			uint32_t { Invalid = UINT32_MAX };
+enum class BufferHandle: 			uint32_t { Invalid = UINT32_MAX };
+enum class LayoutHandle: 			uint32_t { Invalid = UINT32_MAX };
+enum class GraphicsProgramHandle: 	uint32_t { Invalid = UINT32_MAX };
 
 enum class BufferType {
 	VERTEX  = 1 << 0,
