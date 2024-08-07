@@ -239,24 +239,53 @@ void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
+std::vector<VkDescriptorBufferInfo> buffer_infos = {};
+std::vector<VkDescriptorBufferInfo> storage_infos = {};
+std::vector<VkDescriptorImageInfo> image_infos = {};
+
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
 	auto layout = resource_manager.try_get_layout(layout_handle).value();
-	std::vector<VkWriteDescriptorSet> write_sets = {};
-	std::map<uint32_t, VkDescriptorBufferInfo> buffer_info_map = {};
-	std::map<uint32_t, VkDescriptorImageInfo> image_info_map = {};
 
-	for(uint32_t i = 0; i < binds.size(); i++) {
+	// descriptor set is an array of *_info's
+	// TODO: it'd be nice to somehow decrease the copypaste here...
+	VkWriteDescriptorSet buffer_descriptors = {};
+	buffer_descriptors.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	buffer_descriptors.dstSet = 0;
+	buffer_descriptors.dstBinding = 0;
+	buffer_descriptors.dstArrayElement = 0;
+	buffer_descriptors.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+	VkWriteDescriptorSet storage_descriptors = {};
+	storage_descriptors.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	storage_descriptors.dstSet = 0;
+	storage_descriptors.dstBinding = 1;
+	storage_descriptors.dstArrayElement = 0;
+	storage_descriptors.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+	VkWriteDescriptorSet image_descriptors = {};
+	image_descriptors.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	image_descriptors.dstSet = 0;
+	image_descriptors.dstBinding = 2;
+	image_descriptors.dstArrayElement = 0;
+	image_descriptors.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+	std::array write_sets{ buffer_descriptors, storage_descriptors, image_descriptors };
+
+	// 1. clear the vectors to reset the element write cursor to 0
+	buffer_infos.clear();
+	storage_infos.clear();
+	image_infos.clear();
+
+	// 2. wrap the elements of the `binds` array, then sort them in to appropriate vectors
+	// i.e. every buffer in `binds` goes to `buffer_infos` as a VkDescriptorBufferInfo,
+	//      every image into `image_infos` as a VkDescriptorImageInfo
+	for (uint32_t i = 0; i < binds.size(); i++) {
 		UniformBind &bind = binds[i];
 
-		VkWriteDescriptorSet descriptor_write = {};
-		descriptor_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptor_write.dstSet = 0;
-		descriptor_write.dstBinding = i;
-		descriptor_write.dstArrayElement = 0;
-		descriptor_write.descriptorCount = 1;
-
 		switch(bind.type) {
-			case UniformType::BUFFER: {
+			case UniformType::BUFFER:
+			case UniformType::STORAGE:
+			{
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
 				VkDescriptorBufferInfo buffer_info = {};
@@ -264,24 +293,17 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				buffer_info.offset = bind.buffer.offset;
 				buffer_info.range = bind.buffer.range;
 
-				buffer_info_map.insert(std::make_pair(i, buffer_info));
+				switch(bind.type) {
+					case UniformType::BUFFER:
+						buffer_infos.push_back(buffer_info);
+						break;
 
-				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptor_write.pBufferInfo = &buffer_info_map[i];
+					case UniformType::STORAGE:
+						storage_infos.push_back(buffer_info);
+						break;
+				}
 			} break;
-			case UniformType::STORAGE: {
-				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
-				VkDescriptorBufferInfo buffer_info = {};
-				buffer_info.buffer = buffer_resource->get_buffer();
-				buffer_info.offset = bind.buffer.offset;
-				buffer_info.range = bind.buffer.range;
-
-				buffer_info_map.insert(std::make_pair(i, buffer_info));
-
-				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				descriptor_write.pBufferInfo = &buffer_info_map[i];
-			} break;
 			case UniformType::TEXTURE: {
 				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture.texture_view_handle).value();
 				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.texture.sampler_handle).value();
@@ -291,16 +313,21 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				image_info.imageView = texture_view_resource->get_view();
 				image_info.sampler = sampler_resource->get_sampler();
 
-				image_info_map.insert(std::make_pair(i, image_info));
-
-				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				descriptor_write.pImageInfo = &image_info_map[i];
+				image_infos.push_back(image_info);
 			} break;
 			default: break;
 		}
-
-		write_sets.push_back(descriptor_write);
 	}
+
+	// 3. fill the descriptor sets with the appropriate arrays of descriptors
+	buffer_descriptors.pBufferInfo = buffer_infos.data();
+	buffer_descriptors.descriptorCount = buffer_infos.size();
+
+	storage_descriptors.pBufferInfo = storage_infos.data();
+	storage_descriptors.descriptorCount = storage_infos.size();
+
+	image_descriptors.pImageInfo = image_infos.data();
+	image_descriptors.descriptorCount = image_infos.size();
 
 	vkCmdPushDescriptorSetKHR(
 		command_pool.get_command()->get_command(),
