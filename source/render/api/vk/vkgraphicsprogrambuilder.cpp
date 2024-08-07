@@ -12,12 +12,8 @@ void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanResourceMa
 	this->default_pipeline_layout = resource_manager->create_layout()->build();
 }
 
-void VulkanGraphicsProgramBuilder::clear(
-	GraphicsProgramHandle shader_handle,
-	VulkanGraphicsProgram *vkshader
-) {
-	this->handle = shader_handle;
-	this->shader = vkshader;
+void VulkanGraphicsProgramBuilder::clear(GraphicsProgramHandle program_handle) {
+	this->handle = program_handle;
 
 	bindings.clear();
 	attributes.clear();
@@ -98,15 +94,12 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 								.value_or(resource_manager->try_get_layout(default_pipeline_layout).value())
 								->get_pipeline_layout();
 
-	shader->init(device, &pipeline_info);
+	resource_manager->try_get_graphics_program(handle).value()->init(device, &pipeline_info);
 
 	for(auto &module: shader_modules)
 		vkDestroyShaderModule(device->get_device(), module, nullptr);
 
 	return handle;
-}
-
-void VulkanGraphicsProgramBuilder::fini() {
 }
 
 RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(ShaderPrimitive type) {
@@ -130,6 +123,9 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool w
 	stencil_info.depthTestEnable = VK_TRUE;
 	stencil_info.depthWriteEnable = write_enable;
 	stencil_info.depthCompareOp = convert::convert_compare_op(compare);
+	rasterizer_info.depthBiasEnable = VK_TRUE;
+	rasterizer_info.depthBiasConstantFactor = 4.0f;
+	rasterizer_info.depthBiasSlopeFactor = 1.5f;
 
 	return this;
 }

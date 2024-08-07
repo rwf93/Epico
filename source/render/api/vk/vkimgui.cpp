@@ -6,10 +6,8 @@
 #include "vkdevice.h"
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
+#include "vkresourcemanager.h"
 #include "vkimgui.h"
-
-VulkanUI::VulkanUI() {}
-VulkanUI::~VulkanUI() {}
 
 void VulkanUI::init(
 	FunctorQueue<> &queue,
@@ -17,13 +15,15 @@ void VulkanUI::init(
 	VulkanInstance *vkinstance ,
 	VulkanDevice *vkdevice,
 	VulkanSwapchain *vkswapchain,
-	VulkanCommandPool *vkcommandpool
+	VulkanCommandPool *vkcommandpool,
+	VulkanResourceManager *vkresourcemanager
 ) {
 	this->context = app_context;
 	this->instance = vkinstance;
 	this->device = vkdevice;
 	this->swapchain = vkswapchain;
 	this->command_pool = vkcommandpool;
+	this->resource_manager = vkresourcemanager;
 
 	UNUSED(app_context);
 
@@ -113,6 +113,13 @@ void VulkanUI::end() {
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 		VK_IMAGE_LAYOUT_GENERAL
 	);
+}
+
+void *VulkanUI::add_texture(SamplerHandle sampler_handle, TextureViewHandle texture_view_handle) {
+	auto sampler = resource_manager->try_get_sampler_resource(sampler_handle).value();
+	auto texture_view = resource_manager->try_get_texture_view(texture_view_handle).value();
+
+	return ImGui_ImplVulkan_AddTexture(sampler->get_sampler(), texture_view->get_view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void VulkanUI::process_event(SDL_Event *event) {

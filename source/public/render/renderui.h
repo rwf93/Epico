@@ -12,4 +12,8 @@ public:
 	virtual void end() = 0;
 
 	virtual void *get_context() = 0;
+	virtual void *add_texture(
+		SamplerHandle sampler_handle,
+		TextureViewHandle texture_view_handle
+	) = 0;
 };

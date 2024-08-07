@@ -27,7 +27,6 @@ public:
 	void fini() override;
 
 	friend class VulkanResourceManager;
-	friend class VulkanDescriptorManager;
 private:
 	VulkanDevice *device;
 	VulkanCommandPool *command_pool;

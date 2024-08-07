@@ -14,8 +14,6 @@ public:
 
     VkImageView get_view() { return view; }
 
-    VK_TRACY_MEMORY_OVERLOADS;
-
 private:
     VulkanDevice *device;
     VulkanTexture *texture; // The view is "bound" to this texture

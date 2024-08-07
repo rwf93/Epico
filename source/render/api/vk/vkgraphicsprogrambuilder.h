@@ -12,12 +12,7 @@ public:
 	GraphicsProgramHandle build() override;
 
 	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
-	void fini();
-
-	void clear(
-		GraphicsProgramHandle shader_handle,
-    	VulkanGraphicsProgram *vkshader
-	);
+	void clear(GraphicsProgramHandle program_handle);
 
 	RenderGraphicProgramBuilder *set_primitive(ShaderPrimitive type) override;
 	RenderGraphicProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
@@ -51,7 +46,6 @@ private:
 	VulkanResourceManager *resource_manager;
 
 	GraphicsProgramHandle handle;
-	VulkanGraphicsProgram *shader;
 
     VkPipelineInputAssemblyStateCreateInfo assembly_info = {};
 	VkPipelineViewportStateCreateInfo viewport_info = {};

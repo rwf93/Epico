@@ -14,7 +14,11 @@ struct StorageData {
 	glm::mat4 model;
 };
 
-struct RendererPassHandles {
+struct CompositionData {
+	uint32_t gbuffer_selection;
+};
+
+struct RenderPassResources {
 	TextureHandle position;
 	TextureHandle albedo;
 	TextureHandle depth;
@@ -24,6 +28,28 @@ struct RendererPassHandles {
 	TextureViewHandle albedo_view;
 	TextureViewHandle depth_view;
 	TextureViewHandle composition_view;
+};
+
+struct RenderResources {
+	RenderPassResources *pass_handles;
+	SamplerHandle albedo_sampler;
+	SamplerHandle position_sampler;
+
+	TextureHandle missing_texture;
+	TextureViewHandle missing_texture_view;
+	SamplerHandle missing_texture_sampler;
+
+	BufferHandle scene_buffer;
+	BufferHandle storage_buffer;
+	BufferHandle composition_buffer;
+};
+
+struct CameraData {
+	glm::vec3 front;
+	glm::vec3 up;
+	glm::vec3 right;
+	glm::vec3 direction;
+	glm::vec3 position;
 };
 
 glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
@@ -37,7 +63,10 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-void renderer_setup_pass_resources(AppContext *context, RenderAPI *renderer, RendererPassHandles *resources);
+void setup_resources(AppContext *context, RenderAPI *api, RenderResources *resources);
+void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
+
+void update_camera(CameraData *camera, AppContext *context);
 
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
@@ -76,21 +105,6 @@ int main(int argc, char *argv[]) {
 	filesystem->mount("assets/textures/", "../../assets/textures/");
 	filesystem->mount("assets/shaders/", "../assets/shaders/");
 
-	auto position_image = render_api->create_texture();
-	auto albedo_image = render_api->create_texture();
-	auto depth_image = render_api->create_texture();
-	auto composition_image = render_api->create_texture();
-
-	auto position_image_view = render_api->create_texture_view();
-	auto albedo_image_view = render_api->create_texture_view();
-	auto depth_image_view = render_api->create_texture_view();
-	auto composition_image_view = render_api->create_texture_view();
-
-	auto position_sampler = render_api->create_sampler();
-	auto albedo_sampler = render_api->create_sampler();
-	render_api->sampler(position_sampler, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER);
-	render_api->sampler(albedo_sampler, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER);
-
 	uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
 	uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
 	std::array<uint32_t, 16 *16> missing_texture_data;
@@ -121,21 +135,15 @@ int main(int argc, char *argv[]) {
 	auto missing_texture_sampler_handle = render_api->create_sampler();
 	render_api->sampler(missing_texture_sampler_handle, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER);
 
-	RendererPassHandles resize_handles = {
-		.position = position_image,
-		.albedo = albedo_image,
-		.depth = depth_image,
-		.composition = composition_image,
-		.position_view = position_image_view,
-		.albedo_view = albedo_image_view,
-		.depth_view = depth_image_view,
-		.composition_view = composition_image_view
+	RenderPassResources renderpass_resources = {};
+	RenderResources resources = {
+		.pass_handles = &renderpass_resources
 	};
 
-	// Initalizes the subpass dependencies, resizing recreates those dependencies.
-	renderer_setup_pass_resources(&context, render_api.interface, &resize_handles);
+	setup_resources(&context, render_api.interface, &resources);
+	setup_pass_resources(&context, render_api.interface, &renderpass_resources);
 	render_api->on_resize([&](RenderAPI* renderer) {
-		renderer_setup_pass_resources(&context, renderer, &resize_handles);
+		setup_pass_resources(&context, renderer, &renderpass_resources);
 	});
 
 	auto deferred_layout = render_api->create_layout()
@@ -145,6 +153,7 @@ int main(int argc, char *argv[]) {
 		->build();
 
 	auto composition_layout = render_api->create_layout()
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->build();
@@ -155,7 +164,7 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_depth_test(true, ShaderCompareOp::GREATER_OR_EQUAL)
+		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
 		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
@@ -196,24 +205,16 @@ int main(int argc, char *argv[]) {
 
 	render_api->buffer_sub_data(vbo_handle, 0, triangle.size() * sizeof(Vertex), triangle.data());
 
-	auto scene_data_handle = render_api->create_buffer();
-	auto storage_data_handle = render_api->create_buffer();
-
-	render_api->buffer_data(scene_data_handle, BufferType::UNIFORM, sizeof(SceneData), nullptr);
-	render_api->buffer_data(storage_data_handle, BufferType::STORAGE, sizeof(StorageData) * 1024, nullptr);
-
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
 
 	clock_t start_time = std::clock();
-	float time_delta = 0;
-	float time = 0;
 
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {
 		clock_t current_time = std::clock();
-		time_delta = static_cast<float>(current_time - start_time) / CLOCKS_PER_SEC;
-		time = static_cast<float>(current_time) / CLOCKS_PER_SEC;
+		context.time_delta = static_cast<float>(current_time - start_time) / CLOCKS_PER_SEC;
+		context.time = static_cast<float>(current_time) / CLOCKS_PER_SEC;
 
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
@@ -233,80 +234,22 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		glm::vec3 camPos = { 0.f,0.f,-2.f };
-
-		static float frame = 0;
-		frame += 0.01f;
-
-		static glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
-		static glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
-		static glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-		static glm::vec3 camera_right = glm::normalize(glm::cross(camera_front, camera_up));
-
-		{
-			int mx = 0, my = 0;
-
-			SDL_PumpEvents();
-			const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
-			const Uint8* key_state = SDL_GetKeyboardState(NULL);
-
-			static float pitch = 0.0f;
-			static float yaw = -90.0f;
-			const float sensitivity = 0.1f;
-
-			static float last_mx = 400.0f, last_my = 300.0f;
-
-			float offset_mx = (float)mx - last_mx;
-			float offset_my = last_my - (float)my;
-
-			last_mx = static_cast<float>(mx);
-			last_my = static_cast<float>(my);
-
-			if(mouse_state & SDL_BUTTON(3)) {
-				offset_mx *= sensitivity;
-				offset_my *= sensitivity;
-
-				yaw += offset_mx;
-				pitch += offset_my;
-			}
-
-			static glm::vec3 camera_direction = {};
-
-			camera_direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-			camera_direction.y = sin(glm::radians(pitch));
-			camera_direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-			camera_front = glm::normalize(camera_direction);
-			camera_right = glm::normalize(glm::cross(camera_direction, camera_up));
-
-			float camera_speed = 0.3f;
-
-			if(key_state[SDL_SCANCODE_LSHIFT])
-				camera_speed *= 6.0f;
-
-			if(key_state[SDL_SCANCODE_W])
-				camera_position += camera_front * (time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_S])
-				camera_position -= camera_front * (time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_D])
-				camera_position += camera_right * (time_delta * camera_speed);
-
-			if(key_state[SDL_SCANCODE_A])
-				camera_position -= camera_right * (time_delta * camera_speed);
-		}
+		static CameraData camera;
+		update_camera(&camera, &context);
 
 		static SceneData scene_data = {};
-		scene_data.view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
-		scene_data.projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
+		scene_data.view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
+		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
 		scene_data.color = glm::vec3(1);
-		render_api->buffer_sub_data(scene_data_handle, 0, sizeof(SceneData), &scene_data);
+		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
 		static StorageData storage_data[1024] = {};
-		storage_data[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(0, 0, 0), glm::vec3(1));
-		render_api->buffer_sub_data(storage_data_handle, 0, sizeof(StorageData) * 1024, &storage_data);
+		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1));
+		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * 1024, &storage_data);
+
+		static CompositionData composition_data = {};
+		render_api->buffer_sub_data(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
 
 		render_api->begin();
 		{
@@ -315,28 +258,28 @@ int main(int argc, char *argv[]) {
 			// Offscreen/Deferred rendering (first pass)
 			std::vector<SubpassAttachment> deferred_attachments = {
 				{
-					.texture = position_image,
-					.view = position_image_view,
+					.texture = renderpass_resources.position,
+					.view = renderpass_resources.position_view,
 					.type = AttachmentType::COLOR,
 				},
 				{
-					.texture = albedo_image,
-					.view = albedo_image_view,
+					.texture = renderpass_resources.albedo,
+					.view = renderpass_resources.albedo_view,
 					.type = AttachmentType::COLOR,
 					.clear = { {0, 0, 0, 1} }
 				},
 				{
-					.texture = depth_image,
-					.view = depth_image_view,
+					.texture = renderpass_resources.depth,
+					.view = renderpass_resources.depth_view,
 					.type = AttachmentType::DEPTH,
-					.clear = { .rgba = { 0.0f }, .depth = 0.0f, .stencil = 0 }
+					.clear = { .rgba = { 1.0f }, .depth = 0.0f, .stencil = 0 }
 				}
 			};
 
 			std::vector<UniformBind> deferred_binds = {
 				{
 					.buffer = {
-						.buffer_handle = scene_data_handle,
+						.buffer_handle = resources.scene_buffer,
 						.offset = 0,
 						.range = sizeof(SceneData)
 					},
@@ -344,7 +287,7 @@ int main(int argc, char *argv[]) {
 				},
 				{
 					.buffer = {
-						.buffer_handle = storage_data_handle,
+						.buffer_handle = resources.storage_buffer,
 						.offset = 0,
 						.range = sizeof(StorageData) * 1024
 					},
@@ -356,7 +299,7 @@ int main(int argc, char *argv[]) {
 						.sampler_handle = missing_texture_sampler_handle
 					},
 					.type = UniformType::TEXTURE
-				}
+				},
 			};
 
 			render_api->begin_pass(deferred_attachments);
@@ -367,38 +310,48 @@ int main(int argc, char *argv[]) {
 				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
 				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
 				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
+				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 1);
+				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 2);
 			render_api->end_pass(deferred_attachments);
 
 			std::vector<SubpassAttachment> composition_attachments = {
 				{
-					.texture = composition_image,
-					.view = composition_image_view,
+					.texture = renderpass_resources.composition,
+					.view = renderpass_resources.composition_view,
 					.type = AttachmentType::COLOR,
 				},
 				{
-					.texture = position_image,
-					.view = position_image_view,
+					.texture = renderpass_resources.position,
+					.view = renderpass_resources.position_view,
 					.type = AttachmentType::SHADER
 				},
 				{
-					.texture = albedo_image,
-					.view = albedo_image_view,
+					.texture = renderpass_resources.albedo,
+					.view = renderpass_resources.albedo_view,
 					.type = AttachmentType::SHADER
 				},
 			};
 
 			std::vector<UniformBind> composition_binds = {
 				{
+					.buffer = {
+						.buffer_handle = resources.composition_buffer,
+						.offset = 0,
+						.range = sizeof(CompositionData)
+					},
+					.type = UniformType::BUFFER
+				},
+				{
 					.texture = {
-						.texture_view_handle = position_image_view,
-						.sampler_handle = position_sampler
+						.texture_view_handle = renderpass_resources.position_view,
+						.sampler_handle = resources.position_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
 				{
 					.texture = {
-						.texture_view_handle = albedo_image_view,
-						.sampler_handle = albedo_sampler
+						.texture_view_handle = renderpass_resources.albedo_view,
+						.sampler_handle = resources.albedo_sampler
 					},
 					.type = UniformType::TEXTURE,
 				}
@@ -412,14 +365,37 @@ int main(int argc, char *argv[]) {
 				render_api->draw(3, 1);
 			render_api->end_pass(composition_attachments);
 
-			render_api->show_image(composition_image);
+			render_api->show_image(resources.pass_handles->composition);
 
 			render_api->ui()->begin();
 				ImGui::NewFrame();
 
-				ImGui::Begin("fart");
+				ImGui::Begin("Selection");
+				ImGui::SliderInt("GBuffer Selection", (int*)&composition_data.gbuffer_selection, 0, 1);
 				ImGui::End();
+
 				ImGui::ShowDemoWindow();
+
+				ImGuiIO &io = ImGui::GetIO();
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+				{
+					ImGui::SetNextWindowPos(ImVec2(1.5f, 1.5f));
+					ImGui::Begin("Statistics", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings);
+					{
+						ImGui::Text("Statistics");
+						ImGui::Separator();
+						ImGui::Text("Frames Per Second: %.1f (%.3fms/frame)", io.Framerate, 1000.0f / io.Framerate);
+						ImGui::Text("Surface Size: %ix%i", context.width, context.height);
+
+						if(ImGui::BeginPopupContextWindow()) {
+							if(ImGui::MenuItem("Top-Left", NULL)) {};
+							if(ImGui::MenuItem("Top-Right", NULL)) {};
+							ImGui::EndPopup();
+						}
+					}
+					ImGui::End();
+				}
+				ImGui::PopStyleVar();
 
 				ImGui::Render();
 			render_api->ui()->end();
@@ -437,7 +413,59 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-void renderer_setup_pass_resources(AppContext *context, RenderAPI *renderer, RendererPassHandles *resources) {
+void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources *resources) {
+	UNUSED(context);
+	resources->pass_handles->position = render_api->create_texture();
+	resources->pass_handles->albedo = render_api->create_texture();
+	resources->pass_handles->depth = render_api->create_texture();
+	resources->pass_handles->composition = render_api->create_texture();
+	resources->pass_handles->position_view = render_api->create_texture_view();
+	resources->pass_handles->albedo_view = render_api->create_texture_view();
+	resources->pass_handles->depth_view = render_api->create_texture_view();
+	resources->pass_handles->composition_view = render_api->create_texture_view();
+	resources->position_sampler = render_api->create_sampler();
+	resources->albedo_sampler = render_api->create_sampler();
+	resources->scene_buffer = render_api->create_buffer();
+	resources->storage_buffer = render_api->create_buffer();
+	resources->composition_buffer = render_api->create_buffer();
+
+	render_api->sampler(
+		resources->position_sampler,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER
+	);
+
+	render_api->sampler(
+		resources->albedo_sampler,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER
+	);
+
+	render_api->buffer_data(
+		resources->scene_buffer,
+		BufferType::UNIFORM,
+		sizeof(SceneData),
+		nullptr
+	);
+
+	render_api->buffer_data(
+		resources->storage_buffer,
+		BufferType::STORAGE,
+		sizeof(StorageData) * 1024,
+		nullptr
+	);
+
+	render_api->buffer_data(
+		resources->composition_buffer,
+		BufferType::UNIFORM,
+		sizeof(CompositionData),
+		nullptr
+	);
+}
+
+void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources) {
 	renderer->texture_data(
 		resources->position,
 		ImageDimensions::IMAGE_2D,
@@ -509,4 +537,64 @@ void renderer_setup_pass_resources(AppContext *context, RenderAPI *renderer, Ren
 		ImageFormat::R16G16B16A16_SFLOAT,
 		0, 0
 	);
+}
+
+void update_camera(CameraData *camera, AppContext *context) {
+	static glm::vec3 front 		= glm::vec3(0.0f, 0.0f, -1.0f);
+	static glm::vec3 up 		= glm::vec3(0.0f, 1.0f, 0.0f);
+	static glm::vec3 right 		= glm::normalize(glm::cross(front, up));
+
+	camera->front = front;
+	camera->up = up;
+	camera->right = right;
+
+	int mx = 0, my = 0;
+
+	SDL_PumpEvents();
+	const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
+	const Uint8* key_state = SDL_GetKeyboardState(NULL);
+
+	static float pitch = 0.0f;
+	static float yaw = -90.0f;
+	const float sensitivity = 0.1f;
+
+	static float last_mx = 400.0f, last_my = 300.0f;
+
+	float offset_mx = (float)mx - last_mx;
+	float offset_my = last_my - (float)my;
+
+	last_mx = static_cast<float>(mx);
+	last_my = static_cast<float>(my);
+
+	if(mouse_state & SDL_BUTTON(3)) {
+		offset_mx *= sensitivity;
+		offset_my *= sensitivity;
+
+		yaw += offset_mx;
+		pitch += offset_my;
+	}
+
+	camera->direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+	camera->direction.y = sin(glm::radians(pitch));
+	camera->direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+	camera->front = glm::normalize(camera->direction);
+	camera->right = glm::normalize(glm::cross(camera->direction, camera->up));
+
+	float camera_speed = 0.3f;
+
+	if(key_state[SDL_SCANCODE_LSHIFT])
+		camera_speed *= 6.0f;
+
+	if(key_state[SDL_SCANCODE_W])
+		camera->position += camera->front * (context->time_delta * camera_speed);
+
+	if(key_state[SDL_SCANCODE_S])
+		camera->position -= camera->front * (context->time_delta * camera_speed);
+
+	if(key_state[SDL_SCANCODE_D])
+		camera->position += camera->right * (context->time_delta * camera_speed);
+
+	if(key_state[SDL_SCANCODE_A])
+		camera->position -= camera->right * (context->time_delta * camera_speed);
 }

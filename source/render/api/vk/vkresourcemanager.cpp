@@ -44,7 +44,7 @@ void VulkanResourceManager::init(
 
 	VK_CHECK(vmaCreateAllocator(&allocator_info, &allocator));
 
-	layout_builder.init(device);
+	layout_builder.init(device, this);
 	graphics_program_builder.init(device, this);
 
 	queue.push([&] { fini(); });
@@ -64,9 +64,6 @@ void VulkanResourceManager::fini() {
 	DELETE_RESOURCE(buffer_resources);
 	DELETE_RESOURCE(layout_resources);
 	DELETE_RESOURCE(graphics_program_resources)
-
-	graphics_program_builder.fini();
-	layout_builder.fini();
 
 	vmaDestroyAllocator(allocator);
 }
@@ -97,17 +94,15 @@ BufferHandle VulkanResourceManager::create_buffer() {
 
 RenderLayoutBuilder *VulkanResourceManager::create_layout() {
 	LayoutHandle last_resource_handle = static_cast<LayoutHandle>(layout_resources.size());
-	auto layout = new VulkanLayout();
-	layout_resources.push_back(layout);
-	layout_builder.clear(last_resource_handle, layout);
+	layout_resources.push_back(new VulkanLayout());
+	layout_builder.clear(last_resource_handle);
 	return &layout_builder;
 }
 
 RenderGraphicProgramBuilder *VulkanResourceManager::create_graphics_program() {
 	GraphicsProgramHandle last_resource_handle = static_cast<GraphicsProgramHandle>(graphics_program_resources.size());
-	auto graphics_program = new VulkanGraphicsProgram();
-	graphics_program_resources.push_back(graphics_program);
-	graphics_program_builder.clear(last_resource_handle, graphics_program);
+	graphics_program_resources.push_back(new VulkanGraphicsProgram());
+	graphics_program_builder.clear(last_resource_handle);
 	return &graphics_program_builder;
 }
 

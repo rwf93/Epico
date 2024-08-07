@@ -14,6 +14,7 @@
 class VulkanDevice;
 class VulkanResource;
 class VulkanCommandPool;
+class VulkanInstance;
 class VulkanResourceManager {
 public:
 	void init(FunctorQueue<> &queue, VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);

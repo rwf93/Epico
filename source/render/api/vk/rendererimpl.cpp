@@ -29,7 +29,7 @@ void VulkanAPI::init(AppContext *app_context) {
 	swapchain.init(cleanup_queue, &device);
 	command_pool.init(cleanup_queue, &device, &swapchain);
 	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	ui_imgui.init(cleanup_queue, context, &instance, &device, &swapchain, &command_pool);
+	ui_imgui.init(cleanup_queue, context, &instance, &device, &swapchain, &command_pool, &resource_manager);
 }
 
 VulkanAPI::~VulkanAPI() {
@@ -256,11 +256,11 @@ void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
-// MSVC is for some optimizing this function oddly casuing weird behaviour with vk.
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
 	auto layout = resource_manager.try_get_layout(layout_handle).value();
-	assert(layout);
 	std::vector<VkWriteDescriptorSet> write_sets = {};
+	std::map<uint32_t, VkDescriptorBufferInfo> buffer_info_map = {};
+	std::map<uint32_t, VkDescriptorImageInfo> image_info_map = {};
 
 	for(uint32_t i = 0; i < binds.size(); i++) {
 		UniformBind &bind = binds[i];
@@ -281,8 +281,10 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				buffer_info.offset = bind.buffer.offset;
 				buffer_info.range = bind.buffer.range;
 
+				buffer_info_map.insert(std::make_pair(i, buffer_info));
+
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptor_write.pBufferInfo = &buffer_info;
+				descriptor_write.pBufferInfo = &buffer_info_map[i];
 			} break;
 			case UniformType::STORAGE: {
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
@@ -292,8 +294,10 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				buffer_info.offset = bind.buffer.offset;
 				buffer_info.range = bind.buffer.range;
 
+				buffer_info_map.insert(std::make_pair(i, buffer_info));
+
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				descriptor_write.pBufferInfo = &buffer_info;
+				descriptor_write.pBufferInfo = &buffer_info_map[i];
 			} break;
 			case UniformType::TEXTURE: {
 				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture.texture_view_handle).value();
@@ -304,8 +308,10 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				image_info.imageView = texture_view_resource->get_view();
 				image_info.sampler = sampler_resource->get_sampler();
 
+				image_info_map.insert(std::make_pair(i, image_info));
+
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				descriptor_write.pImageInfo = &image_info;
+				descriptor_write.pImageInfo = &image_info_map[i];
 			} break;
 			default: break;
 		}

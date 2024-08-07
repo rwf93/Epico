@@ -34,16 +34,17 @@ struct BufferBind {
 };
 
 struct TextureBind {
-	TextureHandle texture_handle;
 	TextureViewHandle texture_view_handle;
 	SamplerHandle sampler_handle;
 };
 
 struct UniformBind {
-	union {
-		BufferBind buffer;
-		TextureBind texture;
-	};
+	//union {
+	//	BufferBind buffer;
+	//	TextureBind texture;
+	//};
+	BufferBind buffer;
+	TextureBind texture;
 	UniformType type;
 };
 

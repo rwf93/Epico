@@ -13,8 +13,6 @@ public:
 	void init(VulkanDevice *vkdevice, VkGraphicsPipelineCreateInfo *pipeline_create_info);
 	void fini() override;
 
-	VK_TRACY_MEMORY_OVERLOADS;
-
 private:
 	VulkanDevice *device;
 	ResourceState state = ResourceState::UNREADY;

@@ -4,10 +4,10 @@ class VulkanInstance;
 class VulkanDevice;
 class VulkanSwapchain;
 class VulkanCommandPool;
+class VulkanResourceManager;
 class VulkanUI: public RenderUI {
 public:
-	VulkanUI();
-	~VulkanUI() override;
+	~VulkanUI() override = default;
 
 	void process_event(SDL_Event *event);
 
@@ -15,6 +15,7 @@ public:
 	void end() override;
 
 	void *get_context() override;
+	void *add_texture(SamplerHandle sampler_handle, TextureViewHandle texture_view_handle) override;
 
 	void init(
 		FunctorQueue<> &queue,
@@ -22,7 +23,8 @@ public:
 		VulkanInstance *vkinstance ,
 		VulkanDevice *vkdevice,
 		VulkanSwapchain *vkswapchain,
-		VulkanCommandPool *vkcommandpool
+		VulkanCommandPool *vkcommandpool,
+		VulkanResourceManager *vkresourcemanager
 	);
 	void fini();
 
@@ -32,6 +34,7 @@ private:
 	VulkanDevice *device = nullptr;
 	VulkanSwapchain *swapchain = nullptr;
 	VulkanCommandPool *command_pool = nullptr;
+	VulkanResourceManager *resource_manager = nullptr;
 
 	VkDescriptorPool descriptor_pool;
 };
