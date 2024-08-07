@@ -29,7 +29,7 @@ void VulkanInstance::init(FunctorQueue<> &queue) {
 						.set_app_name("Epico")
 						.set_engine_name("Epico Engine")
 						.require_api_version(VK_API_VERSION_1_3)
-						.request_validation_layers()
+						//.request_validation_layers()
 						.set_debug_callback(vk_debug_callback)
 						.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
 						.build();

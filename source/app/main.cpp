@@ -1,6 +1,6 @@
 struct Vertex {
 	glm::vec3 position;
-	glm::vec3 color;
+	glm::vec3 normal;
 	glm::vec2 uv;
 };
 
@@ -20,20 +20,23 @@ struct CompositionData {
 
 struct RenderPassResources {
 	TextureHandle position;
+	TextureHandle normal;
 	TextureHandle albedo;
 	TextureHandle depth;
 	TextureHandle composition;
 
 	TextureViewHandle position_view;
 	TextureViewHandle albedo_view;
+	TextureViewHandle normal_view;
 	TextureViewHandle depth_view;
 	TextureViewHandle composition_view;
 };
 
 struct RenderResources {
 	RenderPassResources *pass_handles;
-	SamplerHandle albedo_sampler;
 	SamplerHandle position_sampler;
+	SamplerHandle normal_sampler;
+	SamplerHandle albedo_sampler;
 
 	TextureHandle missing_texture;
 	TextureViewHandle missing_texture_view;
@@ -63,10 +66,48 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+
 void setup_resources(AppContext *context, RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
 
 void update_camera(CameraData *camera, AppContext *context);
+
+struct Texture {
+	TextureHandle texture;
+	TextureViewHandle view;
+	SamplerHandle sampler;
+};
+
+void create_texture(RenderAPI *render_api, void *data, int width, int height, Texture *texture) {
+	texture->texture = render_api->create_texture();
+	texture->view = render_api->create_texture_view();
+	texture->sampler = render_api->create_sampler();
+
+	render_api->texture_data(
+		texture->texture,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R8G8B8A8_UNORM,
+		ImageFlags::SAMPLED,
+		data, width, height, 1
+	);
+
+	render_api->texture_view(
+		texture->view,
+		texture->texture,
+		ImageViewDimensions::IMAGE_2D,
+		ImageFormat::R8G8B8A8_UNORM, 0, 0
+	);
+
+	render_api->sampler(
+		texture->sampler,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER
+	);
+}
 
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
@@ -105,6 +146,9 @@ int main(int argc, char *argv[]) {
 	filesystem->mount("assets/textures/", "../../assets/textures/");
 	filesystem->mount("assets/shaders/", "../assets/shaders/");
 
+	//int width, height, nrchannels;
+	//unsigned char *data = stbi_load(filesystem->resolve_physical_dir("assets/textures/Ariral_Holds.png").string().c_str(), &width, &height, &nrchannels, 4);
+
 	uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
 	uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
 	std::array<uint32_t, 16 *16> missing_texture_data;
@@ -114,26 +158,8 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	auto missing_texture_handle = render_api->create_texture();
-	render_api->texture_data(
-		missing_texture_handle,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::SAMPLED,
-		missing_texture_data.data(), 16, 16, 1
-	);
-
-	auto missing_texture_view_handle = render_api->create_texture_view();
-	render_api->texture_view(
-		missing_texture_view_handle,
-		missing_texture_handle,
-		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R8G8B8A8_UNORM, 0, 0
-	);
-
-	auto missing_texture_sampler_handle = render_api->create_sampler();
-	render_api->sampler(missing_texture_sampler_handle, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER, SamplerAddressMode::CLAMP_BORDER);
+	Texture missing_texture;
+	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
 	RenderPassResources renderpass_resources = {};
 	RenderResources resources = {
@@ -156,18 +182,20 @@ int main(int argc, char *argv[]) {
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->build();
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
 	auto deferred_shader = render_api->create_graphics_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
 		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
 		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		->add_attribute(1, 0, offsetof(Vertex, color), AttributeType::VEC3D_SIGNED)
+		->add_attribute(1, 0, offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
 		->add_attribute(2, 0, offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
 		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
@@ -186,16 +214,31 @@ int main(int argc, char *argv[]) {
 	UNUSED(deferred_shader);
 	UNUSED(composition_shader);
 
-	std::vector<Vertex> triangle = {
-		{ {-0.5, -0.5, 0}, {0.3, 1.0, 1.0}, { 1.0, 0.0 } },
-    	{ { 0.5, -0.5, 0}, {0.5, 1.0, 1.0}, { 0.0, 0.0 } },
-    	{ { 0.5, 0.5, 0}, {1.0, 0.5, 0.2 }, { 0.0, 1.0 } },
-		{ {-0.5, 0.5, 0}, {1.0, 1.0, 1.0}, { 1.0, 1.0 } },
-	};
+	std::vector<Vertex> triangle = {};
+	std::vector<uint32_t> indicies = {};
 
-	std::vector<uint32_t> indicies = {
-		0, 1, 2, 2, 3, 0
-	};
+	Assimp::Importer importer;
+	const aiScene *scene = importer.ReadFile(filesystem->resolve_physical_dir("assets/models/monkey.glb").string().c_str(), 0);
+	for(unsigned int i = 0; i < scene->mNumMeshes; i++) {
+		aiMesh *mesh = scene->mMeshes[i];
+		for(unsigned int j = 0; j < mesh->mNumFaces; j++) {
+			aiFace &face = mesh->mFaces[j];
+			for(int k = 0; k < 3; k++) {
+				Vertex vertex = {};
+
+				aiVector3D position = mesh->mVertices[face.mIndices[k]];
+				aiVector3D normal = mesh->HasNormals() ? mesh->mNormals[face.mIndices[k]] : aiVector3D(1.0f);
+				aiVector3D texcoord = mesh->mTextureCoords[0][face.mIndices[k]];
+
+				vertex.position = { position.x, position.y, position.z };
+				vertex.normal = { normal.x, normal.y, normal.z };
+				vertex.uv = { texcoord.x, texcoord.y };
+
+				triangle.push_back(vertex);
+				indicies.push_back((uint32_t)indicies.size());
+			}
+		}
+	}
 
 	auto vbo_handle = render_api->create_buffer();
 	auto ibo_handle = render_api->create_buffer();
@@ -245,7 +288,14 @@ int main(int argc, char *argv[]) {
 		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
 		static StorageData storage_data[1024] = {};
-		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1));
+		//storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
+		static bool init = false;
+		if(!init) {
+			for(int i = 0; i < 1024; i++) {
+				storage_data[i].model = calculate_model_matrix(glm::ballRand(50.0f), glm::ballRand(10.0f), glm::vec3(1.0f));
+			}
+			init = true;
+		}
 		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * 1024, &storage_data);
 
 		static CompositionData composition_data = {};
@@ -261,6 +311,12 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.position,
 					.view = renderpass_resources.position_view,
 					.type = AttachmentType::COLOR,
+				},
+				{
+					.texture = renderpass_resources.normal,
+					.view = renderpass_resources.normal_view,
+					.type = AttachmentType::COLOR,
+					.clear = { {0, 0, 0, 1} }
 				},
 				{
 					.texture = renderpass_resources.albedo,
@@ -295,8 +351,8 @@ int main(int argc, char *argv[]) {
 				},
 				{
 					.texture = {
-						.texture_view_handle = missing_texture_view_handle,
-						.sampler_handle = missing_texture_sampler_handle
+						.texture_view_handle = missing_texture.view,
+						.sampler_handle = missing_texture.sampler
 					},
 					.type = UniformType::TEXTURE
 				},
@@ -309,9 +365,9 @@ int main(int argc, char *argv[]) {
 				render_api->bind_shader(deferred_shader);
 				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
 				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
-				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
-				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 1);
-				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 2);
+				//render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
+				for(int i = 0; i < 1024; i++)
+					render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, i);
 			render_api->end_pass(deferred_attachments);
 
 			std::vector<SubpassAttachment> composition_attachments = {
@@ -330,6 +386,11 @@ int main(int argc, char *argv[]) {
 					.view = renderpass_resources.albedo_view,
 					.type = AttachmentType::SHADER
 				},
+				{
+					.texture = renderpass_resources.normal,
+					.view = renderpass_resources.normal_view,
+					.type = AttachmentType::SHADER
+				},
 			};
 
 			std::vector<UniformBind> composition_binds = {
@@ -345,6 +406,13 @@ int main(int argc, char *argv[]) {
 					.texture = {
 						.texture_view_handle = renderpass_resources.position_view,
 						.sampler_handle = resources.position_sampler
+					},
+					.type = UniformType::TEXTURE,
+				},
+				{
+					.texture = {
+						.texture_view_handle = renderpass_resources.normal_view,
+						.sampler_handle = resources.normal_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
@@ -371,7 +439,7 @@ int main(int argc, char *argv[]) {
 				ImGui::NewFrame();
 
 				ImGui::Begin("Selection");
-				ImGui::SliderInt("GBuffer Selection", (int*)&composition_data.gbuffer_selection, 0, 1);
+				ImGui::SliderInt("GBuffer Selection", (int*)&composition_data.gbuffer_selection, 0, 2);
 				ImGui::End();
 
 				ImGui::ShowDemoWindow();
@@ -416,14 +484,17 @@ int main(int argc, char *argv[]) {
 void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources *resources) {
 	UNUSED(context);
 	resources->pass_handles->position = render_api->create_texture();
+	resources->pass_handles->normal = render_api->create_texture();
 	resources->pass_handles->albedo = render_api->create_texture();
 	resources->pass_handles->depth = render_api->create_texture();
 	resources->pass_handles->composition = render_api->create_texture();
 	resources->pass_handles->position_view = render_api->create_texture_view();
+	resources->pass_handles->normal_view = render_api->create_texture_view();
 	resources->pass_handles->albedo_view = render_api->create_texture_view();
 	resources->pass_handles->depth_view = render_api->create_texture_view();
 	resources->pass_handles->composition_view = render_api->create_texture_view();
 	resources->position_sampler = render_api->create_sampler();
+	resources->normal_sampler = render_api->create_sampler();
 	resources->albedo_sampler = render_api->create_sampler();
 	resources->scene_buffer = render_api->create_buffer();
 	resources->storage_buffer = render_api->create_buffer();
@@ -438,6 +509,13 @@ void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources
 
 	render_api->sampler(
 		resources->albedo_sampler,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER,
+		SamplerAddressMode::CLAMP_BORDER
+	);
+
+	render_api->sampler(
+		resources->normal_sampler,
 		SamplerAddressMode::CLAMP_BORDER,
 		SamplerAddressMode::CLAMP_BORDER,
 		SamplerAddressMode::CLAMP_BORDER
@@ -487,6 +565,16 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 	);
 
 	renderer->texture_data(
+		resources->normal,
+		ImageDimensions::IMAGE_2D,
+		ImageSamples::SAMPLE_COUNT_1_BIT,
+		ImageFormat::R16G16B16A16_SFLOAT,
+		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
+		nullptr,
+		context->width, context->height, 1
+	);
+
+	renderer->texture_data(
 		resources->depth,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
@@ -519,6 +607,14 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		resources->albedo,
 		ImageViewDimensions::IMAGE_2D,
 		ImageFormat::R8G8B8A8_UNORM,
+		0, 0
+	);
+
+	renderer->texture_view(
+		resources->normal_view,
+		resources->normal,
+		ImageViewDimensions::IMAGE_2D,
+		ImageFormat::R16G16B16A16_SFLOAT,
 		0, 0
 	);
 

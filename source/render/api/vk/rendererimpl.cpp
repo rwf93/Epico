@@ -100,14 +100,14 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 					info::attachment_info(
 						texture_view->get_view(),
 						clear_value,
-						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+						VK_IMAGE_LAYOUT_GENERAL
 					)
 				);
 
 				command_pool.transition_image(
 					texture->get_image(),
 					VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+					VK_IMAGE_LAYOUT_GENERAL
 				);
 				break;
 			case AttachmentType::DEPTH:
@@ -150,28 +150,11 @@ void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
 
 	for(auto &dependency: dependencies) {
 		auto resource = resource_manager.try_get_texture(dependency.texture).value();
+		UNUSED(resource);
 		switch(dependency.type) {
 			case AttachmentType::COLOR:
-				command_pool.transition_image(
-					resource->get_image(),
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-					VK_IMAGE_LAYOUT_GENERAL
-				);
-				break;
 			case AttachmentType::DEPTH:
-				command_pool.transition_image(
-					resource->get_image(),
-					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-					VK_IMAGE_LAYOUT_GENERAL
-				);
-				break;
 			case AttachmentType::SHADER:
-				command_pool.transition_image(
-					resource->get_image(),
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-					VK_IMAGE_LAYOUT_GENERAL
-				);
-				break;
 			default: break;
 		}
 	}
