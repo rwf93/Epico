@@ -47,7 +47,7 @@ public:
 		ImageFormat format,
 		ImageFlags flags,
 		void *data,
-		int width, int height, int depth
+		int width, int height
 	);
 
 	void sampler(

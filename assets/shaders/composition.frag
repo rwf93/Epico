@@ -40,7 +40,6 @@ void main() {
 
         vec3 V = composition.camera_position.xyz - position;
         V = normalize(V);
-
         L = normalize(L);
 
         float atten = light.radius / (pow(dist, 2.0) + 1.0);

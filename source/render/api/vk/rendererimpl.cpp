@@ -357,9 +357,9 @@ void VulkanAPI::texture_data(
 	ImageFormat format,
 	ImageFlags flags,
 	void *data,
-	int width, int height, int depth = 1
+	int width, int height
 ) {
-	auto image_info = info::image_create_info(width, height, depth);
+	auto image_info = info::image_create_info(width, height, 1);
 	image_info.imageType = convert::convert_image_dimensions(dimensions);
 	image_info.samples = convert::convert_sample_bits(samples);
 	image_info.format = convert::convert_image_format(format);

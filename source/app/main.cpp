@@ -77,10 +77,6 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-
 void setup_resources(AppContext *context, RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
 
@@ -103,7 +99,7 @@ void create_texture(RenderAPI *render_api, void *data, int width, int height, Te
 		ImageSamples::SAMPLE_COUNT_1_BIT,
 		ImageFormat::R8G8B8A8_UNORM,
 		ImageFlags::SAMPLED,
-		data, width, height, 1
+		data, width, height
 	);
 
 	render_api->texture_view(
@@ -115,9 +111,9 @@ void create_texture(RenderAPI *render_api, void *data, int width, int height, Te
 
 	render_api->sampler(
 		texture->sampler,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT
 	);
 }
 
@@ -173,6 +169,13 @@ int main(int argc, char *argv[]) {
 	int width, height, nrchannels;
 	unsigned char *armor_albedo_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_color.png").string().c_str(), &width, &height, &nrchannels, 4);
 
+	ktxTexture *texture;
+	ktxTexture_CreateFromNamedFile(
+		filesystem->resolve_physical_dir("assets/textures/armor_default_color.png").string().c_str(),
+		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+		&texture
+	);
+
 	Texture armor_albedo_texture;
 	create_texture(render_api.interface, armor_albedo_data, width, height, &armor_albedo_texture);
 
@@ -181,7 +184,6 @@ int main(int argc, char *argv[]) {
 
 	Texture armor_normal_texture;
 	create_texture(render_api.interface, armor_normal_data, nwidth, nheight, &armor_normal_texture);
-
 
 	Texture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
@@ -248,7 +250,7 @@ int main(int argc, char *argv[]) {
 	Assimp::Importer importer;
 	const aiScene *scene = importer.ReadFile(
 		filesystem->resolve_physical_dir("assets/models/armor.gltf").string().c_str(),
-		aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenUVCoords | aiProcess_OptimizeMeshes
+		aiProcess_FlipUVs
 	);
 
 	for(unsigned int i = 0; i < scene->mNumMeshes; i++) {
@@ -269,7 +271,7 @@ int main(int argc, char *argv[]) {
 				vertex.uv = { texcoord.x, texcoord.y };
 
 				triangle.push_back(vertex);
-				indicies.push_back(static_cast<uint32_t>(indicies.size()));
+				indicies.push_back((uint32_t)indicies.size());
 			}
 		}
 	}
@@ -277,8 +279,8 @@ int main(int argc, char *argv[]) {
 	auto vbo_handle = render_api->create_buffer();
 	auto ibo_handle = render_api->create_buffer();
 
-	render_api->buffer_data(vbo_handle, BufferType::VERTEX, triangle.size() * sizeof(Vertex), triangle.data());
-	render_api->buffer_data(ibo_handle, BufferType::INSTANCE, indicies.size() * sizeof(uint32_t), indicies.data());
+	render_api->buffer_data(vbo_handle, BufferType::VERTEX, sizeof(Vertex) * triangle.size(), triangle.data());
+	render_api->buffer_data(ibo_handle, BufferType::INSTANCE, sizeof(uint32_t) * indicies.size(), indicies.data());
 
 	render_api->buffer_sub_data(vbo_handle, 0, triangle.size() * sizeof(Vertex), triangle.data());
 
@@ -316,7 +318,7 @@ int main(int argc, char *argv[]) {
 
 		static SceneData scene_data = {};
 		scene_data.view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
-		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.000001f, 1000.0f);
+		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.01f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
 		scene_data.color = glm::vec3(1);
 		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
@@ -326,7 +328,7 @@ int main(int argc, char *argv[]) {
 		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
 
 		static CompositionData composition_data = {};
-		composition_data.camera_position = glm::vec4(camera.position * glm::vec3(-1.0f, 1.0f, -1.0f), 0);
+		composition_data.camera_position = glm::vec4(camera.position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 		render_api->buffer_sub_data(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
 
 		static LightData light_data[LightData::MAX_LIGHTS] = {};
@@ -389,8 +391,8 @@ int main(int argc, char *argv[]) {
 				},
 				{
 					.texture = {
-						.texture_view_handle = armor_albedo_texture.view,
-						.sampler_handle = armor_albedo_texture.sampler
+						.texture_view_handle = armor_normal_texture.view,
+						.sampler_handle = armor_normal_texture.sampler
 					},
 					.type = UniformType::TEXTURE
 				},
@@ -561,23 +563,23 @@ void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources
 
 	render_api->sampler(
 		resources->position_sampler,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT
 	);
 
 	render_api->sampler(
 		resources->albedo_sampler,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT
 	);
 
 	render_api->sampler(
 		resources->normal_sampler,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER,
-		SamplerAddressMode::CLAMP_BORDER
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT,
+		SamplerAddressMode::REPEAT
 	);
 
 	render_api->buffer_data(
@@ -617,7 +619,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		ImageFormat::R16G16B16A16_SFLOAT,
 		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
 		nullptr,
-		context->width, context->height, 1
+		context->width, context->height
 	);
 
 	renderer->texture_data(
@@ -627,7 +629,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		ImageFormat::R8G8B8A8_UNORM,
 		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
 		nullptr,
-		context->width, context->height, 1
+		context->width, context->height
 	);
 
 	renderer->texture_data(
@@ -637,7 +639,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		ImageFormat::R16G16B16A16_SFLOAT,
 		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
 		nullptr,
-		context->width, context->height, 1
+		context->width, context->height
 	);
 
 	renderer->texture_data(
@@ -647,7 +649,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		ImageFormat::D32_SFLOAT,
 		ImageFlags::DEPTH_ATTACHMENT,
 		nullptr,
-		context->width, context->height, 1
+		context->width, context->height
 	);
 
 	renderer->texture_data(
@@ -657,7 +659,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		ImageFormat::R16G16B16A16_SFLOAT,
 		ImageFlags::COLOR_ATTACHMENT,
 		nullptr,
-		context->width, context->height, 1
+		context->width, context->height
 	);
 
 	renderer->texture_view(
@@ -743,7 +745,7 @@ void update_camera(CameraData *camera, AppContext *context) {
 	camera->front = glm::normalize(camera->direction);
 	camera->right = glm::normalize(glm::cross(camera->direction, camera->up));
 
-	float camera_speed = 0.3f;
+	float camera_speed = 8.0f;
 
 	if(key_state[SDL_SCANCODE_LSHIFT])
 		camera_speed *= 6.0f;

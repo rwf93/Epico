@@ -101,7 +101,7 @@ public:
 		ImageFormat format,
 		ImageFlags flags,
 		void *data,
-		int width, int height, int depth = 1
+		int width, int height
 	) = 0;
 
 	virtual void sampler(SamplerHandle, SamplerAddressMode u, SamplerAddressMode v, SamplerAddressMode w) = 0;

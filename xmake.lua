@@ -10,7 +10,8 @@ add_requires(
 	"vk-bootstrap",
 	"magic_enum",
 	"vulkan-memory-allocator",
-	"glm"
+	"glm",
+	"ktx"
 )
 
 add_requires("fmt 11.0.1", {

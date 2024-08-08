@@ -21,7 +21,7 @@ void main() {
     vec3 B = cross(N, T);
     mat3 TBN = mat3(T, B, N);
     vec3 tangent_normalized = TBN * normalize(texture(in_normal_texture, in_uv).xyz * 2.0 - vec3(1.0));
-    out_normal = vec4(tangent_normalized, 1.0);
 
+    out_normal = vec4(tangent_normalized, 1.0);
     out_albedo = texture(in_albedo_texture, in_uv);
 }
