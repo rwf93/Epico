@@ -1,6 +1,6 @@
 target("epico")
 	set_kind("binary")
-	add_files("main.cpp")
+	add_files("*.cpp")
 	set_languages("cxx20")
 	add_packages("fmt", "libsdl", "glm", "stb", "spdlog", "assimp", "ktx")
 	add_deps("imgui")

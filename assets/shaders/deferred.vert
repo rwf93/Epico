@@ -13,7 +13,6 @@ layout(location = 3) out vec2 out_uv;
 layout(binding = 0) uniform SceneData {
     mat4 view;
     mat4 projection;
-    vec3 color;
 } scene;
 
 struct StorageData {
@@ -29,7 +28,6 @@ void main() {
 
     gl_Position = scene.projection * scene.view * object.model * vec4(in_vertex, 1.0);
     out_position = vec3(object.model * vec4(in_vertex, 1.0));
-
     mat3 normal = transpose(inverse(mat3(object.model)));
     out_normal = normal * normalize(in_normal);
     out_tangent = normal * normalize(in_tangent);

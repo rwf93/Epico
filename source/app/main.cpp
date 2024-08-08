@@ -8,7 +8,6 @@ struct Vertex {
 struct SceneData {
 	glm::mat4 view;
 	glm::mat4 projection;
-	glm::vec3 color;
 };
 
 struct StorageData {
@@ -58,14 +57,6 @@ struct RenderResources {
 	BufferHandle light_buffer;
 };
 
-struct CameraData {
-	glm::vec3 front;
-	glm::vec3 up;
-	glm::vec3 right;
-	glm::vec3 direction;
-	glm::vec3 position;
-};
-
 glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
 	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
 	glm::mat4 rotation_matrix = glm::toMat4(glm::quat(rotation));
@@ -77,10 +68,10 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-void setup_resources(AppContext *context, RenderAPI *api, RenderResources *resources);
+void setup_resources(RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
 
-void update_camera(CameraData *camera, AppContext *context);
+#include "camera.h"
 
 struct Texture {
 	TextureHandle texture;
@@ -127,6 +118,8 @@ int main(int argc, char *argv[]) {
 	context.width = 1280;
 	context.height = 762;
 
+	Camera camera;
+
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		spdlog::error("Couldn't init SDL: {}", SDL_GetError());
 		return 0;
@@ -166,18 +159,16 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	int width, height, nrchannels;
-	unsigned char *armor_albedo_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_color.png").string().c_str(), &width, &height, &nrchannels, 4);
-
 	ktxTexture *texture;
 	ktxTexture_CreateFromNamedFile(
-		filesystem->resolve_physical_dir("assets/textures/armor_default_color.png").string().c_str(),
+		filesystem->resolve_physical_dir("assets/textures/armor.ktx").string().c_str(),
 		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
 		&texture
 	);
+	ktx_uint8_t *texture_data = ktxTexture_GetData(texture);
 
 	Texture armor_albedo_texture;
-	create_texture(render_api.interface, armor_albedo_data, width, height, &armor_albedo_texture);
+	create_texture(render_api.interface, texture_data, texture->baseWidth, texture->baseHeight, &armor_albedo_texture);
 
 	int nwidth, nheight, nnrchannels;
 	unsigned char *armor_normal_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_normal.png").string().c_str(), &nwidth, &nheight, &nnrchannels, 4);
@@ -193,7 +184,7 @@ int main(int argc, char *argv[]) {
 		.pass_handles = &renderpass_resources
 	};
 
-	setup_resources(&context, render_api.interface, &resources);
+	setup_resources(render_api.interface, &resources);
 	setup_pass_resources(&context, render_api.interface, &renderpass_resources);
 	render_api->on_resize([&](RenderAPI* renderer) {
 		setup_pass_resources(&context, renderer, &renderpass_resources);
@@ -313,14 +304,10 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		static CameraData camera;
-		update_camera(&camera, &context);
-
 		static SceneData scene_data = {};
-		scene_data.view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
+		scene_data.view = camera.update(&context);
 		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.01f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
-		scene_data.color = glm::vec3(1);
 		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
 		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
@@ -328,7 +315,7 @@ int main(int argc, char *argv[]) {
 		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
 
 		static CompositionData composition_data = {};
-		composition_data.camera_position = glm::vec4(camera.position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+		composition_data.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 		render_api->buffer_sub_data(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
 
 		static LightData light_data[LightData::MAX_LIGHTS] = {};
@@ -344,18 +331,19 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.position,
 					.view = renderpass_resources.position_view,
 					.type = AttachmentType::COLOR,
+					.clear = { {0, 0, 0, 0} }
 				},
 				{
 					.texture = renderpass_resources.normal,
 					.view = renderpass_resources.normal_view,
 					.type = AttachmentType::COLOR,
-					.clear = { {0, 0, 0, 1} }
+					.clear = { {0, 0, 0, 0} }
 				},
 				{
 					.texture = renderpass_resources.albedo,
 					.view = renderpass_resources.albedo_view,
 					.type = AttachmentType::COLOR,
-					.clear = { {0, 0, 0, 1} }
+					.clear = { {0, 0, 0, 0} }
 				},
 				{
 					.texture = renderpass_resources.depth,
@@ -413,6 +401,7 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.composition,
 					.view = renderpass_resources.composition_view,
 					.type = AttachmentType::COLOR,
+					.clear = { { 0, 0, 0.2f, 1 } }
 				},
 				{
 					.texture = renderpass_resources.position,
@@ -541,8 +530,7 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources *resources) {
-	UNUSED(context);
+void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 	resources->pass_handles->position = render_api->create_texture();
 	resources->pass_handles->normal = render_api->create_texture();
 	resources->pass_handles->albedo = render_api->create_texture();
@@ -701,64 +689,4 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		ImageFormat::R16G16B16A16_SFLOAT,
 		0, 0
 	);
-}
-
-void update_camera(CameraData *camera, AppContext *context) {
-	static glm::vec3 front 		= glm::vec3(0.0f, 0.0f, -1.0f);
-	static glm::vec3 up 		= glm::vec3(0.0f, 1.0f, 0.0f);
-	static glm::vec3 right 		= glm::normalize(glm::cross(front, up));
-
-	camera->front = front;
-	camera->up = up;
-	camera->right = right;
-
-	int mx = 0, my = 0;
-
-	SDL_PumpEvents();
-	const Uint32 mouse_state = SDL_GetMouseState(&mx, &my);
-	const Uint8* key_state = SDL_GetKeyboardState(NULL);
-
-	static float pitch = 0.0f;
-	static float yaw = -90.0f;
-	const float sensitivity = 0.1f;
-
-	static float last_mx = 400.0f, last_my = 300.0f;
-
-	float offset_mx = (float)mx - last_mx;
-	float offset_my = last_my - (float)my;
-
-	last_mx = static_cast<float>(mx);
-	last_my = static_cast<float>(my);
-
-	if(mouse_state & SDL_BUTTON(3)) {
-		offset_mx *= sensitivity;
-		offset_my *= sensitivity;
-
-		yaw += offset_mx;
-		pitch += offset_my;
-	}
-
-	camera->direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-	camera->direction.y = sin(glm::radians(pitch));
-	camera->direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-	camera->front = glm::normalize(camera->direction);
-	camera->right = glm::normalize(glm::cross(camera->direction, camera->up));
-
-	float camera_speed = 8.0f;
-
-	if(key_state[SDL_SCANCODE_LSHIFT])
-		camera_speed *= 6.0f;
-
-	if(key_state[SDL_SCANCODE_W])
-		camera->position += camera->front * (context->time_delta * camera_speed);
-
-	if(key_state[SDL_SCANCODE_S])
-		camera->position -= camera->front * (context->time_delta * camera_speed);
-
-	if(key_state[SDL_SCANCODE_D])
-		camera->position += camera->right * (context->time_delta * camera_speed);
-
-	if(key_state[SDL_SCANCODE_A])
-		camera->position -= camera->right * (context->time_delta * camera_speed);
 }

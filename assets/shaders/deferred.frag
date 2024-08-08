@@ -12,7 +12,6 @@ layout(location = 2) out vec4 out_albedo;
 layout(binding = 2) uniform sampler2D in_albedo_texture;
 layout(binding = 3) uniform sampler2D in_normal_texture;
 
-
 void main() {
     out_position = vec4(in_position, 1.0);
 
