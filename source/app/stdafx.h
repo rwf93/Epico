@@ -17,5 +17,6 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 #endif

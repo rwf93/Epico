@@ -6,3 +6,5 @@ target("imgui")
 	add_defines("IMGUI_IMPL_VULKAN_NO_PROTOTYPES")
 	add_rules("defaults_rule")
 	add_cxxflags("-fPIC", { tools = "gcc" })
+	set_warnings("none")
+

@@ -1,6 +1,7 @@
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
+	glm::vec3 tangent;
 	glm::vec2 uv;
 };
 
@@ -12,10 +13,19 @@ struct SceneData {
 
 struct StorageData {
 	glm::mat4 model;
+	static const uint32_t MAX_OBJECTS = 1024;
 };
 
 struct CompositionData {
-	uint32_t gbuffer_selection;
+	glm::vec4 camera_position;
+	int32_t gbuffer_selection;
+};
+
+struct LightData {
+	glm::vec4 position;
+	glm::vec3 color;
+	float radius;
+	static const uint32_t MAX_LIGHTS = 4;
 };
 
 struct RenderPassResources {
@@ -45,6 +55,7 @@ struct RenderResources {
 	BufferHandle scene_buffer;
 	BufferHandle storage_buffer;
 	BufferHandle composition_buffer;
+	BufferHandle light_buffer;
 };
 
 struct CameraData {
@@ -68,6 +79,7 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 void setup_resources(AppContext *context, RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
@@ -158,6 +170,19 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	int width, height, nrchannels;
+	unsigned char *armor_albedo_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_color.png").string().c_str(), &width, &height, &nrchannels, 4);
+
+	Texture armor_albedo_texture;
+	create_texture(render_api.interface, armor_albedo_data, width, height, &armor_albedo_texture);
+
+	int nwidth, nheight, nnrchannels;
+	unsigned char *armor_normal_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_normal.png").string().c_str(), &nwidth, &nheight, &nnrchannels, 4);
+
+	Texture armor_normal_texture;
+	create_texture(render_api.interface, armor_normal_data, nwidth, nheight, &armor_normal_texture);
+
+
 	Texture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
@@ -176,10 +201,12 @@ int main(int argc, char *argv[]) {
 		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
 		->add_uniform(ShaderStage::VERTEX, UniformType::STORAGE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->build();
 
 	auto composition_layout = render_api->create_layout()
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::STORAGE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
@@ -196,7 +223,8 @@ int main(int argc, char *argv[]) {
 		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(1, 0, offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
-		->add_attribute(2, 0, offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
+		->add_attribute(2, 0, offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
+		->add_attribute(3, 0, offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
 		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
 		->set_layout(deferred_layout)
@@ -218,24 +246,30 @@ int main(int argc, char *argv[]) {
 	std::vector<uint32_t> indicies = {};
 
 	Assimp::Importer importer;
-	const aiScene *scene = importer.ReadFile(filesystem->resolve_physical_dir("assets/models/monkey.glb").string().c_str(), 0);
+	const aiScene *scene = importer.ReadFile(
+		filesystem->resolve_physical_dir("assets/models/armor.gltf").string().c_str(),
+		aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenUVCoords | aiProcess_OptimizeMeshes
+	);
+
 	for(unsigned int i = 0; i < scene->mNumMeshes; i++) {
 		aiMesh *mesh = scene->mMeshes[i];
 		for(unsigned int j = 0; j < mesh->mNumFaces; j++) {
 			aiFace &face = mesh->mFaces[j];
-			for(int k = 0; k < 3; k++) {
+			for(unsigned int k = 0; k < face.mNumIndices; k++) {
 				Vertex vertex = {};
 
 				aiVector3D position = mesh->mVertices[face.mIndices[k]];
 				aiVector3D normal = mesh->HasNormals() ? mesh->mNormals[face.mIndices[k]] : aiVector3D(1.0f);
+				aiVector3d tangent = mesh->HasTangentsAndBitangents() ? mesh->mTangents[face.mIndices[k]] : aiVector3D(1.0f);
 				aiVector3D texcoord = mesh->mTextureCoords[0][face.mIndices[k]];
 
 				vertex.position = { position.x, position.y, position.z };
 				vertex.normal = { normal.x, normal.y, normal.z };
+				vertex.tangent = { tangent.x, tangent.y, tangent.z };
 				vertex.uv = { texcoord.x, texcoord.y };
 
 				triangle.push_back(vertex);
-				indicies.push_back((uint32_t)indicies.size());
+				indicies.push_back(static_cast<uint32_t>(indicies.size()));
 			}
 		}
 	}
@@ -282,24 +316,21 @@ int main(int argc, char *argv[]) {
 
 		static SceneData scene_data = {};
 		scene_data.view = glm::lookAt(camera.position, camera.position + camera.front, camera.up);
-		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
+		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.000001f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
 		scene_data.color = glm::vec3(1);
 		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
-		static StorageData storage_data[1024] = {};
-		//storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
-		static bool init = false;
-		if(!init) {
-			for(int i = 0; i < 1024; i++) {
-				storage_data[i].model = calculate_model_matrix(glm::ballRand(50.0f), glm::ballRand(10.0f), glm::vec3(1.0f));
-			}
-			init = true;
-		}
-		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * 1024, &storage_data);
+		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
+		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0.01f));
+		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
 
 		static CompositionData composition_data = {};
+		composition_data.camera_position = glm::vec4(camera.position * glm::vec3(-1.0f, 1.0f, -1.0f), 0);
 		render_api->buffer_sub_data(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
+
+		static LightData light_data[LightData::MAX_LIGHTS] = {};
+		render_api->buffer_sub_data(resources.light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &light_data);
 
 		render_api->begin();
 		{
@@ -345,14 +376,21 @@ int main(int argc, char *argv[]) {
 					.buffer = {
 						.buffer_handle = resources.storage_buffer,
 						.offset = 0,
-						.range = sizeof(StorageData) * 1024
+						.range = sizeof(StorageData) * StorageData::MAX_OBJECTS
 					},
 					.type = UniformType::STORAGE,
 				},
 				{
 					.texture = {
-						.texture_view_handle = missing_texture.view,
-						.sampler_handle = missing_texture.sampler
+						.texture_view_handle = armor_albedo_texture.view,
+						.sampler_handle = armor_albedo_texture.sampler
+					},
+					.type = UniformType::TEXTURE
+				},
+				{
+					.texture = {
+						.texture_view_handle = armor_albedo_texture.view,
+						.sampler_handle = armor_albedo_texture.sampler
 					},
 					.type = UniformType::TEXTURE
 				},
@@ -365,9 +403,7 @@ int main(int argc, char *argv[]) {
 				render_api->bind_shader(deferred_shader);
 				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
 				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
-				//render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
-				for(int i = 0; i < 1024; i++)
-					render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, i);
+				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
 			render_api->end_pass(deferred_attachments);
 
 			std::vector<SubpassAttachment> composition_attachments = {
@@ -401,6 +437,14 @@ int main(int argc, char *argv[]) {
 						.range = sizeof(CompositionData)
 					},
 					.type = UniformType::BUFFER
+				},
+				{
+					.buffer = {
+						.buffer_handle = resources.light_buffer,
+						.offset = 0,
+						.range = sizeof(LightData) * LightData::MAX_LIGHTS
+					},
+					.type = UniformType::STORAGE
 				},
 				{
 					.texture = {
@@ -439,7 +483,21 @@ int main(int argc, char *argv[]) {
 				ImGui::NewFrame();
 
 				ImGui::Begin("Selection");
-				ImGui::SliderInt("GBuffer Selection", (int*)&composition_data.gbuffer_selection, 0, 2);
+				const char *items[] = {
+					"Position",
+					"Normals",
+					"Albedo",
+					"Specular",
+					"Composition"
+				};
+				ImGui::Combo("G-Buffer", &composition_data.gbuffer_selection, items, IM_ARRAYSIZE(items));
+
+				for(int i = 0; i < LightData::MAX_LIGHTS; i++) {
+					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(light_data[i].position), -100, 100);
+					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(light_data[i].color));
+					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light_data[i].radius, 0.5, 100);
+					ImGui::Separator();
+				}
 				ImGui::End();
 
 				ImGui::ShowDemoWindow();
@@ -499,6 +557,7 @@ void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources
 	resources->scene_buffer = render_api->create_buffer();
 	resources->storage_buffer = render_api->create_buffer();
 	resources->composition_buffer = render_api->create_buffer();
+	resources->light_buffer = render_api->create_buffer();
 
 	render_api->sampler(
 		resources->position_sampler,
@@ -531,7 +590,7 @@ void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources
 	render_api->buffer_data(
 		resources->storage_buffer,
 		BufferType::STORAGE,
-		sizeof(StorageData) * 1024,
+		sizeof(StorageData) * StorageData::MAX_OBJECTS,
 		nullptr
 	);
 
@@ -539,6 +598,13 @@ void setup_resources(AppContext *context, RenderAPI *render_api, RenderResources
 		resources->composition_buffer,
 		BufferType::UNIFORM,
 		sizeof(CompositionData),
+		nullptr
+	);
+
+	render_api->buffer_data(
+		resources->light_buffer,
+		BufferType::STORAGE,
+		sizeof(LightData) * LightData::MAX_LIGHTS,
 		nullptr
 	);
 }

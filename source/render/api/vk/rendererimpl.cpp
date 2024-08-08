@@ -87,7 +87,7 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	ZoneScoped;
 
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
-	std::vector<VkRenderingAttachmentInfo> depth_attachment;
+	std::optional<VkRenderingAttachmentInfo> depth_attachment;
 
 	for(auto &dependency: dependencies) {
 		auto texture = resource_manager.try_get_texture(dependency.texture).value();
@@ -111,7 +111,7 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 				);
 				break;
 			case AttachmentType::DEPTH:
-				depth_attachment.push_back(
+				depth_attachment = (
 					info::attachment_info(
 						texture_view->get_view(),
 						clear_value,
@@ -135,10 +135,9 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 			default: break;
 		}
 	}
-
 	auto rendering_info = info::rendering_info(
 		swapchain.get_swapchain().extent,
-		color_attachments.data(), depth_attachment.data(),
+		color_attachments.data(), depth_attachment.has_value() ? &depth_attachment.value() : nullptr,
 		static_cast<uint32_t>(color_attachments.size())
 	);
 
