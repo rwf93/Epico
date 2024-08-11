@@ -69,7 +69,7 @@ public:
 	) override;
 
 	RenderLayoutBuilder *create_layout() override;
-	RenderGraphicProgramBuilder *create_graphics_program() override;
+	GraphicsProgramBuilder *create_graphics_program() override;
 
 	RenderUI *ui() { return &ui_imgui; };
 
@@ -86,7 +86,6 @@ private:
 	VulkanSwapchain swapchain = {};
 	VulkanCommandPool command_pool = {};
 	VulkanResourceManager resource_manager = {};
-
 	VulkanUI ui_imgui = {};
 
 	ResizeEventFunction resize_event;

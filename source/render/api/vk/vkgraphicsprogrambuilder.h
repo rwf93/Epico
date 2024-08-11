@@ -4,7 +4,7 @@ class VulkanDevice;
 class VulkanProgramManager;
 class VulkanGraphicsProgram;
 class VulkanResourceManager;
-class VulkanGraphicsProgramBuilder: public RenderGraphicProgramBuilder {
+class VulkanGraphicsProgramBuilder: public GraphicsProgramBuilder {
 public:
 	VulkanGraphicsProgramBuilder();
 	~VulkanGraphicsProgramBuilder() override;
@@ -14,33 +14,32 @@ public:
 	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
 	void clear(GraphicsProgramHandle program_handle);
 
-	RenderGraphicProgramBuilder *set_primitive(ShaderPrimitive type) override;
-	RenderGraphicProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
-	RenderGraphicProgramBuilder *set_depth_format(ImageFormat format) override;
-	RenderGraphicProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) override;
+	GraphicsProgramBuilder *set_primitive(ShaderPrimitive type) override;
+	GraphicsProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
+	GraphicsProgramBuilder *set_depth_format(ImageFormat format) override;
+	GraphicsProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) override;
 
-	RenderGraphicProgramBuilder *add_binding(
-        uint32_t binding,
+	GraphicsProgramBuilder *add_binding(
         uint32_t size,
-        BindingRate rate
+        BindingRate rate,
+        uint32_t binding = 0
     ) override;
 
-	RenderGraphicProgramBuilder *add_attribute(
-		uint32_t location,
-		uint32_t binding,
+	GraphicsProgramBuilder *add_attribute(
 		uint32_t offset,
-		AttributeType type
+		AttributeType type,
+		uint32_t binding = 0
 	) override;
 
-	RenderGraphicProgramBuilder *add_stage(
+	GraphicsProgramBuilder *add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) override;
 
-	RenderGraphicProgramBuilder *set_layout(LayoutHandle layout);
+	GraphicsProgramBuilder *set_layout(LayoutHandle layout);
 
-	RenderGraphicProgramBuilder *add_attachment(ImageFormat format) override;
+	GraphicsProgramBuilder *add_attachment(ImageFormat format) override;
 private:
 	VulkanDevice *device;
 	VulkanResourceManager *resource_manager;

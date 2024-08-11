@@ -5,7 +5,7 @@
 union SDL_Event;
 class RenderUI {
 public:
-	virtual ~RenderUI() {};
+	virtual ~RenderUI() = default;
 	virtual void process_event(SDL_Event *event) = 0;
 
 	virtual void begin() = 0;

@@ -34,7 +34,7 @@ void VulkanAPI::init(AppContext *app_context) {
 
 VulkanAPI::~VulkanAPI() {
 	device.wait();
-	cleanup_queue.destroy_backward();
+	//cleanup_queue.destroy_backward();
 }
 
 void VulkanAPI::begin() {
@@ -338,7 +338,7 @@ RenderLayoutBuilder *VulkanAPI::create_layout() {
 	return resource_manager.create_layout();
 }
 
-RenderGraphicProgramBuilder *VulkanAPI::create_graphics_program() {
+GraphicsProgramBuilder *VulkanAPI::create_graphics_program() {
 	return resource_manager.create_graphics_program();
 }
 

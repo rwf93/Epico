@@ -45,36 +45,35 @@ enum class ShaderCompareOp {
 	GREATER_OR_EQUAL,
 };
 
-class RenderGraphicProgramBuilder {
+class GraphicsProgramBuilder {
 public:
-	virtual ~RenderGraphicProgramBuilder() {}
+	virtual ~GraphicsProgramBuilder() {}
 	virtual GraphicsProgramHandle build() = 0;
 
-	virtual RenderGraphicProgramBuilder *set_primitive(ShaderPrimitive type) = 0;
-	virtual RenderGraphicProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
-	virtual RenderGraphicProgramBuilder *set_depth_format(ImageFormat format) = 0;
-	virtual RenderGraphicProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) = 0;
+	virtual GraphicsProgramBuilder *set_primitive(ShaderPrimitive type) = 0;
+	virtual GraphicsProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
+	virtual GraphicsProgramBuilder *set_depth_format(ImageFormat format) = 0;
+	virtual GraphicsProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) = 0;
 
-	virtual RenderGraphicProgramBuilder *add_binding(
-		uint32_t binding,
+	virtual GraphicsProgramBuilder *add_binding(
 		uint32_t size,
-		BindingRate rate
+		BindingRate rate,
+		uint32_t binding = 0
 	) = 0;
 
-	virtual RenderGraphicProgramBuilder *add_attribute(
-		uint32_t location,
-		uint32_t binding,
+	virtual GraphicsProgramBuilder *add_attribute(
 		uint32_t offset,
-		AttributeType type
+		AttributeType type,
+		uint32_t binding = 0
 	) = 0;
 
-	virtual RenderGraphicProgramBuilder *add_attachment(ImageFormat format) = 0;
+	virtual GraphicsProgramBuilder *add_attachment(ImageFormat format) = 0;
 
-	virtual RenderGraphicProgramBuilder *add_stage(
+	virtual GraphicsProgramBuilder *add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) = 0;
 
-	virtual RenderGraphicProgramBuilder *set_layout(LayoutHandle layout) = 0;
+	virtual GraphicsProgramBuilder *set_layout(LayoutHandle layout) = 0;
 };

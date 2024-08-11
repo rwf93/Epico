@@ -86,7 +86,7 @@ enum class ResourceState {
 // Internal structure, expected to be used by the API implementation. ResourceHandles are public usage.
 class RenderResource {
 public:
-	virtual ~RenderResource() {}
+	virtual ~RenderResource() = default;
 	virtual ResourceState get_state() = 0;
 	virtual void fini() = 0; // Only finishes if a resource's state is READY.
 };

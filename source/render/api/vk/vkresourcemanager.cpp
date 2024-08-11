@@ -99,7 +99,7 @@ RenderLayoutBuilder *VulkanResourceManager::create_layout() {
 	return &layout_builder;
 }
 
-RenderGraphicProgramBuilder *VulkanResourceManager::create_graphics_program() {
+GraphicsProgramBuilder *VulkanResourceManager::create_graphics_program() {
 	GraphicsProgramHandle last_resource_handle = static_cast<GraphicsProgramHandle>(graphics_program_resources.size());
 	graphics_program_resources.push_back(new VulkanGraphicsProgram());
 	graphics_program_builder.clear(last_resource_handle);

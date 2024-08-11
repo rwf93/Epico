@@ -102,24 +102,24 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	return handle;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(ShaderPrimitive type) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(ShaderPrimitive type) {
 	assembly_info.topology = convert::convert_primitive_type(type);
 	assembly_info.primitiveRestartEnable = VK_FALSE;
 
 	return this;
 };
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_polygon_mode(ShaderPolygonMode mode) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_polygon_mode(ShaderPolygonMode mode) {
 	rasterizer_info.polygonMode = convert::convert_polygon_mode(mode);
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_format(ImageFormat format) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_format(ImageFormat format) {
 	depth_format = convert::convert_image_format(format);
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool write_enable, ShaderCompareOp compare) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool write_enable, ShaderCompareOp compare) {
 	stencil_info.depthTestEnable = VK_TRUE;
 	stencil_info.depthWriteEnable = write_enable;
 	stencil_info.depthCompareOp = convert::convert_compare_op(compare);
@@ -130,10 +130,10 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool w
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
-	uint32_t binding,
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
 	uint32_t size,
-	BindingRate rate
+	BindingRate rate,
+	uint32_t binding
 ) {
 	VkVertexInputBindingDescription binding_description = {};
 	binding_description.binding = binding;
@@ -145,14 +145,13 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_attribute(
-		uint32_t location,
-		uint32_t binding,
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_attribute(
 		uint32_t offset,
-		AttributeType type
+		AttributeType type,
+		uint32_t binding
 ) {
 	VkVertexInputAttributeDescription attribute_description = {};
-	attribute_description.location = location;
+	attribute_description.location = static_cast<uint32_t>(attributes.size());
 	attribute_description.binding = binding;
 	attribute_description.offset = offset;
 	attribute_description.format = convert::convert_attribute_format(type);
@@ -161,7 +160,7 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_attribute(
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
 	ShaderStage stage,
 	const char *data,
 	size_t size
@@ -194,12 +193,12 @@ RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::set_layout(LayoutHandle layout_handle) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_layout(LayoutHandle layout_handle) {
 	current_pipeline_layout = layout_handle;
 	return this;
 }
 
-RenderGraphicProgramBuilder *VulkanGraphicsProgramBuilder::add_attachment(ImageFormat format) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_attachment(ImageFormat format) {
 	VkPipelineColorBlendAttachmentState color_blend_state = {};
 	color_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 								VK_COLOR_COMPONENT_G_BIT |

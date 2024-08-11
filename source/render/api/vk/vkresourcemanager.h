@@ -26,7 +26,7 @@ public:
 	BufferHandle create_buffer();
 
 	RenderLayoutBuilder *create_layout();
-	RenderGraphicProgramBuilder *create_graphics_program();
+	GraphicsProgramBuilder *create_graphics_program();
 
 	void texture_data(
 		TextureHandle handle,

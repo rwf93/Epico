@@ -29,7 +29,7 @@ struct SubpassAttachment {
 
 struct BufferBind {
 	BufferHandle buffer_handle;
-	size_t offset;
+	size_t offset = 0;
 	size_t range;
 };
 
@@ -39,10 +39,6 @@ struct TextureBind {
 };
 
 struct UniformBind {
-	//union {
-	//	BufferBind buffer;
-	//	TextureBind texture;
-	//};
 	BufferBind buffer;
 	TextureBind texture;
 	UniformType type;
@@ -53,7 +49,7 @@ struct AppContext;
 class RenderUI;
 class RenderAPI {
 public:
-	virtual ~RenderAPI() {};
+	virtual ~RenderAPI() = default;
 
 	virtual void init(AppContext *context) = 0;
 
@@ -89,7 +85,7 @@ public:
 	virtual BufferHandle create_buffer() = 0;
 
 	virtual RenderLayoutBuilder *create_layout() = 0;
-	virtual RenderGraphicProgramBuilder *create_graphics_program() = 0;
+	virtual GraphicsProgramBuilder *create_graphics_program() = 0;
 
 	virtual void buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) = 0;
 	virtual void buffer_sub_data(BufferHandle handle, size_t offset, size_t size, void *data) = 0;

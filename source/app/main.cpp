@@ -1,10 +1,3 @@
-struct Vertex {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec3 tangent;
-	glm::vec2 uv;
-};
-
 struct SceneData {
 	glm::mat4 view;
 	glm::mat4 projection;
@@ -71,15 +64,19 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 void setup_resources(RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
 
+#include "renderdefs.h"
 #include "camera.h"
+#include "mesh.h"
+#include "texture.h"
 
-struct Texture {
+// refactor
+struct TempTexture {
 	TextureHandle texture;
 	TextureViewHandle view;
 	SamplerHandle sampler;
 };
 
-void create_texture(RenderAPI *render_api, void *data, int width, int height, Texture *texture) {
+void create_texture(RenderAPI *render_api, void *data, int width, int height, TempTexture *texture) {
 	texture->texture = render_api->create_texture();
 	texture->view = render_api->create_texture_view();
 	texture->sampler = render_api->create_sampler();
@@ -118,7 +115,7 @@ int main(int argc, char *argv[]) {
 	context.width = 1280;
 	context.height = 762;
 
-	Camera camera;
+	Camera camera = { &context };
 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		spdlog::error("Couldn't init SDL: {}", SDL_GetError());
@@ -167,16 +164,16 @@ int main(int argc, char *argv[]) {
 	);
 	ktx_uint8_t *texture_data = ktxTexture_GetData(texture);
 
-	Texture armor_albedo_texture;
+	TempTexture armor_albedo_texture;
 	create_texture(render_api.interface, texture_data, texture->baseWidth, texture->baseHeight, &armor_albedo_texture);
 
 	int nwidth, nheight, nnrchannels;
 	unsigned char *armor_normal_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_normal.png").string().c_str(), &nwidth, &nheight, &nnrchannels, 4);
 
-	Texture armor_normal_texture;
+	TempTexture armor_normal_texture;
 	create_texture(render_api.interface, armor_normal_data, nwidth, nheight, &armor_normal_texture);
 
-	Texture missing_texture;
+	TempTexture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
 	RenderPassResources renderpass_resources = {};
@@ -213,11 +210,11 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
 		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
-		->add_binding(0, sizeof(Vertex), BindingRate::VERTEX)
-		->add_attribute(0, 0, offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		->add_attribute(1, 0, offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
-		->add_attribute(2, 0, offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
-		->add_attribute(3, 0, offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
+		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
+		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
 		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
 		->set_layout(deferred_layout)
@@ -235,45 +232,11 @@ int main(int argc, char *argv[]) {
 	UNUSED(deferred_shader);
 	UNUSED(composition_shader);
 
-	std::vector<Vertex> triangle = {};
-	std::vector<uint32_t> indicies = {};
+	Mesh armor_mesh(&context, filesystem.interface, render_api.interface);
+	armor_mesh.load_from_file("assets/models/armor.gltf");
 
-	Assimp::Importer importer;
-	const aiScene *scene = importer.ReadFile(
-		filesystem->resolve_physical_dir("assets/models/armor.gltf").string().c_str(),
-		aiProcess_FlipUVs
-	);
-
-	for(unsigned int i = 0; i < scene->mNumMeshes; i++) {
-		aiMesh *mesh = scene->mMeshes[i];
-		for(unsigned int j = 0; j < mesh->mNumFaces; j++) {
-			aiFace &face = mesh->mFaces[j];
-			for(unsigned int k = 0; k < face.mNumIndices; k++) {
-				Vertex vertex = {};
-
-				aiVector3D position = mesh->mVertices[face.mIndices[k]];
-				aiVector3D normal = mesh->HasNormals() ? mesh->mNormals[face.mIndices[k]] : aiVector3D(1.0f);
-				aiVector3d tangent = mesh->HasTangentsAndBitangents() ? mesh->mTangents[face.mIndices[k]] : aiVector3D(1.0f);
-				aiVector3D texcoord = mesh->mTextureCoords[0][face.mIndices[k]];
-
-				vertex.position = { position.x, position.y, position.z };
-				vertex.normal = { normal.x, normal.y, normal.z };
-				vertex.tangent = { tangent.x, tangent.y, tangent.z };
-				vertex.uv = { texcoord.x, texcoord.y };
-
-				triangle.push_back(vertex);
-				indicies.push_back((uint32_t)indicies.size());
-			}
-		}
-	}
-
-	auto vbo_handle = render_api->create_buffer();
-	auto ibo_handle = render_api->create_buffer();
-
-	render_api->buffer_data(vbo_handle, BufferType::VERTEX, sizeof(Vertex) * triangle.size(), triangle.data());
-	render_api->buffer_data(ibo_handle, BufferType::INSTANCE, sizeof(uint32_t) * indicies.size(), indicies.data());
-
-	render_api->buffer_sub_data(vbo_handle, 0, triangle.size() * sizeof(Vertex), triangle.data());
+	Mesh cube_mesh(&context, filesystem.interface, render_api.interface);
+	cube_mesh.load_from_file("assets/models/monkey.glb");
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
 
@@ -297,6 +260,7 @@ int main(int argc, char *argv[]) {
 				minimized = false;
 
 			render_api->ui()->process_event(&event);
+			camera.process_event(&event);
 		}
 
 		if(minimized) {
@@ -304,14 +268,17 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
+		camera.update();
+
 		static SceneData scene_data = {};
-		scene_data.view = camera.update(&context);
+		scene_data.view = camera.get_view_matrix();
 		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.01f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
 		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
 		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
 		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0.01f));
+		storage_data[1].model = calculate_model_matrix(glm::vec3(0, 2, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
 		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
 
 		static CompositionData composition_data = {};
@@ -331,19 +298,19 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.position,
 					.view = renderpass_resources.position_view,
 					.type = AttachmentType::COLOR,
-					.clear = { {0, 0, 0, 0} }
+					.clear = { .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } }
 				},
 				{
 					.texture = renderpass_resources.normal,
 					.view = renderpass_resources.normal_view,
 					.type = AttachmentType::COLOR,
-					.clear = { {0, 0, 0, 0} }
+					.clear = { .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } }
 				},
 				{
 					.texture = renderpass_resources.albedo,
 					.view = renderpass_resources.albedo_view,
 					.type = AttachmentType::COLOR,
-					.clear = { {0, 0, 0, 0} }
+					.clear = { .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } }
 				},
 				{
 					.texture = renderpass_resources.depth,
@@ -357,7 +324,6 @@ int main(int argc, char *argv[]) {
 				{
 					.buffer = {
 						.buffer_handle = resources.scene_buffer,
-						.offset = 0,
 						.range = sizeof(SceneData)
 					},
 					.type = UniformType::BUFFER,
@@ -365,35 +331,41 @@ int main(int argc, char *argv[]) {
 				{
 					.buffer = {
 						.buffer_handle = resources.storage_buffer,
-						.offset = 0,
 						.range = sizeof(StorageData) * StorageData::MAX_OBJECTS
 					},
 					.type = UniformType::STORAGE,
 				},
-				{
-					.texture = {
-						.texture_view_handle = armor_albedo_texture.view,
-						.sampler_handle = armor_albedo_texture.sampler
-					},
-					.type = UniformType::TEXTURE
-				},
-				{
-					.texture = {
-						.texture_view_handle = armor_normal_texture.view,
-						.sampler_handle = armor_normal_texture.sampler
-					},
-					.type = UniformType::TEXTURE
-				},
+				{ .type = UniformType::TEXTURE },
+				{ .type = UniformType::TEXTURE },
 			};
+
+
+			static bool testing = false;
 
 			render_api->begin_pass(deferred_attachments);
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
-				render_api->bind_uniform(deferred_layout, deferred_binds);
 				render_api->bind_shader(deferred_shader);
-				render_api->bind_buffer(vbo_handle, BindBufferType::VERTEX);
-				render_api->bind_buffer(ibo_handle, BindBufferType::INSTANCE);
-				render_api->draw_instanced(static_cast<uint32_t>(indicies.size()), 1, 0);
+				deferred_binds[2].texture = {
+					.texture_view_handle = armor_albedo_texture.view,
+					.sampler_handle = armor_albedo_texture.sampler
+				};
+				deferred_binds[3].texture = {
+					.texture_view_handle = armor_normal_texture.view,
+					.sampler_handle = armor_normal_texture.sampler
+				};
+				render_api->bind_uniform(deferred_layout, deferred_binds);
+				armor_mesh.draw(0);
+				deferred_binds[2].texture = {
+					.texture_view_handle = missing_texture.view,
+					.sampler_handle = missing_texture.sampler
+				};
+				deferred_binds[3].texture = {
+					.texture_view_handle = missing_texture.view,
+					.sampler_handle = missing_texture.sampler
+				};
+				render_api->bind_uniform(deferred_layout, deferred_binds);
+				cube_mesh.draw(1);
 			render_api->end_pass(deferred_attachments);
 
 			std::vector<SubpassAttachment> composition_attachments = {
@@ -401,7 +373,6 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.composition,
 					.view = renderpass_resources.composition_view,
 					.type = AttachmentType::COLOR,
-					.clear = { { 0, 0, 0.2f, 1 } }
 				},
 				{
 					.texture = renderpass_resources.position,
@@ -489,6 +460,9 @@ int main(int argc, char *argv[]) {
 					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light_data[i].radius, 0.5, 100);
 					ImGui::Separator();
 				}
+
+				ImGui::Checkbox("Enable Testing Shader", &testing);
+
 				ImGui::End();
 
 				ImGui::ShowDemoWindow();
