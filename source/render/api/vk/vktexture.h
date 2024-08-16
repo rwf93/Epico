@@ -5,7 +5,7 @@ class VulkanCommandPool;
 class VulkanBuffer;
 class VulkanTexture: public RenderResource {
 public:
-	~VulkanTexture() override;
+	~VulkanTexture() override { if(get_state() != ResourceState::UNREADY) fini(); }
 
 	void init(
 		VulkanDevice *vkdevice,

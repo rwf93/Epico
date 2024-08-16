@@ -5,22 +5,7 @@
 #include "vkcommandpool.h"
 
 VulkanCommandPool::VulkanCommandPool() {}
-VulkanCommandPool::~VulkanCommandPool() {}
-
-void VulkanCommandPool::init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain) {
-	this->device = vkdevice;
-	this->swapchain = vkswapchain;
-
-	max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
-	frame_contexts.resize(max_flying_frames);
-
-	create_command_pool();
-	create_sync_objects();
-
-	queue.push([&] { fini(); });
-}
-
-void VulkanCommandPool::fini() {
+VulkanCommandPool::~VulkanCommandPool() {
 	for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
 		VulkanFrameContext &context = get_frame_context(i);
 
@@ -35,6 +20,17 @@ void VulkanCommandPool::fini() {
 	TracyVkDestroy(immediate_trace);
 	vkDestroyFence(device->get_device(), immediate_fence, nullptr);
 	vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
+}
+
+void VulkanCommandPool::init(VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain) {
+	this->device = vkdevice;
+	this->swapchain = vkswapchain;
+
+	max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
+	frame_contexts.resize(max_flying_frames);
+
+	create_command_pool();
+	create_sync_objects();
 }
 
 void VulkanCommandPool::wait_fences() {

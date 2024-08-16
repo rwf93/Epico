@@ -9,8 +9,12 @@
 #include "vkresourcemanager.h"
 #include "vkimgui.h"
 
+VulkanUI::~VulkanUI() {
+	ImGui_ImplVulkan_Shutdown();
+	vkDestroyDescriptorPool(device->get_device(), descriptor_pool, nullptr);
+}
+
 void VulkanUI::init(
-	FunctorQueue<> &queue,
 	AppContext *app_context,
 	VulkanInstance *vkinstance ,
 	VulkanDevice *vkdevice,
@@ -76,13 +80,6 @@ void VulkanUI::init(
 	);
 	ImGui_ImplVulkan_Init(&init_info);
 	ImGui_ImplVulkan_CreateFontsTexture();
-
-	queue.push([&]() { fini(); });
-}
-
-void VulkanUI::fini() {
-	ImGui_ImplVulkan_Shutdown();
-	vkDestroyDescriptorPool(device->get_device(), descriptor_pool, nullptr);
 }
 
 void VulkanUI::begin() {

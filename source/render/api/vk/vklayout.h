@@ -3,6 +3,8 @@
 class VulkanDevice;
 class VulkanLayout: public RenderResource {
 public:
+    ~VulkanLayout() override { if(get_state() != ResourceState::UNREADY) fini(); }
+
     void init(VulkanDevice *vkdevice, VkDescriptorSetLayoutCreateInfo *layout_info);
     void fini() override;
 

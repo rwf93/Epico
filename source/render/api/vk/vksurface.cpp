@@ -2,9 +2,12 @@
 #include "vkinstance.h"
 
 VulkanSurface::VulkanSurface() {};
-VulkanSurface::~VulkanSurface() {};
+VulkanSurface::~VulkanSurface() {
+	vkb::destroy_surface(instance->get_instance(), surface);
+	SDL_DestroyWindow(context->window);
+};
 
-void VulkanSurface::init(FunctorQueue<> &queue, AppContext *app_context, VulkanInstance *vkinstance) {
+void VulkanSurface::init(AppContext *app_context, VulkanInstance *vkinstance) {
 	this->instance = vkinstance;
 	this->context = app_context;
 
@@ -20,11 +23,4 @@ void VulkanSurface::init(FunctorQueue<> &queue, AppContext *app_context, VulkanI
 		LOGGER->error("Failed to create SDL Surface: {}", SDL_GetError());
 		std::abort();
 	}
-
-	queue.push([&] { fini(); });
-}
-
-void VulkanSurface::fini() {
-	vkb::destroy_surface(instance->get_instance(), surface);
-	SDL_DestroyWindow(context->window);
 }

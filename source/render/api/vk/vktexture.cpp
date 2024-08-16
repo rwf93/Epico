@@ -13,7 +13,6 @@ void VulkanTexture::init(
 	this->device = vkdevice;
 	this->command_pool = vkcommandpool;
 	this->allocator = vkallocator;
-
 	this->info = *image_info;
 
 	VK_CHECK(vmaCreateImage(allocator, image_info, create_info, &image, &allocation, nullptr));
@@ -52,8 +51,4 @@ void VulkanTexture::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent)
 void VulkanTexture::fini() {
 	vmaDestroyImage(allocator, image, allocation);
 	state = ResourceState::UNREADY;
-}
-
-
-VulkanTexture::~VulkanTexture() {
 }

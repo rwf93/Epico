@@ -4,6 +4,10 @@ class VulkanDevice;
 class VulkanCommandPool;
 class VulkanBuffer: public RenderResource {
 public:
+	~VulkanBuffer() override {
+		if(get_state() != ResourceState::UNREADY) fini();
+	}
+
 	VkBuffer &get_buffer() { return buffer; }
 	VmaAllocation &get_allocation() { return allocation; }
 	VmaAllocationInfo &get_allocation_info() { return allocation_info; }

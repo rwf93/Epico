@@ -79,8 +79,8 @@ enum class SamplerAddressMode {
 };
 
 enum class ResourceState {
-	READY,
-	UNREADY
+	UNREADY,
+	READY
 };
 
 // Internal structure, expected to be used by the API implementation. ResourceHandles are public usage.

@@ -36,14 +36,14 @@ void Mesh::load_from_file(std::filesystem::path path) {
 
     index_count = static_cast<uint32_t>(indicies.size());
 
-    api->buffer_data(
+    api->buffer(
         vbo,
         BufferType::VERTEX,
         sizeof(Vertex) * verticies.size(),
         verticies.data()
     );
 
-    api->buffer_data(
+    api->buffer(
         ibo,
         BufferType::INSTANCE,
         sizeof(uint32_t) * indicies.size(),

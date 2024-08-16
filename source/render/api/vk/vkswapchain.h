@@ -7,8 +7,7 @@ public:
 	VulkanSwapchain();
 	~VulkanSwapchain();
 
-	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice);
-	void fini();
+	void init(VulkanDevice *vkdevice);
 
 	void rebuild() { create_swapchain(true); }
 

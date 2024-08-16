@@ -23,7 +23,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 	return VK_FALSE;
 }
 
-void VulkanInstance::init(FunctorQueue<> &queue) {
+void VulkanInstance::init() {
 	vkb::InstanceBuilder builder;
 	auto builder_ret = builder
 						.set_app_name("Epico")
@@ -42,11 +42,4 @@ void VulkanInstance::init(FunctorQueue<> &queue) {
 	instance = builder_ret.value();
 
 	volkLoadInstance(instance);
-
-	queue.push([&] { fini(); });
 }
-
-void VulkanInstance::fini() {
-	vkb::destroy_instance(instance);
-}
-

@@ -3,8 +3,32 @@
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
 
+#define DELETE_RESOURCE(res) 								\
+	for(auto &resource: res) { 								\
+		if(resource->get_state() == ResourceState::READY) \
+			resource->fini(); 							\
+		delete resource; 									\
+	}
+
+VulkanResourceManager::~VulkanResourceManager() {
+	//DELETE_RESOURCE(texture_resources);
+	//DELETE_RESOURCE(texture_view_resources);
+	//DELETE_RESOURCE(sampler_resources);
+	//DELETE_RESOURCE(buffer_resources);
+	//DELETE_RESOURCE(layout_resources);
+	//DELETE_RESOURCE(graphics_program_resources)
+
+	texture_pool.release_all();
+	texture_view_pool.release_all();
+	sampler_pool.release_all();
+	buffer_pool.release_all();
+	layout_pool.release_all();
+	graphics_program_pool.release_all();
+
+	vmaDestroyAllocator(allocator);
+}
+
 void VulkanResourceManager::init(
-	FunctorQueue<> &queue,
 	VulkanInstance *vkinstance,
 	VulkanDevice *vkdevice,
 	VulkanCommandPool *vkcommandpool
@@ -46,67 +70,37 @@ void VulkanResourceManager::init(
 
 	layout_builder.init(device, this);
 	graphics_program_builder.init(device, this);
-
-	queue.push([&] { fini(); });
-}
-
-#define DELETE_RESOURCE(res) 								\
-	for(auto &resource: res) { 								\
-		if(resource->get_state() == ResourceState::READY) \
-			resource->fini(); 							\
-		delete resource; 									\
-	}
-
-void VulkanResourceManager::fini() {
-	DELETE_RESOURCE(texture_resources);
-	DELETE_RESOURCE(texture_view_resources);
-	DELETE_RESOURCE(sampler_resources);
-	DELETE_RESOURCE(buffer_resources);
-	DELETE_RESOURCE(layout_resources);
-	DELETE_RESOURCE(graphics_program_resources)
-
-	vmaDestroyAllocator(allocator);
 }
 
 TextureHandle VulkanResourceManager::create_texture() {
-	TextureHandle last_resource_handle = static_cast<TextureHandle>(texture_resources.size());
-	texture_resources.push_back(new VulkanTexture());
-	return last_resource_handle;
+	return texture_pool.acquire().value();
 }
 
 TextureViewHandle VulkanResourceManager::create_texture_view() {
-	TextureViewHandle last_resource_handle = static_cast<TextureViewHandle>(texture_view_resources.size());
-	texture_view_resources.push_back(new VulkanTextureView());
-	return last_resource_handle;
+	return texture_view_pool.acquire().value();
 }
 
 SamplerHandle VulkanResourceManager::create_sampler() {
-	SamplerHandle last_resource_handle = static_cast<SamplerHandle>(sampler_resources.size());
-	sampler_resources.push_back(new VulkanSampler());
-	return last_resource_handle;
+	return sampler_pool.acquire().value();
 }
 
 BufferHandle VulkanResourceManager::create_buffer() {
-	BufferHandle last_resource_handle = static_cast<BufferHandle>(buffer_resources.size());
-	buffer_resources.push_back(new VulkanBuffer());
-	return last_resource_handle;
+	return buffer_pool.acquire().value();
 }
 
 RenderLayoutBuilder *VulkanResourceManager::create_layout() {
-	LayoutHandle last_resource_handle = static_cast<LayoutHandle>(layout_resources.size());
-	layout_resources.push_back(new VulkanLayout());
-	layout_builder.clear(last_resource_handle);
+	auto handle = layout_pool.acquire().value();
+	layout_builder.clear(handle);
 	return &layout_builder;
 }
 
 GraphicsProgramBuilder *VulkanResourceManager::create_graphics_program() {
-	GraphicsProgramHandle last_resource_handle = static_cast<GraphicsProgramHandle>(graphics_program_resources.size());
-	graphics_program_resources.push_back(new VulkanGraphicsProgram());
-	graphics_program_builder.clear(last_resource_handle);
+	auto handle = graphics_program_pool.acquire().value();
+	graphics_program_builder.clear(handle);
 	return &graphics_program_builder;
 }
 
-void VulkanResourceManager::texture_data(
+void VulkanResourceManager::texture(
 	TextureHandle handle,
 	VkImageCreateInfo image_info,
 	void *data
@@ -162,8 +156,12 @@ void VulkanResourceManager::texture_view(
 	auto image_view = try_get_texture_view(view_handle).value();
 	auto image = try_get_texture(image_handle).value();
 
-	assert(image_view);
-	assert(image);
+	if(!image_view)
+		throw std::runtime_error("Image view handle was invalid at creation time.");
+
+	if(!image)
+		throw std::runtime_error("Image handle was invalid at creation time.");
+
 
 	if(image_view->get_state() != ResourceState::UNREADY)
 		image_view->fini();
@@ -173,7 +171,7 @@ void VulkanResourceManager::texture_view(
 	if(image->get_info()->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-	image_view->init(device, image, &image_view_info);
+	image_view->init(device, &image_view_info);
 }
 
 void VulkanResourceManager::sampler(
@@ -189,7 +187,7 @@ void VulkanResourceManager::sampler(
 	sampler->init(device, &sampler_create_info);
 }
 
-void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size) {
+void VulkanResourceManager::buffer(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size) {
 	auto resource = try_get_buffer(handle).value();
 	assert(resource);
 
@@ -241,7 +239,7 @@ void VulkanResourceManager::buffer_data(BufferHandle handle, VkBufferUsageFlagBi
 	}
 }
 
-void VulkanResourceManager::buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
+void VulkanResourceManager::buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
 	auto resource = try_get_buffer(handle).value();
 	assert(resource);
 

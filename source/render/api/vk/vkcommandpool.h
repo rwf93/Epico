@@ -20,8 +20,7 @@ public:
 	VulkanCommandPool();
 	~VulkanCommandPool();
 
-	void init(FunctorQueue<> &queue, VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
-	void fini();
+	void init(VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
 
 	void wait_fences();
 	void reset_fences();

@@ -7,7 +7,7 @@ class VulkanCommandPool;
 class VulkanResourceManager;
 class VulkanUI: public RenderUI {
 public:
-	~VulkanUI() override = default;
+	~VulkanUI() override;
 
 	void process_event(SDL_Event *event);
 
@@ -18,7 +18,6 @@ public:
 	void *add_texture(SamplerHandle sampler_handle, TextureViewHandle texture_view_handle) override;
 
 	void init(
-		FunctorQueue<> &queue,
 		AppContext *app_context,
 		VulkanInstance *vkinstance ,
 		VulkanDevice *vkdevice,
@@ -26,7 +25,6 @@ public:
 		VulkanCommandPool *vkcommandpool,
 		VulkanResourceManager *vkresourcemanager
 	);
-	void fini();
 
 private:
 	AppContext *context = nullptr;

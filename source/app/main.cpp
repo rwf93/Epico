@@ -81,7 +81,7 @@ void create_texture(RenderAPI *render_api, void *data, int width, int height, Te
 	texture->view = render_api->create_texture_view();
 	texture->sampler = render_api->create_sampler();
 
-	render_api->texture_data(
+	render_api->texture(
 		texture->texture,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
@@ -220,6 +220,23 @@ int main(int argc, char *argv[]) {
 		->set_layout(deferred_layout)
 		->build();
 
+	auto deferred_wireframe_shader = render_api->create_graphics_program()
+		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
+		->set_depth_format(ImageFormat::D32_SFLOAT)
+		->set_polygon_mode(ShaderPolygonMode::LINE)
+		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
+		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
+		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
+		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
+		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
+		->set_layout(deferred_layout)
+		->build();
+
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
 	auto composition_shader = render_api->create_graphics_program()
@@ -274,19 +291,19 @@ int main(int argc, char *argv[]) {
 		scene_data.view = camera.get_view_matrix();
 		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.01f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
-		render_api->buffer_sub_data(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
+		render_api->buffer_sub(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
 		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
 		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0.01f));
 		storage_data[1].model = calculate_model_matrix(glm::vec3(0, 2, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
-		render_api->buffer_sub_data(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
+		render_api->buffer_sub(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
 
 		static CompositionData composition_data = {};
 		composition_data.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-		render_api->buffer_sub_data(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
+		render_api->buffer_sub(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
 
 		static LightData light_data[LightData::MAX_LIGHTS] = {};
-		render_api->buffer_sub_data(resources.light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &light_data);
+		render_api->buffer_sub(resources.light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &light_data);
 
 		render_api->begin();
 		{
@@ -345,7 +362,7 @@ int main(int argc, char *argv[]) {
 			render_api->begin_pass(deferred_attachments);
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
-				render_api->bind_shader(deferred_shader);
+				render_api->bind_shader(testing ? deferred_wireframe_shader : deferred_shader);
 				deferred_binds[2].texture = {
 					.texture_view_handle = armor_albedo_texture.view,
 					.sampler_handle = armor_albedo_texture.sampler
@@ -544,28 +561,28 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 		SamplerAddressMode::REPEAT
 	);
 
-	render_api->buffer_data(
+	render_api->buffer(
 		resources->scene_buffer,
 		BufferType::UNIFORM,
 		sizeof(SceneData),
 		nullptr
 	);
 
-	render_api->buffer_data(
+	render_api->buffer(
 		resources->storage_buffer,
 		BufferType::STORAGE,
 		sizeof(StorageData) * StorageData::MAX_OBJECTS,
 		nullptr
 	);
 
-	render_api->buffer_data(
+	render_api->buffer(
 		resources->composition_buffer,
 		BufferType::UNIFORM,
 		sizeof(CompositionData),
 		nullptr
 	);
 
-	render_api->buffer_data(
+	render_api->buffer(
 		resources->light_buffer,
 		BufferType::STORAGE,
 		sizeof(LightData) * LightData::MAX_LIGHTS,
@@ -574,7 +591,7 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 }
 
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources) {
-	renderer->texture_data(
+	renderer->texture(
 		resources->position,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
@@ -584,7 +601,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		context->width, context->height
 	);
 
-	renderer->texture_data(
+	renderer->texture(
 		resources->albedo,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
@@ -594,7 +611,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		context->width, context->height
 	);
 
-	renderer->texture_data(
+	renderer->texture(
 		resources->normal,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
@@ -604,7 +621,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		context->width, context->height
 	);
 
-	renderer->texture_data(
+	renderer->texture(
 		resources->depth,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
@@ -614,7 +631,7 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassRe
 		context->width, context->height
 	);
 
-	renderer->texture_data(
+	renderer->texture(
 		resources->composition,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,

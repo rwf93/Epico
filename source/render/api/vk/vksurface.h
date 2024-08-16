@@ -6,8 +6,7 @@ public:
 	VulkanSurface();
 	~VulkanSurface();
 
-	void init(FunctorQueue<> &queue, AppContext *app_context, VulkanInstance *vkinstance);
-	void fini();
+	void init(AppContext *app_context, VulkanInstance *vkinstance);
 
 	VkSurfaceKHR &get_surface() { return surface; }
 private:

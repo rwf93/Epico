@@ -17,8 +17,9 @@ class VulkanCommandPool;
 class VulkanInstance;
 class VulkanResourceManager {
 public:
-	void init(FunctorQueue<> &queue, VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
-	void fini();
+	~VulkanResourceManager();
+
+	void init(VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
 
 	TextureHandle create_texture();
 	TextureViewHandle create_texture_view();
@@ -28,7 +29,7 @@ public:
 	RenderLayoutBuilder *create_layout();
 	GraphicsProgramBuilder *create_graphics_program();
 
-	void texture_data(
+	void texture(
 		TextureHandle handle,
 		VkImageCreateInfo image_info,
 		void *data
@@ -42,55 +43,31 @@ public:
 
 	void sampler(SamplerHandle handle, VkSamplerCreateInfo sampler_create_info);
 
-	void buffer_data(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size);
-	void buffer_sub_data(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
+	void buffer(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size);
+	void buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
-	std::optional<VulkanTexture*> try_get_texture(TextureHandle handle) {
-		auto resource = texture_resources[static_cast<size_t>(handle)];
-		if(!resource)
-			return std::nullopt;
-
-		return dynamic_cast<VulkanTexture*>(resource);
+	std::optional<std::shared_ptr<VulkanTexture>> try_get_texture(TextureHandle handle) {
+		return texture_pool.resource(handle);
 	}
 
-	std::optional<VulkanTextureView*> try_get_texture_view(TextureViewHandle handle) {
-		auto resource = texture_view_resources[static_cast<size_t>(handle)];
-		if(!resource)
-			return std::nullopt;
-
-		return dynamic_cast<VulkanTextureView*>(resource);
+	std::optional<std::shared_ptr<VulkanTextureView>> try_get_texture_view(TextureViewHandle handle) {
+		return texture_view_pool.resource(handle);
 	}
 
-	std::optional<VulkanSampler*> try_get_sampler_resource(SamplerHandle handle) {
-		auto resource = sampler_resources[static_cast<size_t>(handle)];
-		if(!resource)
-			return std::nullopt;
-
-		return dynamic_cast<VulkanSampler*>(resource);
+	std::optional<std::shared_ptr<VulkanSampler>> try_get_sampler_resource(SamplerHandle handle) {
+		return sampler_pool.resource(handle);
 	}
 
-	std::optional<VulkanBuffer*> try_get_buffer(BufferHandle handle) {
-		auto resource = buffer_resources[static_cast<size_t>(handle)];
-		if(!resource)
-			return std::nullopt;
-
-		return dynamic_cast<VulkanBuffer*>(resource);
+	std::optional<std::shared_ptr<VulkanBuffer>> try_get_buffer(BufferHandle handle) {
+		return buffer_pool.resource(handle);
 	}
 
-	std::optional<VulkanLayout*> try_get_layout(LayoutHandle handle) {
-		auto resource = layout_resources[static_cast<size_t>(handle)];
-		if(!resource)
-			return std::nullopt;
-
-		return dynamic_cast<VulkanLayout*>(resource);
+	std::optional<std::shared_ptr<VulkanLayout>> try_get_layout(LayoutHandle handle) {
+		return layout_pool.resource(handle);
 	}
 
-	std::optional<VulkanGraphicsProgram*> try_get_graphics_program(GraphicsProgramHandle handle) {
-		auto resource = graphics_program_resources[static_cast<size_t>(handle)];
-		if(!resource)
-			return std::nullopt;
-
-		return dynamic_cast<VulkanGraphicsProgram*>(resource);
+	std::optional<std::shared_ptr<VulkanGraphicsProgram>> try_get_graphics_program(GraphicsProgramHandle handle) {
+		return graphics_program_pool.resource(handle);;
 	}
 
 private:
@@ -100,15 +77,55 @@ private:
 
 	VmaAllocator allocator;
 
-	std::vector<RenderResource*> texture_resources;
-	std::vector<RenderResource*> texture_view_resources;
-	std::vector<RenderResource*> sampler_resources;
-	std::vector<RenderResource*> buffer_resources;
+	template<typename HandleType, typename ResourceType, size_t PoolSize>
+	struct ResourcePool {
+		ResourcePool()
+		: free_handles(PoolSize)
+		, resources(PoolSize) {
+			for(uint32_t i = 0; i < PoolSize; i++) {
+				free_handles.at(i) = static_cast<HandleType>(i);
+			}
+		}
 
-	// Builders
+		std::optional<HandleType> acquire() {
+			if(head < PoolSize) {
+				auto handle = free_handles.at(head++);
+				resources.at(static_cast<size_t>(handle)) = std::make_shared<ResourceType>();
+				return handle;
+			}
+
+			return std::nullopt;
+		}
+
+		void release(HandleType handle) {
+			free_handles.at(head--) = handle;
+		}
+
+		void release_all() {
+			resources.clear();
+			free_handles.clear();
+		}
+
+		std::optional<std::shared_ptr<ResourceType>> resource(HandleType handle) {
+			auto resource = resources.at(static_cast<size_t>(handle));
+			if(!resource)
+				return std::nullopt;
+
+			return resource;
+		}
+
+		std::vector<std::shared_ptr<ResourceType>> resources;
+		std::vector<HandleType> free_handles;
+		uint32_t head = 0;
+	};
+
 	VulkanLayoutBuilder layout_builder;
-	std::vector<RenderResource*> layout_resources;
-
 	VulkanGraphicsProgramBuilder graphics_program_builder;
-	std::vector<RenderResource*> graphics_program_resources;
+
+	ResourcePool<BufferHandle, VulkanBuffer, 512> buffer_pool;
+	ResourcePool<TextureHandle, VulkanTexture, 1024> texture_pool;
+	ResourcePool<TextureViewHandle, VulkanTextureView, 1024> texture_view_pool;
+	ResourcePool<SamplerHandle, VulkanSampler, 1024> sampler_pool;
+	ResourcePool<LayoutHandle, VulkanLayout, 64> layout_pool;
+	ResourcePool<GraphicsProgramHandle, VulkanGraphicsProgram, 128> graphics_program_pool;
 };

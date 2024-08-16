@@ -23,18 +23,17 @@ void VulkanAPI::init(AppContext *app_context) {
 	console->sinks().push_back(tracy_log_sink);
 
 	VK_CHECK(volkInitialize());
-	instance.init(cleanup_queue);
-	surface.init(cleanup_queue, context, &instance);
-	device.init(cleanup_queue, &instance, &surface);
-	swapchain.init(cleanup_queue, &device);
-	command_pool.init(cleanup_queue, &device, &swapchain);
-	resource_manager.init(cleanup_queue, &instance, &device, &command_pool);
-	ui_imgui.init(cleanup_queue, context, &instance, &device, &swapchain, &command_pool, &resource_manager);
+	instance.init();
+	surface.init(context, &instance);
+	device.init(&instance, &surface);
+	swapchain.init(&device);
+	command_pool.init(&device, &swapchain);
+	resource_manager.init(&instance, &device, &command_pool);
+	ui_imgui.init(context, &instance, &device, &swapchain, &command_pool, &resource_manager);
 }
 
 VulkanAPI::~VulkanAPI() {
 	device.wait();
-	//cleanup_queue.destroy_backward();
 }
 
 void VulkanAPI::begin() {
@@ -234,15 +233,14 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 
 void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
 	auto shader = resource_manager.try_get_graphics_program(handle).value();
-	assert(shader);
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
+	std::vector<VkWriteDescriptorSet> write_sets(binds.size());
+	std::vector<std::pair<VkDescriptorBufferInfo, VkDescriptorImageInfo>> info_objects(binds.size());
+
 	auto layout = resource_manager.try_get_layout(layout_handle).value();
-	std::vector<VkWriteDescriptorSet> write_sets = {};
-	std::map<uint32_t, VkDescriptorBufferInfo> buffer_info_map = {};
-	std::map<uint32_t, VkDescriptorImageInfo> image_info_map = {};
 
 	for(uint32_t i = 0; i < binds.size(); i++) {
 		UniformBind &bind = binds[i];
@@ -255,51 +253,39 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 		descriptor_write.descriptorCount = 1;
 
 		switch(bind.type) {
-			case UniformType::BUFFER: {
-				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
-
-				VkDescriptorBufferInfo buffer_info = {};
-				buffer_info.buffer = buffer_resource->get_buffer();
-				buffer_info.offset = bind.buffer.offset;
-				buffer_info.range = bind.buffer.range;
-
-				buffer_info_map.insert(std::make_pair(i, buffer_info));
-
-				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptor_write.pBufferInfo = &buffer_info_map[i];
-			} break;
+			case UniformType::BUFFER:
 			case UniformType::STORAGE: {
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
-				VkDescriptorBufferInfo buffer_info = {};
-				buffer_info.buffer = buffer_resource->get_buffer();
-				buffer_info.offset = bind.buffer.offset;
-				buffer_info.range = bind.buffer.range;
+				VkDescriptorBufferInfo *buffer_info = &info_objects.at(i).first;
+				buffer_info->buffer = buffer_resource->get_buffer();
+				buffer_info->offset = bind.buffer.offset;
+				buffer_info->range = bind.buffer.range;
 
-				buffer_info_map.insert(std::make_pair(i, buffer_info));
-
-				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				descriptor_write.pBufferInfo = &buffer_info_map[i];
+				descriptor_write.descriptorType =
+					(bind.type == UniformType::STORAGE)
+						? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+						: VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptor_write.pBufferInfo = buffer_info;
 			} break;
 			case UniformType::TEXTURE: {
 				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture.texture_view_handle).value();
 				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.texture.sampler_handle).value();
 
-				VkDescriptorImageInfo image_info = {};
-				image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				image_info.imageView = texture_view_resource->get_view();
-				image_info.sampler = sampler_resource->get_sampler();
-
-				image_info_map.insert(std::make_pair(i, image_info));
+				VkDescriptorImageInfo *image_info = &info_objects.at(i).second;
+				image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				image_info->imageView = texture_view_resource->get_view();
+				image_info->sampler = sampler_resource->get_sampler();
 
 				descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				descriptor_write.pImageInfo = &image_info_map[i];
+				descriptor_write.pImageInfo = image_info;
 			} break;
 			default: break;
 		}
 
-		write_sets.push_back(descriptor_write);
+		write_sets.at(i) = descriptor_write;
 	}
+
 
 	vkCmdPushDescriptorSetKHR(
 		command_pool.get_command()->get_command(),
@@ -342,15 +328,15 @@ GraphicsProgramBuilder *VulkanAPI::create_graphics_program() {
 	return resource_manager.create_graphics_program();
 }
 
-void VulkanAPI::buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) {
-	resource_manager.buffer_data(handle, convert::convert_buffer_type(type), data, size);
+void VulkanAPI::buffer(BufferHandle handle, BufferType type, size_t size, void *data) {
+	resource_manager.buffer(handle, convert::convert_buffer_type(type), data, size);
 }
 
-void VulkanAPI::buffer_sub_data(BufferHandle handle, size_t offset, size_t size, void *data) {
-	resource_manager.buffer_sub_data(handle, offset, data, size);
+void VulkanAPI::buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) {
+	resource_manager.buffer_sub(handle, offset, data, size);
 }
 
-void VulkanAPI::texture_data(
+void VulkanAPI::texture(
 	TextureHandle handle,
 	ImageDimensions dimensions,
 	ImageSamples samples,
@@ -380,7 +366,7 @@ void VulkanAPI::texture_data(
 	if(flags & ImageFlags::MIPMAPPED)
 		image_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-	resource_manager.texture_data(handle, image_info, data);
+	resource_manager.texture(handle, image_info, data);
 }
 
 void VulkanAPI::texture_view(

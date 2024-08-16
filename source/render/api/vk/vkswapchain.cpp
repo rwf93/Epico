@@ -5,18 +5,14 @@
 #include "vkcommandpool.h"
 
 VulkanSwapchain::VulkanSwapchain() {}
-VulkanSwapchain::~VulkanSwapchain() {}
-
-void VulkanSwapchain::init(FunctorQueue<> &queue, VulkanDevice *vkdevice) {
-	this->device = vkdevice;
-	create_swapchain();
-
-	queue.push([&] { fini(); });
-}
-
-void VulkanSwapchain::fini() {
+VulkanSwapchain::~VulkanSwapchain() {
 	swapchain.destroy_image_views(swapchain_image_views);
 	vkb::destroy_swapchain(swapchain);
+}
+
+void VulkanSwapchain::init(VulkanDevice *vkdevice) {
+	this->device = vkdevice;
+	create_swapchain();
 }
 
 void VulkanSwapchain::create_swapchain(bool rebuild) {

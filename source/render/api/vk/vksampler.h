@@ -3,8 +3,7 @@
 class VulkanDevice;
 class VulkanSampler: public RenderResource {
 public:
-
-    ~VulkanSampler() = default;
+    ~VulkanSampler() override { if(get_state() != ResourceState::UNREADY) fini(); }
 
     void init(VulkanDevice *vkdevice, VkSamplerCreateInfo *create_info);
 	void fini();

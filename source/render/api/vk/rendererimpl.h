@@ -37,10 +37,10 @@ public:
 	SamplerHandle create_sampler() override;
 	BufferHandle create_buffer() override;
 
-	void buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) override;
-	void buffer_sub_data(BufferHandle handle, size_t offset, size_t size, void *data) override;
+	void buffer(BufferHandle handle, BufferType type, size_t size, void *data) override;
+	void buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) override;
 
-	void texture_data(
+	void texture(
 		TextureHandle handle,
 		ImageDimensions dimensions,
 		ImageSamples samples,
@@ -77,8 +77,6 @@ protected:
 	void rebuild();
 private:
 	AppContext *context = nullptr;
-
-	FunctorQueue<> cleanup_queue;
 
 	VulkanInstance instance = {};
 	VulkanSurface surface = {};

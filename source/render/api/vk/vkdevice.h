@@ -5,10 +5,9 @@ class VulkanSurface;
 class VulkanDevice {
 public:
 	VulkanDevice() = default;
-	~VulkanDevice() = default;
+	~VulkanDevice() { vkb::destroy_device(device); };
 
-	void init(FunctorQueue<> &queue, VulkanInstance *instance, VulkanSurface *surface);
-	void fini();
+	void init(VulkanInstance *instance, VulkanSurface *surface);
 
 	void wait() { vkDeviceWaitIdle(device); };
 

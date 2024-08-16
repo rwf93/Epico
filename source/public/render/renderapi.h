@@ -87,10 +87,10 @@ public:
 	virtual RenderLayoutBuilder *create_layout() = 0;
 	virtual GraphicsProgramBuilder *create_graphics_program() = 0;
 
-	virtual void buffer_data(BufferHandle handle, BufferType type, size_t size, void *data) = 0;
-	virtual void buffer_sub_data(BufferHandle handle, size_t offset, size_t size, void *data) = 0;
+	virtual void buffer(BufferHandle handle, BufferType type, size_t size, void *data) = 0;
+	virtual void buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) = 0;
 
-	virtual void texture_data(
+	virtual void texture(
 		TextureHandle handle,
 		ImageDimensions dimensions,
 		ImageSamples samples,

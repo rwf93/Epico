@@ -3,10 +3,9 @@
 class VulkanInstance {
 public:
 	VulkanInstance() = default;
-	~VulkanInstance() = default;
+	~VulkanInstance() { vkb::destroy_instance(instance); };
 
-	void init(FunctorQueue<> &queue);
-	void fini();
+	void init();
 
 	vkb::Instance &get_instance() { return instance; }
 private:

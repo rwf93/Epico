@@ -4,7 +4,7 @@ class VulkanDevice;
 class VulkanGraphicsProgram: public RenderResource {
 public:
 	VulkanGraphicsProgram() = default;
-	~VulkanGraphicsProgram() override = default;
+	~VulkanGraphicsProgram() override { if(get_state() != ResourceState::UNREADY) fini(); }
 
 	ResourceState get_state() override { return state; };
 	VkPipeline get_pipeline() { return pipeline; }
