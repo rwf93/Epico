@@ -114,8 +114,8 @@ private:
 			return resource;
 		}
 
-		std::vector<std::shared_ptr<ResourceType>> resources;
 		std::vector<HandleType> free_handles;
+		std::vector<std::shared_ptr<ResourceType>> resources;
 		uint32_t head = 0;
 	};
 

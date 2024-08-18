@@ -87,6 +87,7 @@ fail:
 #define CREATE_FACTORY(CONCRETE_IMPL) 							\
 	extern "C" EAPI CONCRETE_IMPL *create_factory() { 			\
 		static CONCRETE_IMPL *factory_impl = nullptr; 			\
-		if(!factory_impl) factory_impl = new CONCRETE_IMPL##(); \
+		if(!factory_impl) factory_impl = new CONCRETE_IMPL (); \
 		return factory_impl; 									\
 	}
+

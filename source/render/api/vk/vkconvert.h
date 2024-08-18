@@ -20,8 +20,6 @@ namespace convert {
 		return invariant;                           	\
 	}
 
-#pragma optimize("", off)
-
 CONVERTER(convert_image_format, ImageFormat, VkFormat, VK_FORMAT_UNDEFINED,
 	{ ImageFormat::D32_SFLOAT, VK_FORMAT_D32_SFLOAT },
 	{ ImageFormat::R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
@@ -116,7 +114,5 @@ CONVERTER(convert_uniform_type, UniformType, VkDescriptorType, VK_DESCRIPTOR_TYP
 	{ UniformType::TEXTURE, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
 	{ UniformType::STORAGE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER },
 );
-
-#pragma optimize("", on)
 
 }

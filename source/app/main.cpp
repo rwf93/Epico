@@ -21,33 +21,33 @@ struct LightData {
 };
 
 struct RenderPassResources {
-	TextureHandle position;
-	TextureHandle normal;
-	TextureHandle albedo;
-	TextureHandle depth;
-	TextureHandle composition;
+	TextureHandle position = TextureHandle::Invalid;
+	TextureHandle normal = TextureHandle::Invalid;
+	TextureHandle albedo = TextureHandle::Invalid;
+	TextureHandle depth = TextureHandle::Invalid;
+	TextureHandle composition = TextureHandle::Invalid;
 
-	TextureViewHandle position_view;
-	TextureViewHandle albedo_view;
-	TextureViewHandle normal_view;
-	TextureViewHandle depth_view;
-	TextureViewHandle composition_view;
+	TextureViewHandle position_view = TextureViewHandle::Invalid;
+	TextureViewHandle albedo_view = TextureViewHandle::Invalid;
+	TextureViewHandle normal_view = TextureViewHandle::Invalid;
+	TextureViewHandle depth_view = TextureViewHandle::Invalid;
+	TextureViewHandle composition_view = TextureViewHandle::Invalid;
 };
 
 struct RenderResources {
 	RenderPassResources *pass_handles;
-	SamplerHandle position_sampler;
-	SamplerHandle normal_sampler;
-	SamplerHandle albedo_sampler;
+	SamplerHandle position_sampler = SamplerHandle::Invalid;
+	SamplerHandle normal_sampler = SamplerHandle::Invalid;
+	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
 
-	TextureHandle missing_texture;
-	TextureViewHandle missing_texture_view;
-	SamplerHandle missing_texture_sampler;
+	TextureHandle missing_texture = TextureHandle::Invalid;
+	TextureViewHandle missing_texture_view = TextureViewHandle::Invalid;
+	SamplerHandle missing_texture_sampler = SamplerHandle::Invalid;
 
-	BufferHandle scene_buffer;
-	BufferHandle storage_buffer;
-	BufferHandle composition_buffer;
-	BufferHandle light_buffer;
+	BufferHandle scene_buffer = BufferHandle::Invalid;
+	BufferHandle storage_buffer = BufferHandle::Invalid;
+	BufferHandle composition_buffer = BufferHandle::Invalid;
+	BufferHandle light_buffer = BufferHandle::Invalid;
 };
 
 glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
@@ -523,7 +523,7 @@ int main(int argc, char *argv[]) {
 				};
 				ImGui::Combo("G-Buffer", &composition_data.gbuffer_selection, items, IM_ARRAYSIZE(items));
 
-				for(int i = 0; i < LightData::MAX_LIGHTS; i++) {
+				for(uint32_t i = 0; i < LightData::MAX_LIGHTS; i++) {
 					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(light_data[i].position), -100, 100);
 					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(light_data[i].color));
 					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light_data[i].radius, 0.5, 100);

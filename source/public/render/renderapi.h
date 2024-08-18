@@ -8,6 +8,7 @@
 #include <functional>
 #include <span>
 #include <array>
+#include <optional>
 
 enum class AttachmentType {
 	COLOR,
@@ -22,27 +23,27 @@ struct SubpassAttachment {
 
 	struct ClearValue {
 		std::array<float, 4> rgba = { 0.0f, 0.0f, 0.0f, 1.0f };
-		float depth;
-		uint32_t stencil;
+		float depth = 0.0f;
+		uint32_t stencil = 0;
 	};
 
-	std::optional<ClearValue> clear;
+	std::optional<ClearValue> clear = std::nullopt;
 };
 
 struct BufferBind {
-	BufferHandle buffer_handle;
+	BufferHandle buffer_handle = BufferHandle::Invalid;
 	size_t offset = 0;
-	size_t range;
+	size_t range = 0;
 };
 
 struct TextureBind {
-	TextureViewHandle texture_view_handle;
-	SamplerHandle sampler_handle;
+	TextureViewHandle texture_view_handle = TextureViewHandle::Invalid;
+	SamplerHandle sampler_handle = SamplerHandle::Invalid;
 };
 
 struct UniformBind {
-	BufferBind buffer;
-	TextureBind texture;
+	BufferBind buffer = {};
+	TextureBind texture = {};
 	UniformType type;
 };
 

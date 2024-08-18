@@ -1,7 +1,6 @@
 #ifndef STDAFX_H
 #define STDAFX_H
 
-#define EAPI_EXPORT
 #include <platform/platform.h>
 #include <public/filesystem/filesystem.h>
 

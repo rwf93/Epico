@@ -22,7 +22,7 @@ add_requires("fmt 11.0.1", {
 
 add_requires("assimp", {
 	configs = {
-		shared = true
+		shared = false
 	}
 })
 
