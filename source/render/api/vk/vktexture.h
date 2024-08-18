@@ -24,6 +24,8 @@ public:
 
 	VkImageCreateInfo *get_info() { return &info; }
 
+	void transition(VkImageLayout new_layout);
+
 	friend class VulkanResourceManager;
 	friend class VulkanDescriptorManager;
 
@@ -38,4 +40,5 @@ private:
 	VmaAllocation allocation;
 
 	ResourceState state = ResourceState::UNREADY;
+	VkImageLayout last_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 };

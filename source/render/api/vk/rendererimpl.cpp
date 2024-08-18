@@ -92,7 +92,10 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 		auto texture = resource_manager.try_get_texture(dependency.texture).value();
 		auto texture_view = resource_manager.try_get_texture_view(dependency.view).value();
 
-		VkClearValue *clear_value = reinterpret_cast<VkClearValue*>(&dependency.clear);
+		VkClearValue *clear_value = dependency.clear.has_value()
+			? reinterpret_cast<VkClearValue*>(&dependency.clear.value())
+			: nullptr;
+
 		switch(dependency.type) {
 			case AttachmentType::COLOR:
 				color_attachments.push_back(
@@ -103,11 +106,7 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 					)
 				);
 
-				command_pool.transition_image(
-					texture->get_image(),
-					VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_GENERAL
-				);
+				texture->transition(VK_IMAGE_LAYOUT_GENERAL);
 				break;
 			case AttachmentType::DEPTH:
 				depth_attachment = (
@@ -118,22 +117,15 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 					)
 				);
 
-				command_pool.transition_image(
-					texture->get_image(),
-					VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-				);
+				texture->transition(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 				break;
 			case AttachmentType::SHADER:
-				command_pool.transition_image(
-					texture->get_image(),
-					VK_IMAGE_LAYOUT_GENERAL,
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-				);
+				texture->transition(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				break;
 			default: break;
 		}
 	}
+
 	auto rendering_info = info::rendering_info(
 		swapchain.get_swapchain().extent,
 		color_attachments.data(), depth_attachment.has_value() ? &depth_attachment.value() : nullptr,
@@ -209,11 +201,11 @@ void VulkanAPI::show_image(TextureHandle handle) {
 	auto resource = resource_manager.try_get_texture(handle).value();
 
 	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	resource->transition(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 	command_pool.copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
 
-	command_pool.transition_image(resource->get_image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	resource->transition(VK_IMAGE_LAYOUT_GENERAL);
 	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 

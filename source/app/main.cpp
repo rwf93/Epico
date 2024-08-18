@@ -209,7 +209,7 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
+		->set_depth_test(true, true, ShaderCompareOp::LESS_OR_EQUAL)
 		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
 		->set_polygon_mode(ShaderPolygonMode::LINE)
-		->set_depth_test(true, ShaderCompareOp::LESS_OR_EQUAL)
+		->set_depth_test(true, true, ShaderCompareOp::LESS_OR_EQUAL)
 		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
@@ -241,9 +241,31 @@ int main(int argc, char *argv[]) {
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
 	auto composition_shader = render_api->create_graphics_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		->set_depth_format(ImageFormat::D32_SFLOAT)
 		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
 		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
 		->set_layout(composition_layout)
+		->build();
+
+	auto skybox_layout = render_api->create_layout()
+		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		->build();
+
+	auto skybox_vertex_code = filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true);
+	auto skybox_fragment_code = filesystem->read_file<char>("assets/shaders/skybox.frag.spv", true);
+	auto skybox_shader = render_api->create_graphics_program()
+		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		->set_depth_format(ImageFormat::D32_SFLOAT)
+		->set_depth_test(true, false, ShaderCompareOp::LESS_OR_EQUAL)
+		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
+		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
+		->add_attribute(offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
+		->add_stage(ShaderStage::VERTEX, skybox_vertex_code.data(), skybox_vertex_code.size())
+		->add_stage(ShaderStage::FRAGMENT, skybox_fragment_code.data(), skybox_fragment_code.size())
+		->set_layout(skybox_layout)
 		->build();
 
 	UNUSED(deferred_shader);
@@ -252,8 +274,11 @@ int main(int argc, char *argv[]) {
 	Mesh armor_mesh(&context, filesystem.interface, render_api.interface);
 	armor_mesh.load_from_file("assets/models/armor.gltf");
 
+	Mesh monkey_mesh(&context, filesystem.interface, render_api.interface);
+	monkey_mesh.load_from_file("assets/models/monkey.glb");
+
 	Mesh cube_mesh(&context, filesystem.interface, render_api.interface);
-	cube_mesh.load_from_file("assets/models/monkey.glb");
+	cube_mesh.load_from_file("assets/models/cube.glb");
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
 
@@ -315,25 +340,25 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.position,
 					.view = renderpass_resources.position_view,
 					.type = AttachmentType::COLOR,
-					.clear = { .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } }
+					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = renderpass_resources.normal,
 					.view = renderpass_resources.normal_view,
 					.type = AttachmentType::COLOR,
-					.clear = { .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } }
+					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = renderpass_resources.albedo,
 					.view = renderpass_resources.albedo_view,
 					.type = AttachmentType::COLOR,
-					.clear = { .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } }
+					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = renderpass_resources.depth,
 					.view = renderpass_resources.depth_view,
 					.type = AttachmentType::DEPTH,
-					.clear = { .rgba = { 1.0f }, .depth = 0.0f, .stencil = 0 }
+					.clear = (SubpassAttachment::ClearValue{ .rgba = { 1.0f }, .depth = 0.0f, .stencil = 0 })
 				}
 			};
 
@@ -382,7 +407,7 @@ int main(int argc, char *argv[]) {
 					.sampler_handle = missing_texture.sampler
 				};
 				render_api->bind_uniform(deferred_layout, deferred_binds);
-				cube_mesh.draw(1);
+				monkey_mesh.draw(1);
 			render_api->end_pass(deferred_attachments);
 
 			std::vector<SubpassAttachment> composition_attachments = {
@@ -406,6 +431,11 @@ int main(int argc, char *argv[]) {
 					.view = renderpass_resources.normal_view,
 					.type = AttachmentType::SHADER
 				},
+				{
+					.texture = renderpass_resources.depth,
+					.view = renderpass_resources.depth_view,
+					.type = AttachmentType::DEPTH,
+				}
 			};
 
 			std::vector<UniformBind> composition_binds = {
@@ -445,8 +475,27 @@ int main(int argc, char *argv[]) {
 						.sampler_handle = resources.albedo_sampler
 					},
 					.type = UniformType::TEXTURE,
-				}
+				},
 			};
+
+			std::vector<UniformBind> skybox_uniforms = {
+				{
+					.buffer = {
+						.buffer_handle = resources.scene_buffer,
+						.range = sizeof(SceneData)
+					},
+					.type = UniformType::BUFFER,
+				},
+				{
+					.texture = {
+						.texture_view_handle = missing_texture.view,
+						.sampler_handle = missing_texture.sampler
+					},
+					.type = UniformType::TEXTURE
+				},
+			};
+
+			UNUSED(skybox_shader);
 
 			render_api->begin_pass(composition_attachments);
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
@@ -454,6 +503,9 @@ int main(int argc, char *argv[]) {
 				render_api->bind_uniform(composition_layout, composition_binds);
 				render_api->bind_shader(composition_shader);
 				render_api->draw(3, 1);
+				render_api->bind_uniform(skybox_layout, skybox_uniforms);
+				render_api->bind_shader(skybox_shader);
+				cube_mesh.draw(0);
 			render_api->end_pass(composition_attachments);
 
 			render_api->show_image(resources.pass_handles->composition);

@@ -39,21 +39,27 @@ enum class ShaderPolygonMode {
 
 enum class ShaderCompareOp {
 	NEVER,
+	EQUAL,
 	LESS,
 	ALWAYS,
 	LESS_OR_EQUAL,
 	GREATER_OR_EQUAL,
+	GREATER
 };
 
 class GraphicsProgramBuilder {
 public:
 	virtual ~GraphicsProgramBuilder() {}
-	virtual GraphicsProgramHandle build() = 0;
 
+	virtual GraphicsProgramHandle build() = 0;
 	virtual GraphicsProgramBuilder *set_primitive(ShaderPrimitive type) = 0;
 	virtual GraphicsProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
 	virtual GraphicsProgramBuilder *set_depth_format(ImageFormat format) = 0;
-	virtual GraphicsProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) = 0;
+	virtual GraphicsProgramBuilder *set_depth_test(
+		bool test_enable,
+		bool write_enable,
+		ShaderCompareOp compare
+	) = 0;
 
 	virtual GraphicsProgramBuilder *add_binding(
 		uint32_t size,

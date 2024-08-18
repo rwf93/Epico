@@ -24,7 +24,9 @@ struct SubpassAttachment {
 		std::array<float, 4> rgba = { 0.0f, 0.0f, 0.0f, 1.0f };
 		float depth;
 		uint32_t stencil;
-	} clear;
+	};
+
+	std::optional<ClearValue> clear;
 };
 
 struct BufferBind {

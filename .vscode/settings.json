@@ -100,7 +100,8 @@
         "cwctype": "cpp",
         "memory_resource": "cpp",
         "string_view": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "*.rh": "cpp"
     },
     "cmake.ignoreCMakeListsMissing": true
 }

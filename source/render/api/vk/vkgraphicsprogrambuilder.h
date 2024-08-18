@@ -6,8 +6,8 @@ class VulkanGraphicsProgram;
 class VulkanResourceManager;
 class VulkanGraphicsProgramBuilder: public GraphicsProgramBuilder {
 public:
-	VulkanGraphicsProgramBuilder();
-	~VulkanGraphicsProgramBuilder() override;
+	VulkanGraphicsProgramBuilder() = default;
+	~VulkanGraphicsProgramBuilder() override = default;
 
 	GraphicsProgramHandle build() override;
 
@@ -17,7 +17,11 @@ public:
 	GraphicsProgramBuilder *set_primitive(ShaderPrimitive type) override;
 	GraphicsProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
 	GraphicsProgramBuilder *set_depth_format(ImageFormat format) override;
-	GraphicsProgramBuilder *set_depth_test(bool write_enable, ShaderCompareOp compare) override;
+	GraphicsProgramBuilder *set_depth_test(
+		bool test_enable,
+		bool write_enable,
+		ShaderCompareOp compare
+	) override;
 
 	GraphicsProgramBuilder *add_binding(
         uint32_t size,

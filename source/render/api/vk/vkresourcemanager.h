@@ -122,10 +122,10 @@ private:
 	VulkanLayoutBuilder layout_builder;
 	VulkanGraphicsProgramBuilder graphics_program_builder;
 
-	ResourcePool<BufferHandle, VulkanBuffer, 512> buffer_pool;
 	ResourcePool<TextureHandle, VulkanTexture, 1024> texture_pool;
 	ResourcePool<TextureViewHandle, VulkanTextureView, 1024> texture_view_pool;
 	ResourcePool<SamplerHandle, VulkanSampler, 1024> sampler_pool;
+	ResourcePool<BufferHandle, VulkanBuffer, 512> buffer_pool;
 	ResourcePool<LayoutHandle, VulkanLayout, 64> layout_pool;
 	ResourcePool<GraphicsProgramHandle, VulkanGraphicsProgram, 128> graphics_program_pool;
 };

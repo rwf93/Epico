@@ -29,7 +29,7 @@ void Mesh::load_from_file(std::filesystem::path path) {
 				vertex.uv = { texcoord.x, texcoord.y };
 
 				verticies.push_back(vertex);
-				indicies.push_back((uint32_t)indicies.size());
+				indicies.push_back(static_cast<uint32_t>(indicies.size()));
 			}
 		}
 	}
@@ -37,6 +37,29 @@ void Mesh::load_from_file(std::filesystem::path path) {
     index_count = static_cast<uint32_t>(indicies.size());
 
     api->buffer(
+        vbo,
+        BufferType::VERTEX,
+        sizeof(Vertex) * verticies.size(),
+        verticies.data()
+    );
+
+    api->buffer(
+        ibo,
+        BufferType::INSTANCE,
+        sizeof(uint32_t) * indicies.size(),
+        indicies.data()
+    );
+}
+
+void Mesh::load_from_array(std::span<Vertex> verticies) {
+    std::vector<uint32_t> indicies;
+
+	for(size_t i = 0; i < verticies.size(); i++)
+		indicies.push_back(static_cast<uint32_t>(indicies.size()));
+
+	index_count = static_cast<uint32_t>(indicies.size());
+
+	api->buffer(
         vbo,
         BufferType::VERTEX,
         sizeof(Vertex) * verticies.size(),

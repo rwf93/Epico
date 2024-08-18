@@ -52,3 +52,9 @@ void VulkanTexture::fini() {
 	vmaDestroyImage(allocator, image, allocation);
 	state = ResourceState::UNREADY;
 }
+
+void VulkanTexture::transition(VkImageLayout new_layout) {
+	if(last_layout == new_layout) return;
+	command_pool->get_command()->transition_image(get_image(), last_layout, new_layout);
+	last_layout = new_layout;
+}

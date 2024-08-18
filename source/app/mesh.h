@@ -10,6 +10,7 @@ public:
         ibo(api->create_buffer()) {}
 
     void load_from_file(std::filesystem::path path);
+    void load_from_array(std::span<Vertex> verticies);
     void bind();
     void draw(uint32_t instance);
 private:

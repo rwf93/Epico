@@ -3,9 +3,6 @@
 #include "vkresourcemanager.h"
 #include "vkgraphicsprogrambuilder.h"
 
-VulkanGraphicsProgramBuilder::VulkanGraphicsProgramBuilder() {}
-VulkanGraphicsProgramBuilder::~VulkanGraphicsProgramBuilder() {}
-
 void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager) {
 	this->device = vkdevice;
 	this->resource_manager = vkresourcemanager;
@@ -119,8 +116,12 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_format(ImageForm
 	return this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(bool write_enable, ShaderCompareOp compare) {
-	stencil_info.depthTestEnable = VK_TRUE;
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(
+	bool test_enable,
+	bool write_enable,
+	ShaderCompareOp compare
+) {
+	stencil_info.depthTestEnable = test_enable;
 	stencil_info.depthWriteEnable = write_enable;
 	stencil_info.depthCompareOp = convert::convert_compare_op(compare);
 	rasterizer_info.depthBiasEnable = VK_TRUE;
