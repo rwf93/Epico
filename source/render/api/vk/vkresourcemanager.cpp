@@ -248,7 +248,7 @@ void VulkanResourceManager::buffer_sub(BufferHandle handle, VkDeviceSize offset,
 		return;
 	}
 
-	if(resource->create_info->usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
+	if(resource->get_info().usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
 		auto allocate_info = info::allocation_create_info();
 		auto staging_buffer_info = info::buffer_create_info(size);
 

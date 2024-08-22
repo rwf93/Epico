@@ -266,9 +266,17 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 			case UniformType::STORAGE: {
 				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
 
+				VkDeviceSize alignment = (bind.type == UniformType::STORAGE)
+					? device.get_device().physical_device.properties.limits.minStorageBufferOffsetAlignment
+					: device.get_device().physical_device.properties.limits.minUniformBufferOffsetAlignment;
+
 				VkDescriptorBufferInfo *buffer_info = &info_objects.at(i).first;
 				buffer_info->buffer = buffer_resource->get_buffer();
-				buffer_info->offset = bind.buffer.offset;
+				buffer_info->offset = VK_ALIGN_BOUNDS(
+					swapchain.get_image_index() > 0
+					? bind.buffer.offset + (bind.buffer.range * swapchain.get_image_index())
+					: bind.buffer.offset,
+				alignment);
 				buffer_info->range = bind.buffer.range;
 
 				descriptor_write.descriptorType =
@@ -338,11 +346,28 @@ GraphicsProgramBuilder *VulkanAPI::create_graphics_program() {
 }
 
 void VulkanAPI::buffer(BufferHandle handle, BufferType type, size_t size, void *data) {
-	resource_manager.buffer(handle, convert::convert_buffer_type(type), data, size);
+	// Buffers of type Uniform or Storage are size * the amount of max flying frames.
+	if(type == BufferType::UNIFORM || type == BufferType::STORAGE) {
+		resource_manager.buffer(handle, convert::convert_buffer_type(type), data, size * command_pool.get_max_flying_frames());
+	} else {
+		resource_manager.buffer(handle, convert::convert_buffer_type(type), data, size);
+	}
 }
 
 void VulkanAPI::buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) {
-	resource_manager.buffer_sub(handle, offset, data, size);
+	auto buffer = resource_manager.try_get_buffer(handle).value();
+	if(buffer->get_info().usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT || buffer->get_info().usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) {
+		resource_manager.buffer_sub(
+			handle,
+			command_pool.get_current_frame() > 0
+				? offset + (size * command_pool.get_current_frame())
+				: offset,
+			data,
+			size
+		);
+	} else {
+		resource_manager.buffer_sub(handle, offset, data, size);
+	}
 }
 
 void VulkanAPI::texture(

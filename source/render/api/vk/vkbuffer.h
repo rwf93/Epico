@@ -21,6 +21,8 @@ public:
 
 	ResourceState get_state() override { return state; }
 
+	VkBufferCreateInfo &get_info() { return create_info; }
+
 	void init(
 		VulkanDevice *vkdevice,
 		VulkanCommandPool *vkcommandpool,
@@ -42,7 +44,7 @@ private:
 	VmaAllocation allocation;
 	VmaAllocationInfo allocation_info = {};
 
-	VkBufferCreateInfo *create_info;
+	VkBufferCreateInfo create_info;
 
 	ResourceState state = ResourceState::UNREADY;
 };

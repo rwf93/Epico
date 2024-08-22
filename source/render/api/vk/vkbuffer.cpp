@@ -12,7 +12,7 @@ void VulkanBuffer::init(
 	this->device = vkdevice;
 	this->command_pool = vkcommandpool;
 	this->allocator = vkallocator;
-	this->create_info = buffer_create_info;
+	this->create_info = *buffer_create_info;
 
 	VK_CHECK(vmaCreateBuffer(
 		allocator,
