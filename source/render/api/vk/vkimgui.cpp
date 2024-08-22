@@ -95,7 +95,7 @@ void VulkanUI::end() {
 	auto color_attachment = info::attachment_info(swapchain->get_swapchain_image_view(), nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	auto rendering_info = info::rendering_info(swapchain->get_swapchain().extent, &color_attachment, nullptr);
 
-	command_pool->transition_image(
+	command_pool->get_command()->transition_image(
 		swapchain->get_swapchain_image(),
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
@@ -105,7 +105,7 @@ void VulkanUI::end() {
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_pool->get_command()->get_command());
 	command_pool->get_command()->end_rendering();
 
-	command_pool->transition_image(
+	command_pool->get_command()->transition_image(
 		swapchain->get_swapchain_image(),
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 		VK_IMAGE_LAYOUT_GENERAL

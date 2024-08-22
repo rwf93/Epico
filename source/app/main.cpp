@@ -76,7 +76,7 @@ struct TempTexture {
 	SamplerHandle sampler;
 };
 
-void create_texture(RenderAPI *render_api, void *data, int width, int height, TempTexture *texture) {
+void create_texture(RenderAPI *render_api, void *data, int width, int height, TempTexture *texture, ImageFormat format = ImageFormat::R8G8B8A8_UNORM) {
 	texture->texture = render_api->create_texture();
 	texture->view = render_api->create_texture_view();
 	texture->sampler = render_api->create_sampler();
@@ -85,7 +85,7 @@ void create_texture(RenderAPI *render_api, void *data, int width, int height, Te
 		texture->texture,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R8G8B8A8_UNORM,
+		format,
 		ImageFlags::SAMPLED,
 		data, width, height
 	);
@@ -94,7 +94,7 @@ void create_texture(RenderAPI *render_api, void *data, int width, int height, Te
 		texture->view,
 		texture->texture,
 		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R8G8B8A8_UNORM, 0, 0
+		format, 0, 0
 	);
 
 	render_api->sampler(
@@ -176,6 +176,12 @@ int main(int argc, char *argv[]) {
 	TempTexture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
+	int swidth, sheight, snrchannels;
+	unsigned char *skybox_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/rblx-skybox.png").string().c_str(), &swidth, &sheight, &snrchannels, 4);
+
+	TempTexture skybox_texture;
+	create_texture(render_api.interface, skybox_data, swidth, sheight, &skybox_texture);
+
 	RenderPassResources renderpass_resources = {};
 	RenderResources resources = {
 		.pass_handles = &renderpass_resources
@@ -209,7 +215,9 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_depth_test(true, true, ShaderCompareOp::LESS_OR_EQUAL)
+		->set_cull_face(CullFace::BACK)
+		->set_front_face(FrontFace::COUNTER_CLOCKWISE)
+		->set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
 		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
@@ -225,8 +233,8 @@ int main(int argc, char *argv[]) {
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_polygon_mode(ShaderPolygonMode::LINE)
-		->set_depth_test(true, true, ShaderCompareOp::LESS_OR_EQUAL)
+		->set_polygon_mode(PolygonMode::LINE)
+		->set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
 		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
@@ -257,7 +265,9 @@ int main(int argc, char *argv[]) {
 	auto skybox_shader = render_api->create_graphics_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_depth_test(true, false, ShaderCompareOp::LESS_OR_EQUAL)
+		->set_cull_face(CullFace::BACK)
+		->set_front_face(FrontFace::COUNTER_CLOCKWISE)
+		->set_depth_test(true, false, CompareOp::EQUAL)
 		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
 		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
 		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
@@ -314,7 +324,7 @@ int main(int argc, char *argv[]) {
 
 		static SceneData scene_data = {};
 		scene_data.view = camera.get_view_matrix();
-		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.01f, 1000.0f);
+		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
 		render_api->buffer_sub(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
@@ -488,8 +498,8 @@ int main(int argc, char *argv[]) {
 				},
 				{
 					.texture = {
-						.texture_view_handle = missing_texture.view,
-						.sampler_handle = missing_texture.sampler
+						.texture_view_handle = skybox_texture.view,
+						.sampler_handle = skybox_texture.sampler
 					},
 					.type = UniformType::TEXTURE
 				},

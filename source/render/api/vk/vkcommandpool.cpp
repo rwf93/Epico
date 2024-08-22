@@ -75,28 +75,6 @@ void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function)
 	VK_CHECK(vkWaitForFences(device->get_device(), 1, &immediate_fence, true, UINT32_MAX));
 }
 
-void VulkanCommandPool::transition_image(
-	VulkanCommand *command,
-	VkImage image,
-	VkImageLayout current_layout,
-	VkImageLayout new_layout
-) {
-	command->transition_image(image, current_layout, new_layout);
-}
-
-void VulkanCommandPool::copy_image(VulkanCommand *command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
-	command->copy_image(src, dst, src_size, dst_size);
-}
-
-void VulkanCommandPool::clear_image(VulkanCommand *command, VkImage image, float r, float g, float b, float a) {
-	VkClearColorValue clear_value = { { r, g, b, a } };
-	std::vector<VkImageSubresourceRange> clear_ranges = {
-		info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT)
-	};
-
-	command->clear_image(image, VK_IMAGE_LAYOUT_GENERAL, &clear_value, clear_ranges);
-}
-
 void VulkanCommandPool::create_command_pool() {
 	auto command_pool_info = info::command_pool_create_info(
 		device->get_graphics_queue_index(),

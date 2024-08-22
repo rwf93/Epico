@@ -27,6 +27,8 @@ CONVERTER(convert_image_format, ImageFormat, VkFormat, VK_FORMAT_UNDEFINED,
 	{ ImageFormat::R16G16B16A16_UINT, VK_FORMAT_R16G16B16A16_UINT },
 	{ ImageFormat::R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SINT },
 	{ ImageFormat::R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT },
+	{ ImageFormat::R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT },
+	{ ImageFormat::R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT },
 );
 
 CONVERTER(convert_sample_bits, ImageSamples, VkSampleCountFlagBits, VK_SAMPLE_COUNT_1_BIT,
@@ -80,26 +82,26 @@ CONVERTER(convert_binding_rate, BindingRate, VkVertexInputRate, VK_VERTEX_INPUT_
 	{ BindingRate::INDEX, VK_VERTEX_INPUT_RATE_INSTANCE },
 );
 
-CONVERTER(convert_primitive_type, ShaderPrimitive, VkPrimitiveTopology, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-	{ ShaderPrimitive::TRIANGLE_LIST, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST },
-	{ ShaderPrimitive::TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP },
-	{ ShaderPrimitive::POINT_LIST, VK_PRIMITIVE_TOPOLOGY_POINT_LIST },
+CONVERTER(convert_primitive_type, PrimitiveMode, VkPrimitiveTopology, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	{ PrimitiveMode::TRIANGLE_LIST, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST },
+	{ PrimitiveMode::TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP },
+	{ PrimitiveMode::POINT_LIST, VK_PRIMITIVE_TOPOLOGY_POINT_LIST },
 );
 
-CONVERTER(convert_polygon_mode, ShaderPolygonMode, VkPolygonMode, VK_POLYGON_MODE_FILL,
-	{ ShaderPolygonMode::FILL, VK_POLYGON_MODE_FILL },
-	{ ShaderPolygonMode::LINE, VK_POLYGON_MODE_LINE },
-	{ ShaderPolygonMode::POINT, VK_POLYGON_MODE_POINT },
+CONVERTER(convert_polygon_mode, PolygonMode, VkPolygonMode, VK_POLYGON_MODE_FILL,
+	{ PolygonMode::FILL, VK_POLYGON_MODE_FILL },
+	{ PolygonMode::LINE, VK_POLYGON_MODE_LINE },
+	{ PolygonMode::POINT, VK_POLYGON_MODE_POINT },
 );
 
-CONVERTER(convert_compare_op, ShaderCompareOp, VkCompareOp, VK_COMPARE_OP_NEVER,
-	{ ShaderCompareOp::NEVER, VK_COMPARE_OP_NEVER },
-	{ ShaderCompareOp::EQUAL, VK_COMPARE_OP_EQUAL },
-	{ ShaderCompareOp::LESS, VK_COMPARE_OP_LESS },
-	{ ShaderCompareOp::ALWAYS, VK_COMPARE_OP_ALWAYS },
-	{ ShaderCompareOp::LESS_OR_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL },
-	{ ShaderCompareOp::GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL },
-	{ ShaderCompareOp::GREATER, VK_COMPARE_OP_GREATER },
+CONVERTER(convert_compare_op, CompareOp, VkCompareOp, VK_COMPARE_OP_NEVER,
+	{ CompareOp::NEVER, VK_COMPARE_OP_NEVER },
+	{ CompareOp::EQUAL, VK_COMPARE_OP_EQUAL },
+	{ CompareOp::LESS, VK_COMPARE_OP_LESS },
+	{ CompareOp::ALWAYS, VK_COMPARE_OP_ALWAYS },
+	{ CompareOp::LESS_OR_EQUAL, VK_COMPARE_OP_LESS_OR_EQUAL },
+	{ CompareOp::GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL },
+	{ CompareOp::GREATER, VK_COMPARE_OP_GREATER },
 );
 
 CONVERTER(convert_address_mode, SamplerAddressMode, VkSamplerAddressMode, VK_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -114,5 +116,16 @@ CONVERTER(convert_uniform_type, UniformType, VkDescriptorType, VK_DESCRIPTOR_TYP
 	{ UniformType::TEXTURE, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
 	{ UniformType::STORAGE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER },
 );
+
+CONVERTER(convert_cull_type, CullFace, VkCullModeFlagBits, VK_CULL_MODE_FRONT_BIT, {
+	{ CullFace::NONE, VK_CULL_MODE_NONE },
+	{ CullFace::FRONT, VK_CULL_MODE_FRONT_BIT },
+	{ CullFace::BACK, VK_CULL_MODE_BACK_BIT },
+});
+
+CONVERTER(convert_face_type, FrontFace, VkFrontFace, VK_FRONT_FACE_CLOCKWISE, {
+	{ FrontFace::CLOCKWISE, VK_FRONT_FACE_CLOCKWISE },
+	{ FrontFace::COUNTER_CLOCKWISE, VK_FRONT_FACE_COUNTER_CLOCKWISE },
+});
 
 }

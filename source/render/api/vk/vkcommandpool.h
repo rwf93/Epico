@@ -45,32 +45,6 @@ public:
 	VkFence &get_fence(uint32_t index) { return get_frame_context(index).fence; }
 	VkFence &get_fence() { return get_fence(current_frame); }
 
-	// These functions are left over from when I merged out the VkCommand from FrameContext into it's own class.
-	void transition_image(
-		VulkanCommand *command,
-		VkImage image,
-		VkImageLayout current_layout,
-		VkImageLayout new_layout
-	);
-
-	void transition_image(
-		VkImage image,
-		VkImageLayout current_layout,
-		VkImageLayout new_layout
-	) {
-		transition_image(get_command(), image, current_layout, new_layout);
-	}
-
-	void copy_image(VulkanCommand *command, VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size);
-	void copy_image(VkImage src, VkImage dst, VkExtent3D src_size, VkExtent3D dst_size) {
-		copy_image(get_command(), src, dst, src_size, dst_size);
-	}
-
-	void clear_image(VulkanCommand *command, VkImage image, float r, float g, float b, float a);
-	void clear_image(VkImage image, float r, float g, float b, float a) {
-		clear_image(get_command(), image, r, g, b, a);
-	}
-
 	uint32_t get_max_flying_frames() { return max_flying_frames; }
 
 	// Flips the frame for the backbuffer.

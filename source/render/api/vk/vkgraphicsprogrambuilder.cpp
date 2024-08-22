@@ -99,14 +99,14 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	return handle;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(ShaderPrimitive type) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(PrimitiveMode type) {
 	assembly_info.topology = convert::convert_primitive_type(type);
 	assembly_info.primitiveRestartEnable = VK_FALSE;
 
 	return this;
 };
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_polygon_mode(ShaderPolygonMode mode) {
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_polygon_mode(PolygonMode mode) {
 	rasterizer_info.polygonMode = convert::convert_polygon_mode(mode);
 	return this;
 }
@@ -119,7 +119,7 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_format(ImageForm
 GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(
 	bool test_enable,
 	bool write_enable,
-	ShaderCompareOp compare
+	CompareOp compare
 ) {
 	stencil_info.depthTestEnable = test_enable;
 	stencil_info.depthWriteEnable = write_enable;
@@ -143,6 +143,16 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
 
 	bindings.push_back(binding_description);
 
+	return this;
+}
+
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_cull_face(CullFace face) {
+	rasterizer_info.cullMode = convert::convert_cull_type(face);
+	return this;
+}
+
+GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_front_face(FrontFace face) {
+	rasterizer_info.frontFace = convert::convert_face_type(face);
 	return this;
 }
 

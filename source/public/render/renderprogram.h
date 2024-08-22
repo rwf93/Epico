@@ -25,19 +25,19 @@ inline bool operator & ( ShaderStage lhs, ShaderStage rhs ) {
 	return static_cast<bool>( static_cast<int>(lhs) & static_cast<int>(rhs) );
 }
 
-enum class ShaderPrimitive {
+enum class PrimitiveMode {
 	TRIANGLE_LIST,
 	TRIANGLE_STRIP,
 	POINT_LIST
 };
 
-enum class ShaderPolygonMode {
+enum class PolygonMode {
 	FILL,
 	LINE,
 	POINT
 };
 
-enum class ShaderCompareOp {
+enum class CompareOp {
 	NEVER,
 	EQUAL,
 	LESS,
@@ -47,19 +47,33 @@ enum class ShaderCompareOp {
 	GREATER
 };
 
+enum class CullFace {
+	NONE,
+	FRONT,
+	BACK,
+};
+
+enum class FrontFace {
+	CLOCKWISE,
+	COUNTER_CLOCKWISE
+};
+
 class GraphicsProgramBuilder {
 public:
 	virtual ~GraphicsProgramBuilder() {}
 
 	virtual GraphicsProgramHandle build() = 0;
-	virtual GraphicsProgramBuilder *set_primitive(ShaderPrimitive type) = 0;
-	virtual GraphicsProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) = 0;
+	virtual GraphicsProgramBuilder *set_primitive(PrimitiveMode type) = 0;
+	virtual GraphicsProgramBuilder *set_polygon_mode(PolygonMode mode) = 0;
 	virtual GraphicsProgramBuilder *set_depth_format(ImageFormat format) = 0;
 	virtual GraphicsProgramBuilder *set_depth_test(
 		bool test_enable,
 		bool write_enable,
-		ShaderCompareOp compare
+		CompareOp compare
 	) = 0;
+
+	virtual GraphicsProgramBuilder *set_cull_face(CullFace face) = 0;
+	virtual GraphicsProgramBuilder *set_front_face(FrontFace face) = 0;
 
 	virtual GraphicsProgramBuilder *add_binding(
 		uint32_t size,

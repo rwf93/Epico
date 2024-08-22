@@ -14,14 +14,17 @@ public:
 	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
 	void clear(GraphicsProgramHandle program_handle);
 
-	GraphicsProgramBuilder *set_primitive(ShaderPrimitive type) override;
-	GraphicsProgramBuilder *set_polygon_mode(ShaderPolygonMode mode) override;
+	GraphicsProgramBuilder *set_primitive(PrimitiveMode type) override;
+	GraphicsProgramBuilder *set_polygon_mode(PolygonMode mode) override;
 	GraphicsProgramBuilder *set_depth_format(ImageFormat format) override;
 	GraphicsProgramBuilder *set_depth_test(
 		bool test_enable,
 		bool write_enable,
-		ShaderCompareOp compare
+		CompareOp compare
 	) override;
+
+	GraphicsProgramBuilder *set_cull_face(CullFace face) override;
+	GraphicsProgramBuilder *set_front_face(FrontFace face) override;
 
 	GraphicsProgramBuilder *add_binding(
         uint32_t size,

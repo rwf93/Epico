@@ -49,7 +49,7 @@ void VulkanAPI::begin() {
 
 	TracyVkZone(command_pool.get_frame_context().trace_context, command_pool.get_command()->get_command(), "API Begin");
 
-	command_pool.transition_image(
+	command_pool.get_command()->transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_GENERAL
@@ -57,7 +57,7 @@ void VulkanAPI::begin() {
 }
 
 void VulkanAPI::end() {
-	command_pool.transition_image(
+	command_pool.get_command()->transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
@@ -168,12 +168,23 @@ void VulkanAPI::present() {
 }
 
 void VulkanAPI::clear(float r, float g, float b, float a) {
-	command_pool.clear_image(swapchain.get_swapchain_image(), r, g, b, a);
+	VkClearColorValue clear_value = { { r, g, b, a } };
+	static std::vector<VkImageSubresourceRange> clear_ranges = {
+		info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT)
+	};
+
+	command_pool.get_command()->clear_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, &clear_value, clear_ranges);
 }
 
 void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) {
 	auto image = resource_manager.try_get_texture(handle).value();
-	command_pool.clear_image(image->get_image(), r, g, b, a);
+
+	VkClearColorValue clear_value = { { r, g, b, a } };
+	static std::vector<VkImageSubresourceRange> clear_ranges = {
+		info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT)
+	};
+
+	command_pool.get_command()->clear_image(image->get_image(), VK_IMAGE_LAYOUT_GENERAL, &clear_value, clear_ranges);
 }
 
 void VulkanAPI::viewport(float width, float height, float x, float y) {
@@ -200,13 +211,13 @@ void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
 void VulkanAPI::show_image(TextureHandle handle) {
 	auto resource = resource_manager.try_get_texture(handle).value();
 
-	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	command_pool.get_command()->transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	resource->transition(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-	command_pool.copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
+	command_pool.get_command()->copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
 
 	resource->transition(VK_IMAGE_LAYOUT_GENERAL);
-	command_pool.transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	command_pool.get_command()->transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
@@ -229,8 +240,14 @@ void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
 };
 
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
-	std::vector<VkWriteDescriptorSet> write_sets(binds.size());
-	std::vector<std::pair<VkDescriptorBufferInfo, VkDescriptorImageInfo>> info_objects(binds.size());
+	// Cache write_sets and info_objects.
+	static std::vector<VkWriteDescriptorSet> write_sets = {};
+	if(write_sets.size() < binds.size())
+		write_sets.resize(binds.size());
+
+	static std::vector<std::pair<VkDescriptorBufferInfo, VkDescriptorImageInfo>> info_objects(binds.size());
+	if(info_objects.size() < binds.size())
+		info_objects.resize(binds.size());
 
 	auto layout = resource_manager.try_get_layout(layout_handle).value();
 
@@ -284,7 +301,7 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 		VK_PIPELINE_BIND_POINT_GRAPHICS,
 		layout->get_pipeline_layout(),
 		0,
-		static_cast<uint32_t>(write_sets.size()), write_sets.data()
+		static_cast<uint32_t>(binds.size()), write_sets.data()
 	);
 }
 
