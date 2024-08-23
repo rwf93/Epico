@@ -1,20 +1,13 @@
 #version 460
+#extension GL_ARB_shading_language_include: require
 
 #define MAX_LIGHTS 4
 
 layout(location = 0) in vec2 in_uv;
 layout(location = 0) out vec4 out_composition;
 
-layout(binding = 0) uniform CompositionData {
-    vec4 camera_position;
-    int gbuffer_selection;
-} composition;
-
-struct LightData {
-    vec4 position;
-    vec3 color;
-    float radius;
-};
+#include "../../assets/shaders/renderdefs.h"
+UNIFORM_BLOCK(0, CompositionData) composition = CompositionData_block.data;
 
 layout(std140, set = 0, binding = 1) readonly buffer LightDataUniform {
     LightData lights[];
@@ -24,7 +17,10 @@ layout(binding = 2) uniform sampler2D position_attachment;
 layout(binding = 3) uniform sampler2D normal_attachment;
 layout(binding = 4) uniform sampler2D albedo_attachment;
 
+UNIFORM_BLOCK(5, SceneData) scene = SceneData_block.data;
+
 void main() {
+
     vec3 position = texture(position_attachment, in_uv).rgb;
     vec3 normal = texture(normal_attachment, in_uv).rgb;
     vec4 albedo = texture(albedo_attachment, in_uv);

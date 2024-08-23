@@ -1,4 +1,5 @@
 #version 460
+#extension GL_ARB_shading_language_include: require
 
 layout(location = 0) in vec3 in_vertex;
 layout(location = 1) in vec3 in_normal;
@@ -10,14 +11,8 @@ layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec3 out_tangent;
 layout(location = 3) out vec2 out_uv;
 
-layout(binding = 0) uniform SceneData {
-    mat4 view;
-    mat4 projection;
-} scene;
-
-struct StorageData {
-    mat4 model;
-};
+#include "../../assets/shaders/renderdefs.h"
+UNIFORM_BLOCK(0, SceneData) scene = SceneData_block.data;
 
 layout(std140, set = 0, binding = 1) readonly buffer StorageDataUniform {
     StorageData objects[];

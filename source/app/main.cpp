@@ -3,29 +3,6 @@
 #include "mesh.h"
 #include "texture.h"
 
-struct SceneData {
-	glm::mat4 view;
-	glm::mat4 projection;
-	float screaming;
-};
-
-struct StorageData {
-	glm::mat4 model;
-	static constexpr uint32_t MAX_OBJECTS = 1024;
-};
-
-struct CompositionData {
-	glm::vec4 camera_position;
-	int32_t gbuffer_selection;
-};
-
-struct LightData {
-	glm::vec4 position;
-	glm::vec3 color;
-	float radius;
-	static constexpr uint32_t MAX_LIGHTS = 4;
-};
-
 glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
 	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
 	glm::mat4 rotation_matrix = glm::toMat4(glm::quat(rotation));
@@ -213,6 +190,7 @@ int main(int argc, char *argv[]) {
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		->add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
 		->build();
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
@@ -263,7 +241,7 @@ int main(int argc, char *argv[]) {
 		->build();
 
 	auto skybox_layout = render_api->create_layout()
-		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
+		->add_uniform(ShaderStage::VERTEX | ShaderStage::FRAGMENT, UniformType::BUFFER)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->build();
 
@@ -333,6 +311,9 @@ int main(int argc, char *argv[]) {
 		scene_data.view = camera.get_view_matrix();
 		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
 		scene_data.projection[1][1] *= -1;
+		scene_data.resolution = glm::vec2(context.width, context.height);
+		scene_data.time = context.time;
+		scene_data.time_delta = context.time_delta;
 		render_api->buffer_sub(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
 		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
@@ -499,6 +480,14 @@ int main(int argc, char *argv[]) {
 						.sampler_handle = resources.albedo_sampler
 					},
 					.type = UniformType::TEXTURE,
+				},
+				{
+					.buffer = {
+						.buffer_handle = resources.scene_buffer,
+						.offset = 0,
+						.range = sizeof(SceneData)
+					},
+					.type = UniformType::BUFFER
 				},
 			};
 
