@@ -9,6 +9,14 @@ void Camera::update() {
 }
 
 void Camera::process_event(SDL_Event *event) {
+	if(event->type == SDL_MOUSEMOTION) {
+		if(!(event->motion.state & SDL_BUTTON(3))) { SDL_SetRelativeMouseMode(SDL_FALSE); return; }
+		SDL_WarpMouseInWindow(context->window, context->width / 2, context->height / 2);
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+		yaw += static_cast<float>(event->motion.xrel) * 0.1f;
+		pitch -= static_cast<float>(event->motion.yrel) * 0.1f;
+	}
+
 	if(event->type == SDL_KEYDOWN) {
 		if(event->key.keysym.sym == SDLK_w)
 			position += front * (speed);
@@ -21,10 +29,5 @@ void Camera::process_event(SDL_Event *event) {
 
 		if(event->key.keysym.sym == SDLK_a)
 			position -= right * (speed);
-	}
-
-	if(event->type == SDL_MOUSEMOTION) {
-		yaw += static_cast<float>(event->motion.xrel) * 0.1f;
-        pitch -= static_cast<float>(event->motion.yrel) * 0.1f;
 	}
 }

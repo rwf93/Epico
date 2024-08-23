@@ -63,8 +63,8 @@ void VulkanUI::init(
 	init_info.PhysicalDevice = device->get_device().physical_device;
 	init_info.Queue = device->get_graphics_queue();
 	init_info.DescriptorPool = descriptor_pool;
-	init_info.MinImageCount = command_pool->get_max_flying_frames();
-	init_info.ImageCount = command_pool->get_max_flying_frames();
+	init_info.MinImageCount = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
+	init_info.ImageCount = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
 	init_info.UseDynamicRendering = true;
 
 	init_info.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;

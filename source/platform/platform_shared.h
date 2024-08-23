@@ -91,3 +91,12 @@ fail:
 		return factory_impl; 									\
 	}
 
+#define ONCE(BLOCK) 				\
+	{								\
+		static bool once = false; 	\
+		if(!once) { 				\
+			BLOCK					\
+			once = true;			\
+		}							\
+	}
+

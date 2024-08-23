@@ -1,11 +1,17 @@
+#include "renderdefs.h"
+#include "camera.h"
+#include "mesh.h"
+#include "texture.h"
+
 struct SceneData {
 	glm::mat4 view;
 	glm::mat4 projection;
+	float screaming;
 };
 
 struct StorageData {
 	glm::mat4 model;
-	static const uint32_t MAX_OBJECTS = 1024;
+	static constexpr uint32_t MAX_OBJECTS = 1024;
 };
 
 struct CompositionData {
@@ -17,8 +23,19 @@ struct LightData {
 	glm::vec4 position;
 	glm::vec3 color;
 	float radius;
-	static const uint32_t MAX_LIGHTS = 4;
+	static constexpr uint32_t MAX_LIGHTS = 4;
 };
+
+glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
+	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
+	glm::mat4 rotation_matrix = glm::toMat4(glm::quat(rotation));
+	glm::mat4 scale_matrix = glm::scale(glm::mat4(1.0f), scale);
+
+	return translation_matrix * rotation_matrix * scale_matrix;
+}
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 struct RenderPassResources {
 	TextureHandle position = TextureHandle::Invalid;
@@ -50,24 +67,9 @@ struct RenderResources {
 	BufferHandle light_buffer = BufferHandle::Invalid;
 };
 
-glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
-	glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), translation);
-	glm::mat4 rotation_matrix = glm::toMat4(glm::quat(rotation));
-	glm::mat4 scale_matrix = glm::scale(glm::mat4(1.0f), scale);
-
-	return translation_matrix * rotation_matrix * scale_matrix;
-}
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 void setup_resources(RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
-
-#include "renderdefs.h"
-#include "camera.h"
-#include "mesh.h"
-#include "texture.h"
 
 // refactor
 struct TempTexture {
@@ -158,29 +160,34 @@ int main(int argc, char *argv[]) {
 
 	ktxTexture *texture;
 	ktxTexture_CreateFromNamedFile(
-		filesystem->resolve_physical_dir("assets/textures/armor.ktx").string().c_str(),
+		filesystem->resolve_physical_dir("assets/textures/colormap_rgba.ktx").string().c_str(),
 		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
 		&texture
 	);
-	ktx_uint8_t *texture_data = ktxTexture_GetData(texture);
 
 	TempTexture armor_albedo_texture;
-	create_texture(render_api.interface, texture_data, texture->baseWidth, texture->baseHeight, &armor_albedo_texture);
+	create_texture(render_api.interface, ktxTexture_GetData(texture), texture->baseWidth, texture->baseHeight, &armor_albedo_texture);
 
-	int nwidth, nheight, nnrchannels;
-	unsigned char *armor_normal_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/armor_default_normal.png").string().c_str(), &nwidth, &nheight, &nnrchannels, 4);
+	ktxTexture_CreateFromNamedFile(
+		filesystem->resolve_physical_dir("assets/textures/normalmap_rgba.ktx").string().c_str(),
+		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+		&texture
+	);
 
 	TempTexture armor_normal_texture;
-	create_texture(render_api.interface, armor_normal_data, nwidth, nheight, &armor_normal_texture);
+	create_texture(render_api.interface, ktxTexture_GetData(texture), texture->baseWidth, texture->baseHeight, &armor_normal_texture);
 
 	TempTexture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
-	int swidth, sheight, snrchannels;
-	unsigned char *skybox_data = stbi_load(filesystem->resolve_physical_dir("assets/textures/rblx-skybox.png").string().c_str(), &swidth, &sheight, &snrchannels, 4);
+	ktxTexture_CreateFromNamedFile(
+	filesystem->resolve_physical_dir("assets/textures/skysphere_rgba.ktx").string().c_str(),
+		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+		&texture
+	);
 
 	TempTexture skybox_texture;
-	create_texture(render_api.interface, skybox_data, swidth, sheight, &skybox_texture);
+	create_texture(render_api.interface, ktxTexture_GetData(texture), texture->baseWidth, texture->baseHeight, &skybox_texture);
 
 	RenderPassResources renderpass_resources = {};
 	RenderResources resources = {
@@ -265,7 +272,7 @@ int main(int argc, char *argv[]) {
 	auto skybox_shader = render_api->create_graphics_program()
 		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_cull_face(CullFace::BACK)
+		->set_cull_face(CullFace::FRONT)
 		->set_front_face(FrontFace::COUNTER_CLOCKWISE)
 		->set_depth_test(true, false, CompareOp::EQUAL)
 		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
@@ -287,8 +294,8 @@ int main(int argc, char *argv[]) {
 	Mesh monkey_mesh(&context, filesystem.interface, render_api.interface);
 	monkey_mesh.load_from_file("assets/models/monkey.glb");
 
-	Mesh cube_mesh(&context, filesystem.interface, render_api.interface);
-	cube_mesh.load_from_file("assets/models/cube.glb");
+	Mesh sphere_mesh(&context, filesystem.interface, render_api.interface);
+	sphere_mesh.load_from_file("assets/models/sphere.glb");
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
 
@@ -331,6 +338,13 @@ int main(int argc, char *argv[]) {
 		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
 		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0.01f));
 		storage_data[1].model = calculate_model_matrix(glm::vec3(0, 2, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
+
+		ONCE(
+			for(int i = 2; i < 1024; i++) {
+				storage_data[i].model = calculate_model_matrix(glm::ballRand(100.0f), glm::ballRand(360.0f), glm::vec3(1.0f));
+			}
+		)
+
 		render_api->buffer_sub(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
 
 		static CompositionData composition_data = {};
@@ -515,7 +529,7 @@ int main(int argc, char *argv[]) {
 				render_api->draw(3, 1);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
 				render_api->bind_shader(skybox_shader);
-				cube_mesh.draw(0);
+				sphere_mesh.draw(0);
 			render_api->end_pass(composition_attachments);
 
 			render_api->show_image(resources.pass_handles->composition);
