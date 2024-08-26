@@ -2,9 +2,8 @@
 
 class VulkanAPI: public RenderAPI {
 public:
+	VulkanAPI(AppContext *context);
 	~VulkanAPI() override;
-
-	void init(AppContext *context) override;
 
 	void begin() override;
 	void end() override;
@@ -24,7 +23,7 @@ public:
 	void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) override;
 
 	void draw(uint32_t vertex_count, uint32_t instance_count) override;
-	void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) override;
+	void draw_instanced(uint32_t index_count, uint32_t instance_count) override;
 
 	void show_image(TextureHandle handle) override;
 
@@ -76,9 +75,10 @@ public:
 protected:
 	void rebuild();
 private:
-	AppContext *context = nullptr;
+	AppContext *context;
+	std::shared_ptr<spdlog::logger> logger;
 
-	VulkanInstance instance = {};
+	VulkanInstance instance;
 	VulkanSurface surface = {};
 	VulkanDevice device = {};
 	VulkanSwapchain swapchain = {};
@@ -87,4 +87,5 @@ private:
 	VulkanUI ui_imgui = {};
 
 	ResizeEventFunction resize_event;
+	uint32_t draw_instance_index = 0;
 };

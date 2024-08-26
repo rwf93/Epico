@@ -54,8 +54,6 @@ class RenderAPI {
 public:
 	virtual ~RenderAPI() = default;
 
-	virtual void init(AppContext *context) = 0;
-
 	virtual void begin() = 0;
 	virtual void end() = 0;
 
@@ -75,7 +73,7 @@ public:
 	virtual void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) = 0;
 
 	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;
-	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) = 0;
+	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count) = 0;
 	// Copies the texture resource to the surface.
 	virtual void show_image(TextureHandle handle) = 0;
 

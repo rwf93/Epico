@@ -3,6 +3,7 @@
 class VulkanDevice;
 class VulkanCommandPool;
 class VulkanBuffer;
+class VulkanCommand;
 class VulkanTexture: public RenderResource {
 public:
 	~VulkanTexture() override { if(get_state() != ResourceState::UNREADY) fini(); }
@@ -24,6 +25,7 @@ public:
 
 	VkImageCreateInfo *get_info() { return &info; }
 
+	void transition(VulkanCommand *command, VkImageLayout new_layout);
 	void transition(VkImageLayout new_layout);
 
 	friend class VulkanResourceManager;
@@ -40,5 +42,5 @@ private:
 	VmaAllocation allocation;
 
 	ResourceState state = ResourceState::UNREADY;
-	VkImageLayout last_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	VkImageLayout last_layout;
 };

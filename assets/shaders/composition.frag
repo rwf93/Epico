@@ -17,10 +17,7 @@ layout(binding = 2) uniform sampler2D position_attachment;
 layout(binding = 3) uniform sampler2D normal_attachment;
 layout(binding = 4) uniform sampler2D albedo_attachment;
 
-UNIFORM_BLOCK(5, SceneData) scene = SceneData_block.data;
-
 void main() {
-
     vec3 position = texture(position_attachment, in_uv).rgb;
     vec3 normal = texture(normal_attachment, in_uv).rgb;
     vec4 albedo = texture(albedo_attachment, in_uv);

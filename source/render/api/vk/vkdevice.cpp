@@ -12,6 +12,9 @@ void VulkanDevice::init(VulkanInstance *vkinstance, VulkanSurface *vksurface) {
 }
 
 void VulkanDevice::retreive_device() {
+	VkPhysicalDeviceFeatures features = {};
+	features.fillModeNonSolid = true;
+
 	VkPhysicalDeviceVulkan13Features features_13 = {};
 	features_13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	features_13.dynamicRendering = true;
@@ -28,6 +31,7 @@ void VulkanDevice::retreive_device() {
 							.set_minimum_version(1, 3)
 							.set_required_features_13(features_13)
 							.set_required_features_12(features_12)
+							.set_required_features(features)
 							.add_required_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
 							.select();
 

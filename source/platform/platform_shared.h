@@ -56,10 +56,10 @@ struct FactoryHandle {
 	}
 };
 
-// Loads a shared library, calls it's factory function, and returns a FactoryHandle instance.
-template<typename T>
-inline FactoryHandle<T> get_factory(const char *binary, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
-	using CreateFactoryType = T();
+// Loads a shared library, calls it's factory function, and returns a FactoryHandle instance. ContextType is for your userdefined ContextType (check source/public/appcontext.h)
+template<typename T, typename ContextType>
+inline FactoryHandle<T> get_factory(const char *binary, ContextType *context, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
+	using CreateFactoryType = T(void*);
 	CreateFactoryType *create_factory;
 	T factory_result;
 
@@ -73,7 +73,7 @@ inline FactoryHandle<T> get_factory(const char *binary, const char *factory_func
 	if(!create_factory)
 		goto fail_factory;
 
-	factory_result = create_factory();
+	factory_result = create_factory(context);
 	if(!factory_result)
 		goto fail_factory;
 
@@ -84,11 +84,11 @@ fail:
 	return {nullptr, nullptr, false};
 };
 
-#define CREATE_FACTORY(CONCRETE_IMPL) 							\
-	extern "C" EAPI CONCRETE_IMPL *create_factory() { 			\
-		static CONCRETE_IMPL *factory_impl = nullptr; 			\
-		if(!factory_impl) factory_impl = new CONCRETE_IMPL (); \
-		return factory_impl; 									\
+#define CREATE_FACTORY(CONCRETE_IMPL, CONTEXT_TYPE)									\
+	extern "C" EAPI CONCRETE_IMPL *create_factory(AppContext *context) { 			\
+		static CONCRETE_IMPL *factory_impl = nullptr; 								\
+		if(!factory_impl) factory_impl = new CONCRETE_IMPL (context); 				\
+		return factory_impl; 														\
 	}
 
 #define ONCE(BLOCK) 				\

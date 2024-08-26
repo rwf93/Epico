@@ -4,9 +4,7 @@
 
 class StandardFilesystem: public Filesystem {
 public:
-	StandardFilesystem() = default;
-
-	void init(AppContext *app_context) override;
+	StandardFilesystem(AppContext *context);
 
 	void mount(std::filesystem::path virtual_path, std::filesystem::path physical_dir) override;
 	void unmount(std::filesystem::path virtual_path) override;

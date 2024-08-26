@@ -1,9 +1,10 @@
 #include "filesystemimpl.h"
 
-CREATE_FACTORY(StandardFilesystem);
+CREATE_FACTORY(StandardFilesystem, AppContext);
 
-void StandardFilesystem::init(AppContext *app_context) {
-	this->context = app_context;
+StandardFilesystem::StandardFilesystem(AppContext *context)
+	: context(context)
+{
 	auto console = spdlog::stdout_color_mt("filesystem");
 	UNUSED(console);
 }

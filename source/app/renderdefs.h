@@ -41,10 +41,6 @@ struct CompositionData {
 struct LightData {
 	C(glm::vec4, vec4) position;
 	C(glm::vec3, vec3) color;
-	C(glm::vec3, vec3) color_a;
-	C(glm::vec3, vec3) color_b;
-	C(glm::vec3, vec3) color_c;
-	C(glm::vec3, vec3) color_d;
 	float radius;
 	C(static const uint32_t MAX_LIGHTS = 4;,)
 };

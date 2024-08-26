@@ -9,18 +9,18 @@
 
 #include "rendererimpl.h"
 
-CREATE_FACTORY(VulkanAPI);
+CREATE_FACTORY(VulkanAPI, AppContext);
 
-void VulkanAPI::init(AppContext *app_context) {
-	this->context = app_context;
-
+VulkanAPI::VulkanAPI(AppContext *context)
+	: context(context)
+	, logger(spdlog::stdout_color_mt("api_vulkan"))
+	, instance()
+{
 	auto tracy_log_sink = std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg &msg) {
 		UNUSED(msg); // Disabling tracy causes issues.
 		TracyMessage(msg.payload.data(), msg.payload.size());
 	});
-
-	auto console = spdlog::stdout_color_mt("api_vulkan");
-	console->sinks().push_back(tracy_log_sink);
+	logger->sinks().push_back(tracy_log_sink);
 
 	VK_CHECK(volkInitialize());
 	instance.init();
@@ -52,14 +52,14 @@ void VulkanAPI::begin() {
 	command_pool.get_command()->transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_GENERAL
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 	);
 }
 
 void VulkanAPI::end() {
 	command_pool.get_command()->transition_image(
 		swapchain.get_swapchain_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	);
 
@@ -88,6 +88,8 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
 	std::optional<VkRenderingAttachmentInfo> depth_attachment;
 
+	draw_instance_index = 0;
+
 	for(auto &dependency: dependencies) {
 		auto texture = resource_manager.try_get_texture(dependency.texture).value();
 		auto texture_view = resource_manager.try_get_texture_view(dependency.view).value();
@@ -102,11 +104,11 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 					info::attachment_info(
 						texture_view->get_view(),
 						clear_value,
-						VK_IMAGE_LAYOUT_GENERAL
+						VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 					)
 				);
 
-				texture->transition(VK_IMAGE_LAYOUT_GENERAL);
+				texture->transition(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 				break;
 			case AttachmentType::DEPTH:
 				depth_attachment = (
@@ -173,7 +175,7 @@ void VulkanAPI::clear(float r, float g, float b, float a) {
 		info::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT)
 	};
 
-	command_pool.get_command()->clear_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, &clear_value, clear_ranges);
+	command_pool.get_command()->clear_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_value, clear_ranges);
 }
 
 void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) {
@@ -211,13 +213,9 @@ void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
 void VulkanAPI::show_image(TextureHandle handle) {
 	auto resource = resource_manager.try_get_texture(handle).value();
 
-	command_pool.get_command()->transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	resource->transition(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
 	command_pool.get_command()->copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
-
 	resource->transition(VK_IMAGE_LAYOUT_GENERAL);
-	command_pool.get_command()->transition_image(swapchain.get_swapchain_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
@@ -309,8 +307,8 @@ void VulkanAPI::draw(uint32_t vertex_count, uint32_t instance_count) {
 	command_pool.get_command()->draw(vertex_count, instance_count, 0, 0);
 };
 
-void VulkanAPI::draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t index) {
-	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, index);
+void VulkanAPI::draw_instanced(uint32_t index_count, uint32_t instance_count) {
+	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, draw_instance_index++);
 }
 
 TextureHandle VulkanAPI::create_texture() {

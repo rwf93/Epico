@@ -1,7 +1,7 @@
 #include "vkinstance.h"
 
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
+VKAPI_ATTR VkBool32 VKAPI_CALL VulkanInstance::vk_debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT serverity,
 	VkDebugUtilsMessageTypeFlagsEXT message_types,
 	const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
@@ -9,8 +9,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 ) {
 	UNUSED(serverity);
 	UNUSED(message_types);
+	UNUSED(callback_data);
 	UNUSED(user_data);
-	UNUSED(callback_data)
 
 	switch(serverity) {
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
@@ -30,7 +30,8 @@ void VulkanInstance::init() {
 						.set_engine_name("Epico Engine")
 						.require_api_version(VK_API_VERSION_1_3)
 						//.request_validation_layers()
-						.set_debug_callback(vk_debug_callback)
+						.set_debug_callback(VulkanInstance::vk_debug_callback)
+						.set_debug_callback_user_data_pointer(this)
 						.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)
 						.build();
 

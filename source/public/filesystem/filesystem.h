@@ -9,9 +9,7 @@ struct AppContext;
 
 class Filesystem {
 public:
-	virtual ~Filesystem() {};
-
-	virtual void init(AppContext *context) = 0;
+	virtual ~Filesystem() = default;
 
 	virtual void mount(std::filesystem::path virtual_path, std::filesystem::path physical_path) = 0;
 	virtual void unmount(std::filesystem::path virtual_path) = 0;

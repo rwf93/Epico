@@ -14,6 +14,7 @@ void VulkanTexture::init(
 	this->command_pool = vkcommandpool;
 	this->allocator = vkallocator;
 	this->info = *image_info;
+	this->last_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	VK_CHECK(vmaCreateImage(allocator, image_info, create_info, &image, &allocation, nullptr));
 	state = ResourceState::READY;
@@ -21,7 +22,7 @@ void VulkanTexture::init(
 
 void VulkanTexture::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent) {
 	command_pool->submit_command([&](VulkanCommand *command) {
-		command->transition_image(get_image(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transition(command, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 		VkBufferImageCopy copy = {};
 		copy.bufferOffset = 0;
@@ -44,7 +45,7 @@ void VulkanTexture::stage(VulkanBuffer *staging_buffer, VkExtent3D image_extent)
 			copy_regions
 		);
 
-		command->transition_image(get_image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		transition(command, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	});
 }
 
@@ -53,8 +54,12 @@ void VulkanTexture::fini() {
 	state = ResourceState::UNREADY;
 }
 
-void VulkanTexture::transition(VkImageLayout new_layout) {
+void VulkanTexture::transition(VulkanCommand *command, VkImageLayout new_layout) {
 	if(last_layout == new_layout) return;
-	command_pool->get_command()->transition_image(get_image(), last_layout, new_layout);
+	command->transition_image(get_image(), last_layout, new_layout);
 	last_layout = new_layout;
+}
+
+void VulkanTexture::transition(VkImageLayout new_layout) {
+	transition(command_pool->get_command(), new_layout);
 }

@@ -46,28 +46,28 @@ public:
 	void buffer(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size);
 	void buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
-	std::optional<std::shared_ptr<VulkanTexture>> try_get_texture(TextureHandle handle) {
+	std::optional<VulkanTexture*> try_get_texture(TextureHandle handle) {
 		return texture_pool.resource(handle);
 	}
 
-	std::optional<std::shared_ptr<VulkanTextureView>> try_get_texture_view(TextureViewHandle handle) {
-		return texture_view_pool.resource(handle);
+	std::optional<VulkanTextureView*> try_get_texture_view(TextureViewHandle handle) {
+		return texture_view_pool.resource(handle).value();
 	}
 
-	std::optional<std::shared_ptr<VulkanSampler>> try_get_sampler_resource(SamplerHandle handle) {
-		return sampler_pool.resource(handle);
+	std::optional<VulkanSampler*> try_get_sampler_resource(SamplerHandle handle) {
+		return sampler_pool.resource(handle).value();
 	}
 
-	std::optional<std::shared_ptr<VulkanBuffer>> try_get_buffer(BufferHandle handle) {
-		return buffer_pool.resource(handle);
+	std::optional<VulkanBuffer*> try_get_buffer(BufferHandle handle) {
+		return buffer_pool.resource(handle).value();
 	}
 
-	std::optional<std::shared_ptr<VulkanLayout>> try_get_layout(LayoutHandle handle) {
-		return layout_pool.resource(handle);
+	std::optional<VulkanLayout*> try_get_layout(LayoutHandle handle) {
+		return layout_pool.resource(handle).value();
 	}
 
-	std::optional<std::shared_ptr<VulkanGraphicsProgram>> try_get_graphics_program(GraphicsProgramHandle handle) {
-		return graphics_program_pool.resource(handle);;
+	std::optional<VulkanGraphicsProgram*> try_get_graphics_program(GraphicsProgramHandle handle) {
+		return graphics_program_pool.resource(handle).value();
 	}
 
 private:
@@ -90,7 +90,6 @@ private:
 		std::optional<HandleType> acquire() {
 			if(head < PoolSize) {
 				auto handle = free_handles.at(head++);
-				resources.at(static_cast<size_t>(handle)) = std::make_shared<ResourceType>();
 				return handle;
 			}
 
@@ -106,16 +105,12 @@ private:
 			free_handles.clear();
 		}
 
-		std::optional<std::shared_ptr<ResourceType>> resource(HandleType handle) {
-			auto resource = resources.at(static_cast<size_t>(handle));
-			if(!resource)
-				return std::nullopt;
-
-			return resource;
+		std::optional<ResourceType*> resource(HandleType handle) {
+			return &resources.at(static_cast<size_t>(handle));
 		}
 
 		std::vector<HandleType> free_handles;
-		std::vector<std::shared_ptr<ResourceType>> resources;
+		std::vector<ResourceType> resources;
 		uint32_t head = 0;
 	};
 

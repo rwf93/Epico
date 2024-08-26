@@ -84,6 +84,48 @@ void create_texture(RenderAPI *render_api, void *data, int width, int height, Te
 	);
 }
 
+class Model {
+public:
+	Model(RenderAPI *api, Filesystem *filesystem):
+		api(api),
+		filesystem(filesystem) {}
+
+	void load(std::filesystem::path path) {
+		Assimp::Importer importer;
+		const aiScene *scene = importer.ReadFile(
+			filesystem->resolve_physical_dir(path).string(),
+			aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace
+		);
+
+		process_node(scene->mRootNode, scene, glm::mat4(0));
+	}
+
+	void process_node(aiNode *node, const aiScene *scene, glm::mat4 parent_transform) {
+		glm::mat4 root_transformation = *reinterpret_cast<glm::mat4*>(&node->mTransformation) * parent_transform;
+		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
+			aiMesh *assimp_mesh = scene->mMeshes[node->mMeshes[i]];
+
+			Mesh mesh(filesystem, api);
+			mesh.process(assimp_mesh);
+
+			meshes.push_back(mesh);
+		}
+
+		for(unsigned int i = 0; i < node->mNumChildren; i++)
+			process_node(node->mChildren[i], scene, root_transformation);
+	}
+
+	void draw() {
+		for(auto &mesh: meshes)
+			mesh.draw();
+	}
+private:
+	std::vector<Mesh> meshes;
+
+	RenderAPI *api;
+	Filesystem *filesystem;
+};
+
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
 	UNUSED(argv);
@@ -101,8 +143,8 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = get_factory<Filesystem*>("filesystem_std");
-	auto render_api = get_factory<RenderAPI*>("api_vk");
+	auto filesystem = get_factory<Filesystem*, AppContext>("filesystem_std", &context);
+	auto render_api = get_factory<RenderAPI*, AppContext>("api_vk", &context);
 
 	if(!filesystem.good) {
 		spdlog::error("Couldn't load VFS");
@@ -114,17 +156,11 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	filesystem->init(&context);
-	render_api->init(&context);
-
 	filesystem->mount("assets/", "../../assets/");
 	filesystem->mount("assets/models/", "../../assets/models/");
 	filesystem->mount("assets/fonts/", "../assets/fonts/");
 	filesystem->mount("assets/textures/", "../../assets/textures/");
 	filesystem->mount("assets/shaders/", "../assets/shaders/");
-
-	//int width, height, nrchannels;
-	//unsigned char *data = stbi_load(filesystem->resolve_physical_dir("assets/textures/Ariral_Holds.png").string().c_str(), &width, &height, &nrchannels, 4);
 
 	uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
 	uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
@@ -135,36 +171,23 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	ktxTexture *texture;
-	ktxTexture_CreateFromNamedFile(
-		filesystem->resolve_physical_dir("assets/textures/colormap_rgba.ktx").string().c_str(),
-		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-		&texture
-	);
+	Texture armor_albedo_texture(filesystem.interface, render_api.interface);
+	armor_albedo_texture.upload_from_ktx("assets/textures/colormap_rgba.ktx");
 
-	TempTexture armor_albedo_texture;
-	create_texture(render_api.interface, ktxTexture_GetData(texture), texture->baseWidth, texture->baseHeight, &armor_albedo_texture);
-
-	ktxTexture_CreateFromNamedFile(
-		filesystem->resolve_physical_dir("assets/textures/normalmap_rgba.ktx").string().c_str(),
-		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-		&texture
-	);
-
-	TempTexture armor_normal_texture;
-	create_texture(render_api.interface, ktxTexture_GetData(texture), texture->baseWidth, texture->baseHeight, &armor_normal_texture);
+	Texture armor_normal_texture(filesystem.interface, render_api.interface);
+	armor_normal_texture.upload_from_ktx("assets/textures/normalmap_rgba.ktx");
 
 	TempTexture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
-	ktxTexture_CreateFromNamedFile(
-	filesystem->resolve_physical_dir("assets/textures/skysphere_rgba.ktx").string().c_str(),
-		KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-		&texture
-	);
+	Texture skybox_texture(filesystem.interface, render_api.interface);
+	skybox_texture.upload_from_ktx("assets/textures/skysphere_rgba.ktx");
 
-	TempTexture skybox_texture;
-	create_texture(render_api.interface, ktxTexture_GetData(texture), texture->baseWidth, texture->baseHeight, &skybox_texture);
+	Texture monkey_normals(filesystem.interface, render_api.interface);
+	monkey_normals.upload_from_ktx("assets/textures/suzanne_normal.ktx");
+
+	Model test_model(render_api.interface, filesystem.interface);
+	test_model.load("assets/models/monkey.glb");
 
 	RenderPassResources renderpass_resources = {};
 	RenderResources resources = {
@@ -190,7 +213,6 @@ int main(int argc, char *argv[]) {
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
 		->build();
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
@@ -266,13 +288,13 @@ int main(int argc, char *argv[]) {
 	UNUSED(deferred_shader);
 	UNUSED(composition_shader);
 
-	Mesh armor_mesh(&context, filesystem.interface, render_api.interface);
+	Mesh armor_mesh(filesystem.interface, render_api.interface);
 	armor_mesh.load_from_file("assets/models/armor.gltf");
 
-	Mesh monkey_mesh(&context, filesystem.interface, render_api.interface);
+	Mesh monkey_mesh(filesystem.interface, render_api.interface);
 	monkey_mesh.load_from_file("assets/models/monkey.glb");
 
-	Mesh sphere_mesh(&context, filesystem.interface, render_api.interface);
+	Mesh sphere_mesh(filesystem.interface, render_api.interface);
 	sphere_mesh.load_from_file("assets/models/sphere.glb");
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
@@ -319,6 +341,8 @@ int main(int argc, char *argv[]) {
 		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
 		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0.01f));
 		storage_data[1].model = calculate_model_matrix(glm::vec3(0, 2, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
+		storage_data[2].model = calculate_model_matrix(glm::vec3(1, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
+		storage_data[3].model = calculate_model_matrix(glm::vec3(1, 0, 3), glm::vec3(0, 0, 0), glm::vec3(1.0f));
 
 		ONCE(
 			for(int i = 2; i < 1024; i++) {
@@ -340,7 +364,7 @@ int main(int argc, char *argv[]) {
 			render_api->clear(0, 0, 0, 1);
 
 			// Offscreen/Deferred rendering (first pass)
-			std::vector<SubpassAttachment> deferred_attachments = {
+			static std::vector<SubpassAttachment> deferred_attachments = {
 				{
 					.texture = renderpass_resources.position,
 					.view = renderpass_resources.position_view,
@@ -367,7 +391,7 @@ int main(int argc, char *argv[]) {
 				}
 			};
 
-			std::vector<UniformBind> deferred_binds = {
+			static std::vector<UniformBind> deferred_binds = {
 				{
 					.buffer = {
 						.buffer_handle = resources.scene_buffer,
@@ -382,40 +406,37 @@ int main(int argc, char *argv[]) {
 					},
 					.type = UniformType::STORAGE,
 				},
-				{ .type = UniformType::TEXTURE },
-				{ .type = UniformType::TEXTURE },
 			};
-
 
 			static bool testing = false;
 
 			render_api->begin_pass(deferred_attachments);
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
+
 				render_api->bind_shader(testing ? deferred_wireframe_shader : deferred_shader);
-				deferred_binds[2].texture = {
-					.texture_view_handle = armor_albedo_texture.view,
-					.sampler_handle = armor_albedo_texture.sampler
-				};
-				deferred_binds[3].texture = {
-					.texture_view_handle = armor_normal_texture.view,
-					.sampler_handle = armor_normal_texture.sampler
-				};
+
+				deferred_binds.push_back(armor_albedo_texture.as_bind());
+				deferred_binds.push_back(armor_normal_texture.as_bind());
 				render_api->bind_uniform(deferred_layout, deferred_binds);
-				armor_mesh.draw(0);
-				deferred_binds[2].texture = {
-					.texture_view_handle = missing_texture.view,
-					.sampler_handle = missing_texture.sampler
-				};
-				deferred_binds[3].texture = {
-					.texture_view_handle = missing_texture.view,
-					.sampler_handle = missing_texture.sampler
-				};
+				deferred_binds.pop_back();
+				deferred_binds.pop_back();
+
+				armor_mesh.draw();
+
+				deferred_binds.push_back(armor_albedo_texture.as_bind());
+				deferred_binds.push_back(monkey_normals.as_bind());
 				render_api->bind_uniform(deferred_layout, deferred_binds);
-				monkey_mesh.draw(1);
+				deferred_binds.pop_back();
+				deferred_binds.pop_back();
+
+				monkey_mesh.draw();
+				monkey_mesh.draw();
+				monkey_mesh.draw();
+
 			render_api->end_pass(deferred_attachments);
 
-			std::vector<SubpassAttachment> composition_attachments = {
+			static std::vector<SubpassAttachment> composition_attachments = {
 				{
 					.texture = renderpass_resources.composition,
 					.view = renderpass_resources.composition_view,
@@ -443,7 +464,7 @@ int main(int argc, char *argv[]) {
 				}
 			};
 
-			std::vector<UniformBind> composition_binds = {
+			static std::vector<UniformBind> composition_binds = {
 				{
 					.buffer = {
 						.buffer_handle = resources.composition_buffer,
@@ -481,17 +502,9 @@ int main(int argc, char *argv[]) {
 					},
 					.type = UniformType::TEXTURE,
 				},
-				{
-					.buffer = {
-						.buffer_handle = resources.scene_buffer,
-						.offset = 0,
-						.range = sizeof(SceneData)
-					},
-					.type = UniformType::BUFFER
-				},
 			};
 
-			std::vector<UniformBind> skybox_uniforms = {
+			static std::vector<UniformBind> skybox_uniforms = {
 				{
 					.buffer = {
 						.buffer_handle = resources.scene_buffer,
@@ -499,13 +512,7 @@ int main(int argc, char *argv[]) {
 					},
 					.type = UniformType::BUFFER,
 				},
-				{
-					.texture = {
-						.texture_view_handle = skybox_texture.view,
-						.sampler_handle = skybox_texture.sampler
-					},
-					.type = UniformType::TEXTURE
-				},
+				skybox_texture.as_bind()
 			};
 
 			UNUSED(skybox_shader);
@@ -518,7 +525,7 @@ int main(int argc, char *argv[]) {
 				render_api->draw(3, 1);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
 				render_api->bind_shader(skybox_shader);
-				sphere_mesh.draw(0);
+				sphere_mesh.draw();
 			render_api->end_pass(composition_attachments);
 
 			render_api->show_image(resources.pass_handles->composition);
@@ -546,8 +553,6 @@ int main(int argc, char *argv[]) {
 				ImGui::Checkbox("Enable Testing Shader", &testing);
 
 				ImGui::End();
-
-				ImGui::ShowDemoWindow();
 
 				ImGuiIO &io = ImGui::GetIO();
 				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);

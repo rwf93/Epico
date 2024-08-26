@@ -97,7 +97,7 @@ void VulkanUI::end() {
 
 	command_pool->get_command()->transition_image(
 		swapchain->get_swapchain_image(),
-		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	);
 
@@ -108,7 +108,7 @@ void VulkanUI::end() {
 	command_pool->get_command()->transition_image(
 		swapchain->get_swapchain_image(),
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_IMAGE_LAYOUT_GENERAL
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 	);
 }
 
