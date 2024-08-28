@@ -58,7 +58,7 @@ struct FactoryHandle {
 
 // Loads a shared library, calls it's factory function, and returns a FactoryHandle instance. ContextType is for your userdefined ContextType (check source/public/appcontext.h)
 template<typename T, typename ContextType>
-inline FactoryHandle<T> get_factory(const char *binary, ContextType context, const char *factory_function = "create_factory", std::filesystem::path dir = "./") {
+inline FactoryHandle<T> get_factory(const char *binary, ContextType context, std::filesystem::path dir = "./", const char *factory_function = "create_factory") {
 	using CreateFactoryType = T(ContextType);
 	CreateFactoryType *create_factory;
 	T factory_result;

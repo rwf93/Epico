@@ -143,8 +143,8 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = get_factory<Filesystem*>("filesystem_std", &context);
-	auto render_api = get_factory<RenderAPI*>("api_vk", &context);
+	auto filesystem = get_factory<Filesystem*>("filesystem_std", &context, std::filesystem::weakly_canonical(argv[0]).parent_path().append("./"));
+	auto render_api = get_factory<RenderAPI*>("api_vk", &context, std::filesystem::weakly_canonical(argv[0]).parent_path().append("./"));
 
 	if(!filesystem.good) {
 		spdlog::error("Couldn't load VFS");

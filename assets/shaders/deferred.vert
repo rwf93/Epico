@@ -20,10 +20,10 @@ layout(std140, set = 0, binding = 1) readonly buffer StorageDataUniform {
 
 void main() {
     StorageData object = storage.objects[gl_BaseInstance];
-
     gl_Position = scene.projection * scene.view * object.model * vec4(in_vertex, 1.0);
-    out_position = vec3(object.model * vec4(in_vertex, 1.0));
     mat3 normal = transpose(inverse(mat3(object.model)));
+
+    out_position = vec3(object.model * vec4(in_vertex, 1.0));
     out_normal = normal * normalize(in_normal);
     out_tangent = normal * normalize(in_tangent);
     out_uv = in_uv;
