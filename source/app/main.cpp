@@ -136,15 +136,15 @@ int main(int argc, char *argv[]) {
 	context.width = 1280;
 	context.height = 762;
 
-	Camera camera = { &context };
+	Camera camera(&context);
 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		spdlog::error("Couldn't init SDL: {}", SDL_GetError());
 		return 0;
 	};
 
-	auto filesystem = get_factory<Filesystem*, AppContext>("filesystem_std", &context);
-	auto render_api = get_factory<RenderAPI*, AppContext>("api_vk", &context);
+	auto filesystem = get_factory<Filesystem*>("filesystem_std", &context);
+	auto render_api = get_factory<RenderAPI*>("api_vk", &context);
 
 	if(!filesystem.good) {
 		spdlog::error("Couldn't load VFS");
@@ -441,6 +441,7 @@ int main(int argc, char *argv[]) {
 					.texture = renderpass_resources.composition,
 					.view = renderpass_resources.composition_view,
 					.type = AttachmentType::COLOR,
+					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = renderpass_resources.position,
@@ -457,11 +458,6 @@ int main(int argc, char *argv[]) {
 					.view = renderpass_resources.normal_view,
 					.type = AttachmentType::SHADER
 				},
-				{
-					.texture = renderpass_resources.depth,
-					.view = renderpass_resources.depth_view,
-					.type = AttachmentType::DEPTH,
-				}
 			};
 
 			static std::vector<UniformBind> composition_binds = {
@@ -503,6 +499,27 @@ int main(int argc, char *argv[]) {
 					.type = UniformType::TEXTURE,
 				},
 			};
+			// Lighting/Composition pass
+			render_api->begin_pass(composition_attachments);
+				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+				render_api->scissor(context.width, context.height);
+				render_api->bind_uniform(composition_layout, composition_binds);
+				render_api->bind_shader(composition_shader);
+				render_api->draw(3, 1);
+			render_api->end_pass(composition_attachments);
+
+			static std::vector<SubpassAttachment> skybox_attachments = {
+				{
+					.texture = renderpass_resources.composition,
+					.view = renderpass_resources.composition_view,
+					.type = AttachmentType::COLOR,
+				},
+				{
+					.texture = renderpass_resources.depth,
+					.view = renderpass_resources.depth_view,
+					.type = AttachmentType::DEPTH,
+				}
+			};
 
 			static std::vector<UniformBind> skybox_uniforms = {
 				{
@@ -515,18 +532,12 @@ int main(int argc, char *argv[]) {
 				skybox_texture.as_bind()
 			};
 
-			UNUSED(skybox_shader);
-
-			render_api->begin_pass(composition_attachments);
-				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-				render_api->scissor(context.width, context.height);
-				render_api->bind_uniform(composition_layout, composition_binds);
-				render_api->bind_shader(composition_shader);
-				render_api->draw(3, 1);
+			// Skybox pass
+			render_api->begin_pass(skybox_attachments);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
 				render_api->bind_shader(skybox_shader);
 				sphere_mesh.draw();
-			render_api->end_pass(composition_attachments);
+			render_api->end_pass(skybox_attachments);
 
 			render_api->show_image(resources.pass_handles->composition);
 
