@@ -101,7 +101,7 @@ public:
 	}
 
 	void process_node(aiNode *node, const aiScene *scene, glm::mat4 parent_transform) {
-		glm::mat4 root_transformation = *reinterpret_cast<glm::mat4*>(&node->mTransformation) * parent_transform;
+		UNUSED(parent_transform);
 		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
 			aiMesh *assimp_mesh = scene->mMeshes[node->mMeshes[i]];
 
@@ -112,7 +112,7 @@ public:
 		}
 
 		for(unsigned int i = 0; i < node->mNumChildren; i++)
-			process_node(node->mChildren[i], scene, root_transformation);
+			process_node(node->mChildren[i], scene, glm::mat4(0));
 	}
 
 	void draw() {
