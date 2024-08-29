@@ -2,13 +2,12 @@
 #include "vkinstance.h"
 #include "vksurface.h"
 
-void VulkanDevice::init(VulkanInstance *vkinstance, VulkanSurface *vksurface) {
-	this->instance = vkinstance;
-	this->surface = vksurface;
-
+VulkanDevice::VulkanDevice(VulkanInstance *vkinstance, VulkanSurface *vksurface)
+	: instance(vkinstance)
+	, surface(vksurface)
+{
 	retreive_device();
 	retreive_queues();
-
 }
 
 void VulkanDevice::retreive_device() {
@@ -37,7 +36,7 @@ void VulkanDevice::retreive_device() {
 
 	VkPhysicalDeviceShaderDrawParametersFeatures draw_features = {};
 	draw_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
-    draw_features.shaderDrawParameters = VK_TRUE;
+	draw_features.shaderDrawParameters = VK_TRUE;
 
 	if(!selector_ret.has_value()) {
 		LOGGER->error("Couldn't create Physical Device Selector", selector_ret.error().message());

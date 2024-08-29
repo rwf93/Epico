@@ -4,7 +4,17 @@
 #include "vkswapchain.h"
 #include "vkcommandpool.h"
 
-VulkanCommandPool::VulkanCommandPool() {}
+VulkanCommandPool::VulkanCommandPool(VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain)
+	: device(vkdevice)
+	, swapchain(vkswapchain)
+{
+	max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
+	frame_contexts.resize(max_flying_frames);
+
+	create_command_pool();
+	create_sync_objects();
+}
+
 VulkanCommandPool::~VulkanCommandPool() {
 	for(uint32_t i = 0; i < get_max_flying_frames(); i++) {
 		VulkanFrameContext &context = get_frame_context(i);
@@ -20,17 +30,6 @@ VulkanCommandPool::~VulkanCommandPool() {
 	TracyVkDestroy(immediate_trace);
 	vkDestroyFence(device->get_device(), immediate_fence, nullptr);
 	vkDestroyCommandPool(device->get_device(), immediate_command_pool, nullptr);
-}
-
-void VulkanCommandPool::init(VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain) {
-	this->device = vkdevice;
-	this->swapchain = vkswapchain;
-
-	max_flying_frames = static_cast<uint32_t>(swapchain->get_swapchain_images().size());
-	frame_contexts.resize(max_flying_frames);
-
-	create_command_pool();
-	create_sync_objects();
 }
 
 void VulkanCommandPool::wait_fences() {
@@ -72,7 +71,7 @@ void VulkanCommandPool::submit_command(SubmitCommandFunction &&command_function)
 	auto submit_info = info::submit_info(&command_info, nullptr, nullptr);
 
 	VK_CHECK(vkQueueSubmit2(device->get_graphics_queue(), 1, &submit_info, immediate_fence));
-	VK_CHECK(vkWaitForFences(device->get_device(), 1, &immediate_fence, true, UINT32_MAX));
+	VK_CHECK(vkWaitForFences(device->get_device(), 1, &immediate_fence, true, UINT64_MAX));
 }
 
 void VulkanCommandPool::create_command_pool() {

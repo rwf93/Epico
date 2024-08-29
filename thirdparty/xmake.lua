@@ -1,4 +1,4 @@
-includes("tracy", "imgui")
+includes("imgui")
 
 package("ktx")
     set_homepage("https://github.com/KhronosGroup/KTX-Software")

@@ -4,15 +4,15 @@
 #include "vkdevice.h"
 #include "vkcommandpool.h"
 
-VulkanSwapchain::VulkanSwapchain() {}
+VulkanSwapchain::VulkanSwapchain(VulkanDevice *vkdevice)
+	: device(vkdevice)
+{
+	create_swapchain();
+}
+
 VulkanSwapchain::~VulkanSwapchain() {
 	swapchain.destroy_image_views(swapchain_image_views);
 	vkb::destroy_swapchain(swapchain);
-}
-
-void VulkanSwapchain::init(VulkanDevice *vkdevice) {
-	this->device = vkdevice;
-	create_swapchain();
 }
 
 void VulkanSwapchain::create_swapchain(bool rebuild) {

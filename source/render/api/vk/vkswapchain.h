@@ -4,10 +4,8 @@ class VulkanDevice;
 class VulkanCommandPool;
 class VulkanSwapchain {
 public:
-	VulkanSwapchain();
+	VulkanSwapchain(VulkanDevice *vkdevice);
 	~VulkanSwapchain();
-
-	void init(VulkanDevice *vkdevice);
 
 	void rebuild() { create_swapchain(true); }
 

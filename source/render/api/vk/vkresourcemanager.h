@@ -17,9 +17,8 @@ class VulkanCommandPool;
 class VulkanInstance;
 class VulkanResourceManager {
 public:
+	VulkanResourceManager(VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
 	~VulkanResourceManager();
-
-	void init(VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
 
 	TextureHandle create_texture();
 	TextureViewHandle create_texture_view();

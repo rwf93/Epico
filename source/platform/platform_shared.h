@@ -2,7 +2,7 @@
 
 #define UNUSED(arg) (void)(arg);
 
-#ifdef EAPI_EXPORT
+#if defined(EAPI_EXPORT)
 	#define EAPI SHARED_EXPORT
 #else
 	#define EAPI SHARED_IMPORT

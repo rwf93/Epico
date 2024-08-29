@@ -11,7 +11,8 @@ add_requires(
 	"magic_enum",
 	"vulkan-memory-allocator",
 	"glm",
-	"ktx"
+	"ktx",
+	"tracy"
 )
 
 add_requires("fmt 11.0.1", {
@@ -43,7 +44,7 @@ add_requires("libsdl", {
 rule("defaults_rule")
  	on_load(function(target)
 		import("core.base.task")
-        import("core.project.project")
+		import("core.project.project")
 
 		local precompiled_header = target:extraconf("rules", "defaults_rule", "precompiled_header") or nil
 		if precompiled_header then
@@ -56,7 +57,7 @@ rule("defaults_rule")
 
 	on_install(function(target)
 		import("core.base.task")
-        import("core.project.project")
+		import("core.project.project")
 		import("target.action.install")
 
 		install(target, {
@@ -68,7 +69,7 @@ rule("defaults_rule")
 
 	before_build(function(target)
 		import("core.base.task")
-        import("core.project.project")
+		import("core.project.project")
 
 		for name, package in pairs(target:pkgs()) do
 			for _, file in ipairs(table.wrap(package:get("libfiles"))) do

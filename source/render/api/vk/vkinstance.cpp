@@ -1,6 +1,5 @@
 #include "vkinstance.h"
 
-
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanInstance::vk_debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT serverity,
 	VkDebugUtilsMessageTypeFlagsEXT message_types,
@@ -23,13 +22,17 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanInstance::vk_debug_callback(
 	return VK_FALSE;
 }
 
-void VulkanInstance::init() {
+VulkanInstance::VulkanInstance() {
+	VK_CHECK(volkInitialize());
+
 	vkb::InstanceBuilder builder;
 	auto builder_ret = builder
 						.set_app_name("Epico")
 						.set_engine_name("Epico Engine")
 						.require_api_version(VK_API_VERSION_1_3)
-						//.request_validation_layers()
+						#if defined(CONFIG_VALIDATION)
+						.request_validation_layers()
+						#endif
 						.set_debug_callback(VulkanInstance::vk_debug_callback)
 						.set_debug_callback_user_data_pointer(this)
 						.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)

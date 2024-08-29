@@ -17,10 +17,8 @@ public:
 		TracyVkCtx trace_context;
 	};
 
-	VulkanCommandPool();
+	VulkanCommandPool(VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
 	~VulkanCommandPool();
-
-	void init(VulkanDevice *vkdevice, VulkanSwapchain *vkswapchain);
 
 	void wait_fences();
 	void reset_fences();

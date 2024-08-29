@@ -4,10 +4,8 @@ class VulkanInstance;
 class VulkanSurface;
 class VulkanDevice {
 public:
-	VulkanDevice() = default;
+	VulkanDevice(VulkanInstance *instance, VulkanSurface *surface);
 	~VulkanDevice() { vkb::destroy_device(device); };
-
-	void init(VulkanInstance *instance, VulkanSurface *surface);
 
 	void wait() { vkDeviceWaitIdle(device); };
 

@@ -9,28 +9,21 @@
 #include "vkresourcemanager.h"
 #include "vkimgui.h"
 
-VulkanUI::~VulkanUI() {
-	ImGui_ImplVulkan_Shutdown();
-	vkDestroyDescriptorPool(device->get_device(), descriptor_pool, nullptr);
-}
-
-void VulkanUI::init(
+VulkanUI::VulkanUI(
 	AppContext *app_context,
 	VulkanInstance *vkinstance ,
 	VulkanDevice *vkdevice,
 	VulkanSwapchain *vkswapchain,
 	VulkanCommandPool *vkcommandpool,
 	VulkanResourceManager *vkresourcemanager
-) {
-	this->context = app_context;
-	this->instance = vkinstance;
-	this->device = vkdevice;
-	this->swapchain = vkswapchain;
-	this->command_pool = vkcommandpool;
-	this->resource_manager = vkresourcemanager;
-
-	UNUSED(app_context);
-
+)
+	: context(app_context)
+	, instance(vkinstance)
+	, device(vkdevice)
+	, swapchain(vkswapchain)
+	, command_pool(vkcommandpool)
+	, resource_manager(vkresourcemanager)
+{
 	VkDescriptorPoolSize pool_sizes[] = {
 		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
@@ -80,6 +73,11 @@ void VulkanUI::init(
 	);
 	ImGui_ImplVulkan_Init(&init_info);
 	ImGui_ImplVulkan_CreateFontsTexture();
+}
+
+VulkanUI::~VulkanUI() {
+	ImGui_ImplVulkan_Shutdown();
+	vkDestroyDescriptorPool(device->get_device(), descriptor_pool, nullptr);
 }
 
 void VulkanUI::begin() {

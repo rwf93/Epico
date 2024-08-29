@@ -1,4 +1,3 @@
-#define EAPI_EXPORT
 #include <platform/platform.h>
 
 #include <public/render/renderapi.h>

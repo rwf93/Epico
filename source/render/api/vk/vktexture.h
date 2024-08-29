@@ -29,8 +29,6 @@ public:
 	void transition(VkImageLayout new_layout);
 
 	friend class VulkanResourceManager;
-	friend class VulkanDescriptorManager;
-
 private:
 	VulkanDevice *device;
 	VulkanCommandPool *command_pool;

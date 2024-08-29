@@ -79,12 +79,12 @@ private:
 	std::shared_ptr<spdlog::logger> logger;
 
 	VulkanInstance instance;
-	VulkanSurface surface = {};
-	VulkanDevice device = {};
-	VulkanSwapchain swapchain = {};
-	VulkanCommandPool command_pool = {};
-	VulkanResourceManager resource_manager = {};
-	VulkanUI ui_imgui = {};
+	VulkanSurface surface;
+	VulkanDevice device;
+	VulkanSwapchain swapchain;
+	VulkanCommandPool command_pool;
+	VulkanResourceManager resource_manager;
+	VulkanUI ui_imgui;
 
 	ResizeEventFunction resize_event;
 	uint32_t draw_instance_index = 0;

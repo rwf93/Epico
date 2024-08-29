@@ -1,13 +1,7 @@
 #include "vksurface.h"
 #include "vkinstance.h"
 
-VulkanSurface::VulkanSurface() {};
-VulkanSurface::~VulkanSurface() {
-	vkb::destroy_surface(instance->get_instance(), surface);
-	SDL_DestroyWindow(context->window);
-};
-
-void VulkanSurface::init(AppContext *app_context, VulkanInstance *vkinstance) {
+VulkanSurface::VulkanSurface(AppContext *app_context, VulkanInstance *vkinstance) {
 	this->instance = vkinstance;
 	this->context = app_context;
 
@@ -24,3 +18,8 @@ void VulkanSurface::init(AppContext *app_context, VulkanInstance *vkinstance) {
 		std::abort();
 	}
 }
+
+VulkanSurface::~VulkanSurface() {
+	vkb::destroy_surface(instance->get_instance(), surface);
+	SDL_DestroyWindow(context->window);
+};

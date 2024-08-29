@@ -3,40 +3,15 @@
 #include "vkcommandpool.h"
 #include "vkresourcemanager.h"
 
-#define DELETE_RESOURCE(res) 								\
-	for(auto &resource: res) { 								\
-		if(resource->get_state() == ResourceState::READY) \
-			resource->fini(); 							\
-		delete resource; 									\
-	}
-
-VulkanResourceManager::~VulkanResourceManager() {
-	//DELETE_RESOURCE(texture_resources);
-	//DELETE_RESOURCE(texture_view_resources);
-	//DELETE_RESOURCE(sampler_resources);
-	//DELETE_RESOURCE(buffer_resources);
-	//DELETE_RESOURCE(layout_resources);
-	//DELETE_RESOURCE(graphics_program_resources)
-
-	texture_pool.release_all();
-	texture_view_pool.release_all();
-	sampler_pool.release_all();
-	buffer_pool.release_all();
-	layout_pool.release_all();
-	graphics_program_pool.release_all();
-
-	vmaDestroyAllocator(allocator);
-}
-
-void VulkanResourceManager::init(
+VulkanResourceManager::VulkanResourceManager(
 	VulkanInstance *vkinstance,
 	VulkanDevice *vkdevice,
 	VulkanCommandPool *vkcommandpool
-) {
-	this->instance = vkinstance;
-	this->device = vkdevice;
-	this->command_pool = vkcommandpool;
-
+)
+	: instance(vkinstance)
+	, device(vkdevice)
+	, command_pool(vkcommandpool)
+{
 	// This is due to Volk loading Vulkan functions dynamically.
 	VmaVulkanFunctions vma_functions = {};
 	vma_functions.vkGetInstanceProcAddr					= vkGetInstanceProcAddr;
@@ -70,6 +45,17 @@ void VulkanResourceManager::init(
 
 	layout_builder.init(device, this);
 	graphics_program_builder.init(device, this);
+}
+
+VulkanResourceManager::~VulkanResourceManager() {
+	texture_pool.release_all();
+	texture_view_pool.release_all();
+	sampler_pool.release_all();
+	buffer_pool.release_all();
+	layout_pool.release_all();
+	graphics_program_pool.release_all();
+
+	vmaDestroyAllocator(allocator);
 }
 
 TextureHandle VulkanResourceManager::create_texture() {

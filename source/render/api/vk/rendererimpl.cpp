@@ -15,21 +15,18 @@ VulkanAPI::VulkanAPI(AppContext *context)
 	: context(context)
 	, logger(spdlog::stdout_color_mt("api_vulkan"))
 	, instance()
+	, surface(context, &instance)
+	, device(&instance, &surface)
+	, swapchain(&device)
+	, command_pool(&device, &swapchain)
+	, resource_manager(&instance, &device, &command_pool)
+	, ui_imgui(context, &instance, &device, &swapchain, &command_pool, &resource_manager)
 {
 	auto tracy_log_sink = std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg &msg) {
 		UNUSED(msg); // Disabling tracy causes issues.
 		TracyMessage(msg.payload.data(), msg.payload.size());
 	});
 	logger->sinks().push_back(tracy_log_sink);
-
-	VK_CHECK(volkInitialize());
-	instance.init();
-	surface.init(context, &instance);
-	device.init(&instance, &surface);
-	swapchain.init(&device);
-	command_pool.init(&device, &swapchain);
-	resource_manager.init(&instance, &device, &command_pool);
-	ui_imgui.init(context, &instance, &device, &swapchain, &command_pool, &resource_manager);
 }
 
 VulkanAPI::~VulkanAPI() {
@@ -57,6 +54,7 @@ void VulkanAPI::begin() {
 }
 
 void VulkanAPI::end() {
+	ZoneScoped;
 	command_pool.get_command()->transition_image(
 		swapchain.get_swapchain_image(),
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -78,7 +76,6 @@ void VulkanAPI::end() {
 	);
 
 	auto submit_info = info::submit_info(&command_info, &signal_info, &wait_info);
-
 	VK_CHECK(vkQueueSubmit2(device.get_graphics_queue(), 1, &submit_info, command_pool.get_fence()));
 }
 
@@ -153,6 +150,8 @@ void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
 }
 
 void VulkanAPI::present() {
+	ZoneScoped;
+
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.pSwapchains = &swapchain.get_swapchain().swapchain;
@@ -179,6 +178,8 @@ void VulkanAPI::clear(float r, float g, float b, float a) {
 }
 
 void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) {
+	ZoneScoped;
+
 	auto image = resource_manager.try_get_texture(handle).value();
 
 	VkClearColorValue clear_value = { { r, g, b, a } };
@@ -304,10 +305,12 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 }
 
 void VulkanAPI::draw(uint32_t vertex_count, uint32_t instance_count) {
+	ZoneScoped;
 	command_pool.get_command()->draw(vertex_count, instance_count, 0, 0);
 };
 
 void VulkanAPI::draw_instanced(uint32_t index_count, uint32_t instance_count) {
+	ZoneScoped;
 	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, draw_instance_index++);
 }
 
@@ -336,10 +339,12 @@ GraphicsProgramBuilder *VulkanAPI::create_graphics_program() {
 }
 
 void VulkanAPI::buffer(BufferHandle handle, BufferType type, size_t size, void *data) {
+	ZoneScoped;
 	resource_manager.buffer(handle, convert::convert_buffer_type(type), data, size);
 }
 
 void VulkanAPI::buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) {
+	ZoneScoped;
 	resource_manager.buffer_sub(handle, offset, data, size);
 }
 
@@ -352,6 +357,8 @@ void VulkanAPI::texture(
 	void *data,
 	int width, int height
 ) {
+	ZoneScoped;
+
 	auto image_info = info::image_create_info(width, height, 1);
 	image_info.imageType = convert::convert_image_dimensions(dimensions);
 	image_info.samples = convert::convert_sample_bits(samples);
@@ -386,6 +393,8 @@ void VulkanAPI::texture_view(
 	int num_levels,
 	int num_layers
 ) {
+	ZoneScoped;
+
 	VkImageViewCreateInfo view_info = {};
 	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	view_info.viewType = convert::convert_image_view_dimensions(dimensions);
@@ -404,6 +413,8 @@ void VulkanAPI::sampler(
 		SamplerAddressMode v,
 		SamplerAddressMode w
 ) {
+	ZoneScoped;
+
 	VkSamplerCreateInfo sampler_info = {};
 	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	sampler_info.magFilter = VK_FILTER_NEAREST;
@@ -417,6 +428,8 @@ void VulkanAPI::sampler(
 }
 
 void VulkanAPI::rebuild() {
+	ZoneScoped;
+
 	int width, height;
 	SDL_GetWindowSize(context->window, &width, &height);
 	context->width = width;

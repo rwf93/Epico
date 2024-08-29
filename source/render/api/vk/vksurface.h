@@ -3,10 +3,8 @@
 class VulkanInstance;
 class VulkanSurface {
 public:
-	VulkanSurface();
+	VulkanSurface(AppContext *app_context, VulkanInstance *vkinstance);
 	~VulkanSurface();
-
-	void init(AppContext *app_context, VulkanInstance *vkinstance);
 
 	VkSurfaceKHR &get_surface() { return surface; }
 private:
