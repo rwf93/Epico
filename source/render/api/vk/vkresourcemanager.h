@@ -113,6 +113,9 @@ private:
 		uint32_t head = 0;
 	};
 
+	friend class VulkanLayoutBuilder;
+	friend class VulkanGraphicsProgramBuilder;
+
 	VulkanLayoutBuilder layout_builder;
 	VulkanGraphicsProgramBuilder graphics_program_builder;
 

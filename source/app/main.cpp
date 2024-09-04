@@ -231,9 +231,14 @@ int main(int argc, char *argv[]) {
 		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		.build();
 
+	auto skybox_layout = render_api->create_layout()
+		.add_uniform(ShaderStage::VERTEX | ShaderStage::FRAGMENT, UniformType::BUFFER)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.build();
+
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
-	GraphicsProgramBuilder &deferred_builder = render_api->create_graphics_program()
+	auto &deferred_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.add_attachment(ImageFormat::R8G8B8A8_UNORM)
@@ -253,6 +258,10 @@ int main(int argc, char *argv[]) {
 	auto deferred_program = deferred_builder
 		.build();
 
+	auto deferred_wireframe_program = deferred_builder
+		.set_polygon_mode(PolygonMode::LINE)
+		.build();
+
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
 	auto composition_shader = render_api->create_graphics_program()
@@ -261,11 +270,6 @@ int main(int argc, char *argv[]) {
 		.add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
 		.add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
 		.set_layout(composition_layout)
-		.build();
-
-	auto skybox_layout = render_api->create_layout()
-		.add_uniform(ShaderStage::VERTEX | ShaderStage::FRAGMENT, UniformType::BUFFER)
-		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		.build();
 
 	auto skybox_vertex_code = filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true);
@@ -403,7 +407,7 @@ int main(int argc, char *argv[]) {
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
 
-				render_api->bind_shader(deferred_program);
+				render_api->bind_shader(testing ? deferred_wireframe_program : deferred_program);
 
 				deferred_binds.push_back(armor_albedo_texture.as_bind());
 				deferred_binds.push_back(armor_normal_texture.as_bind());

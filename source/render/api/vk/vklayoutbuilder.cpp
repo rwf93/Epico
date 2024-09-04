@@ -7,8 +7,7 @@ void VulkanLayoutBuilder::init(VulkanDevice *vkdevice, VulkanResourceManager *vk
 	this->resource_manager = vkresourcemanager;
 }
 
-void VulkanLayoutBuilder::clear(LayoutHandle handle) {
-	layout_handle = handle;
+void VulkanLayoutBuilder::clear() {
 	binding_infos.clear();
 }
 
@@ -34,7 +33,8 @@ RenderLayoutBuilder &VulkanLayoutBuilder::add_uniform(ShaderStage stage, Uniform
 
 LayoutHandle VulkanLayoutBuilder::build() {
 	auto layout_info = info::descriptor_set_layout_info(binding_infos, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
-	resource_manager->try_get_layout(layout_handle).value()->init(device, &layout_info);
+	auto handle = resource_manager->layout_pool.acquire().value();
+	resource_manager->try_get_layout(handle).value()->init(device, &layout_info);
 
-	return layout_handle;
+	return handle;
 }

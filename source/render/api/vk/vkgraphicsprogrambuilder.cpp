@@ -89,6 +89,7 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 								.value_or(resource_manager->try_get_layout(default_pipeline_layout).value())
 								->get_pipeline_layout();
 
+	auto handle = resource_manager->graphics_program_pool.acquire().value();
 	resource_manager->try_get_graphics_program(handle).value()->init(device, &pipeline_info);
 
 	return handle;

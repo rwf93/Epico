@@ -14,11 +14,6 @@ public:
 	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
 	void clear();
 
-	GraphicsProgramBuilder &set_program_handle(GraphicsProgramHandle program_handle) {
-		this->handle = program_handle;
-		return *this;
-	};
-
 	GraphicsProgramBuilder &set_primitive(PrimitiveMode type) override;
 	GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) override;
 	GraphicsProgramBuilder &set_depth_format(ImageFormat format) override;
@@ -55,8 +50,6 @@ public:
 private:
 	VulkanDevice *device;
 	VulkanResourceManager *resource_manager;
-
-	GraphicsProgramHandle handle;
 
     VkPipelineInputAssemblyStateCreateInfo assembly_info = {};
 	VkPipelineViewportStateCreateInfo viewport_info = {};

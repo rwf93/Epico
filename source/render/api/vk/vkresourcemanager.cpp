@@ -75,15 +75,12 @@ BufferHandle VulkanResourceManager::create_buffer() {
 }
 
 RenderLayoutBuilder &VulkanResourceManager::create_layout() {
-	auto handle = layout_pool.acquire().value();
-	layout_builder.clear(handle);
+	layout_builder.clear();
 	return layout_builder;
 }
 
 GraphicsProgramBuilder &VulkanResourceManager::create_graphics_program() {
-	auto handle = graphics_program_pool.acquire().value();
 	graphics_program_builder.clear();
-	graphics_program_builder.set_program_handle(handle);
 	return graphics_program_builder;
 }
 
