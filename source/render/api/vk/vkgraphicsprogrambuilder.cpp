@@ -91,9 +91,6 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 
 	resource_manager->try_get_graphics_program(handle).value()->init(device, &pipeline_info);
 
-	for(auto &module: shader_modules)
-		vkDestroyShaderModule(device->get_device(), module, nullptr);
-
 	return handle;
 }
 

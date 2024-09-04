@@ -205,9 +205,6 @@ int main(int argc, char *argv[]) {
 	ImageTexture monkey_normals_image(&monkey_normals, filesystem.interface);
 	monkey_normals_image.upload_from_ktx("assets/textures/suzanne_normal.ktx");
 
-	Model test_model(render_api.interface, filesystem.interface);
-	test_model.load("assets/models/sponza.glb");
-
 	RenderPassResources renderpass_resources = {};
 	RenderResources resources = {
 		.pass_handles = &renderpass_resources
@@ -236,7 +233,7 @@ int main(int argc, char *argv[]) {
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
-	auto deferred_shader = render_api->create_graphics_program()
+	GraphicsProgramBuilder &deferred_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.add_attachment(ImageFormat::R8G8B8A8_UNORM)
@@ -251,24 +248,9 @@ int main(int argc, char *argv[]) {
 		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
 		.add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
 		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
-		.set_layout(deferred_layout)
-		.build();
+		.set_layout(deferred_layout);
 
-	auto deferred_wireframe_shader = render_api->create_graphics_program()
-		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		.add_attachment(ImageFormat::R8G8B8A8_UNORM)
-		.set_depth_format(ImageFormat::D32_SFLOAT)
-		.set_polygon_mode(PolygonMode::LINE)
-		.set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
-		.add_binding(sizeof(Vertex), BindingRate::VERTEX)
-		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
-		.add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
-		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
-		.set_layout(deferred_layout)
+	auto deferred_program = deferred_builder
 		.build();
 
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
@@ -303,9 +285,6 @@ int main(int argc, char *argv[]) {
 		.add_stage(ShaderStage::FRAGMENT, skybox_fragment_code.data(), skybox_fragment_code.size())
 		.set_layout(skybox_layout)
 		.build();
-
-	UNUSED(deferred_shader);
-	UNUSED(composition_shader);
 
 	Mesh armor_mesh(filesystem.interface, render_api.interface);
 	armor_mesh.load_from_file("assets/models/armor.gltf");
@@ -424,7 +403,7 @@ int main(int argc, char *argv[]) {
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
 
-				render_api->bind_shader(testing ? deferred_wireframe_shader : deferred_shader);
+				render_api->bind_shader(deferred_program);
 
 				deferred_binds.push_back(armor_albedo_texture.as_bind());
 				deferred_binds.push_back(armor_normal_texture.as_bind());
