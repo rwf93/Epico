@@ -74,16 +74,17 @@ BufferHandle VulkanResourceManager::create_buffer() {
 	return buffer_pool.acquire().value();
 }
 
-RenderLayoutBuilder *VulkanResourceManager::create_layout() {
+RenderLayoutBuilder &VulkanResourceManager::create_layout() {
 	auto handle = layout_pool.acquire().value();
 	layout_builder.clear(handle);
-	return &layout_builder;
+	return layout_builder;
 }
 
-GraphicsProgramBuilder *VulkanResourceManager::create_graphics_program() {
+GraphicsProgramBuilder &VulkanResourceManager::create_graphics_program() {
 	auto handle = graphics_program_pool.acquire().value();
-	graphics_program_builder.clear(handle);
-	return &graphics_program_builder;
+	graphics_program_builder.clear();
+	graphics_program_builder.set_program_handle(handle);
+	return graphics_program_builder;
 }
 
 void VulkanResourceManager::texture(

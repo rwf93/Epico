@@ -97,11 +97,13 @@ public:
 			aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace
 		);
 
-		process_node(scene->mRootNode, scene, glm::mat4(0));
+		process_node(scene->mRootNode, scene, calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0)));
 	}
 
 	void process_node(aiNode *node, const aiScene *scene, glm::mat4 parent_transform) {
-		UNUSED(parent_transform);
+		transforms.push_back(parent_transform);
+		glm::mat4 transform = convert_matrix(node->mTransformation) * parent_transform;
+
 		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
 			aiMesh *assimp_mesh = scene->mMeshes[node->mMeshes[i]];
 
@@ -112,15 +114,28 @@ public:
 		}
 
 		for(unsigned int i = 0; i < node->mNumChildren; i++)
-			process_node(node->mChildren[i], scene, glm::mat4(0));
+			process_node(node->mChildren[i], scene, transform);
 	}
 
-	void draw() {
+	glm::mat4 convert_matrix(const aiMatrix4x4 &matrix) {
+		return {
+			matrix.a1, matrix.b1, matrix.c1, matrix.d1,
+			matrix.a2, matrix.b2, matrix.c2, matrix.d2,
+			matrix.a3, matrix.b3, matrix.c3, matrix.d3,
+			matrix.a4, matrix.b4, matrix.c4, matrix.d4
+		};
+	}
+
+	void draw(std::vector<StorageData> &render_objects, uint32_t &render_index) {
+		UNUSED(render_objects);
+		UNUSED(render_index);
+
 		for(auto &mesh: meshes)
-			mesh.draw();
+			mesh.draw(1, 0);
 	}
 private:
 	std::vector<Mesh> meshes;
+	std::vector<glm::mat4> transforms;
 
 	RenderAPI *api;
 	Filesystem *filesystem;
@@ -171,23 +186,27 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	Texture armor_albedo_texture(filesystem.interface, render_api.interface);
-	armor_albedo_texture.upload_from_ktx("assets/textures/colormap_rgba.ktx");
-
-	Texture armor_normal_texture(filesystem.interface, render_api.interface);
-	armor_normal_texture.upload_from_ktx("assets/textures/normalmap_rgba.ktx");
-
 	TempTexture missing_texture;
 	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
 
-	Texture skybox_texture(filesystem.interface, render_api.interface);
-	skybox_texture.upload_from_ktx("assets/textures/skysphere_rgba.ktx");
+	Texture armor_albedo_texture(render_api.interface);
+	ImageTexture armor_albedo_image(&armor_albedo_texture, filesystem.interface);
+	armor_albedo_image.upload_from_ktx("assets/textures/colormap_rgba.ktx");
 
-	Texture monkey_normals(filesystem.interface, render_api.interface);
-	monkey_normals.upload_from_ktx("assets/textures/suzanne_normal.ktx");
+	Texture armor_normal_texture(render_api.interface);
+	ImageTexture armor_normal_image(&armor_normal_texture, filesystem.interface);
+	armor_normal_image.upload_from_ktx("assets/textures/normalmap_rgba.ktx");
+
+	Texture skybox_texture(render_api.interface);
+	ImageTexture skybox_image(&skybox_texture, filesystem.interface);
+	skybox_image.upload_from_ktx("assets/textures/skysphere_rgba.ktx");
+
+	Texture monkey_normals(render_api.interface);
+	ImageTexture monkey_normals_image(&monkey_normals, filesystem.interface);
+	monkey_normals_image.upload_from_ktx("assets/textures/suzanne_normal.ktx");
 
 	Model test_model(render_api.interface, filesystem.interface);
-	test_model.load("assets/models/monkey.glb");
+	test_model.load("assets/models/sponza.glb");
 
 	RenderPassResources renderpass_resources = {};
 	RenderResources resources = {
@@ -201,89 +220,89 @@ int main(int argc, char *argv[]) {
 	});
 
 	auto deferred_layout = render_api->create_layout()
-		->add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
-		->add_uniform(ShaderStage::VERTEX, UniformType::STORAGE)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->build();
+		.add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
+		.add_uniform(ShaderStage::VERTEX, UniformType::STORAGE)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.build();
 
 	auto composition_layout = render_api->create_layout()
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::STORAGE)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->build();
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::BUFFER)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::STORAGE)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.build();
 
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
 	auto deferred_shader = render_api->create_graphics_program()
-		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
-		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_cull_face(CullFace::BACK)
-		->set_front_face(FrontFace::COUNTER_CLOCKWISE)
-		->set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
-		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
-		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
-		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
-		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
-		->set_layout(deferred_layout)
-		->build();
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		.add_attachment(ImageFormat::R8G8B8A8_UNORM)
+		.set_depth_format(ImageFormat::D32_SFLOAT)
+		.set_cull_face(CullFace::BACK)
+		.set_front_face(FrontFace::COUNTER_CLOCKWISE)
+		.set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
+		.add_binding(sizeof(Vertex), BindingRate::VERTEX, 0)
+		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
+		.add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
+		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
+		.set_layout(deferred_layout)
+		.build();
 
 	auto deferred_wireframe_shader = render_api->create_graphics_program()
-		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->add_attachment(ImageFormat::R8G8B8A8_UNORM)
-		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_polygon_mode(PolygonMode::LINE)
-		->set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
-		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
-		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
-		->add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
-		->add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
-		->set_layout(deferred_layout)
-		->build();
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		.add_attachment(ImageFormat::R8G8B8A8_UNORM)
+		.set_depth_format(ImageFormat::D32_SFLOAT)
+		.set_polygon_mode(PolygonMode::LINE)
+		.set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
+		.add_binding(sizeof(Vertex), BindingRate::VERTEX)
+		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
+		.add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
+		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
+		.set_layout(deferred_layout)
+		.build();
 
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
 	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
 	auto composition_shader = render_api->create_graphics_program()
-		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
-		->add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
-		->set_layout(composition_layout)
-		->build();
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		.set_depth_format(ImageFormat::D32_SFLOAT)
+		.add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
+		.add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
+		.set_layout(composition_layout)
+		.build();
 
 	auto skybox_layout = render_api->create_layout()
-		->add_uniform(ShaderStage::VERTEX | ShaderStage::FRAGMENT, UniformType::BUFFER)
-		->add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
-		->build();
+		.add_uniform(ShaderStage::VERTEX | ShaderStage::FRAGMENT, UniformType::BUFFER)
+		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
+		.build();
 
 	auto skybox_vertex_code = filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true);
 	auto skybox_fragment_code = filesystem->read_file<char>("assets/shaders/skybox.frag.spv", true);
 	auto skybox_shader = render_api->create_graphics_program()
-		->add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		->set_depth_format(ImageFormat::D32_SFLOAT)
-		->set_cull_face(CullFace::FRONT)
-		->set_front_face(FrontFace::COUNTER_CLOCKWISE)
-		->set_depth_test(true, false, CompareOp::EQUAL)
-		->add_binding(sizeof(Vertex), BindingRate::VERTEX)
-		->add_attribute(offsetof(Vertex, position), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, normal), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3D_SIGNED)
-		->add_attribute(offsetof(Vertex, uv), AttributeType::VEC2D_SIGNED)
-		->add_stage(ShaderStage::VERTEX, skybox_vertex_code.data(), skybox_vertex_code.size())
-		->add_stage(ShaderStage::FRAGMENT, skybox_fragment_code.data(), skybox_fragment_code.size())
-		->set_layout(skybox_layout)
-		->build();
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
+		.set_depth_format(ImageFormat::D32_SFLOAT)
+		.set_cull_face(CullFace::FRONT)
+		.set_front_face(FrontFace::COUNTER_CLOCKWISE)
+		.set_depth_test(true, false, CompareOp::EQUAL)
+		.add_binding(sizeof(Vertex), BindingRate::VERTEX)
+		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
+		.add_stage(ShaderStage::VERTEX, skybox_vertex_code.data(), skybox_vertex_code.size())
+		.add_stage(ShaderStage::FRAGMENT, skybox_fragment_code.data(), skybox_fragment_code.size())
+		.set_layout(skybox_layout)
+		.build();
 
 	UNUSED(deferred_shader);
 	UNUSED(composition_shader);
@@ -338,19 +357,10 @@ int main(int argc, char *argv[]) {
 		scene_data.time_delta = context.time_delta;
 		render_api->buffer_sub(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
 
-		static StorageData storage_data[StorageData::MAX_OBJECTS] = {};
-		storage_data[0].model = calculate_model_matrix(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), glm::vec3(0.01f));
-		storage_data[1].model = calculate_model_matrix(glm::vec3(0, 2, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
-		storage_data[2].model = calculate_model_matrix(glm::vec3(1, 0, 0), glm::vec3(0, 0, 0), glm::vec3(1.0f));
-		storage_data[3].model = calculate_model_matrix(glm::vec3(1, 0, 3), glm::vec3(0, 0, 0), glm::vec3(1.0f));
-
-		ONCE(
-			for(int i = 2; i < 1024; i++) {
-				storage_data[i].model = calculate_model_matrix(glm::ballRand(100.0f), glm::ballRand(360.0f), glm::vec3(1.0f));
-			}
-		)
-
-		render_api->buffer_sub(resources.storage_buffer, 0, sizeof(StorageData) * StorageData::MAX_OBJECTS, &storage_data);
+		static std::vector<StorageData> storage_data(StorageData::MAX_OBJECTS);
+		storage_data.at(0).model = calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0));
+		render_api->buffer_sub(resources.storage_buffer, 0, storage_data.size(), storage_data.data());
+		//uint32_t render_index = 0;
 
 		static CompositionData composition_data = {};
 		composition_data.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
@@ -422,17 +432,7 @@ int main(int argc, char *argv[]) {
 				deferred_binds.pop_back();
 				deferred_binds.pop_back();
 
-				armor_mesh.draw();
-
-				deferred_binds.push_back(armor_albedo_texture.as_bind());
-				deferred_binds.push_back(monkey_normals.as_bind());
-				render_api->bind_uniform(deferred_layout, deferred_binds);
-				deferred_binds.pop_back();
-				deferred_binds.pop_back();
-
-				monkey_mesh.draw();
-				monkey_mesh.draw();
-				monkey_mesh.draw();
+				monkey_mesh.draw(1);
 
 			render_api->end_pass(deferred_attachments);
 

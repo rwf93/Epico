@@ -71,10 +71,10 @@ CONVERTER(convert_image_view_dimensions, ImageViewDimensions, VkImageViewType, V
 );
 
 CONVERTER(convert_attribute_format, AttributeType, VkFormat, VK_FORMAT_UNDEFINED,
-	{ AttributeType::VEC4D_SIGNED, VK_FORMAT_R32G32B32A32_SFLOAT },
-	{ AttributeType::VEC3D_SIGNED, VK_FORMAT_R32G32B32_SFLOAT },
-	{ AttributeType::VEC2D_SIGNED, VK_FORMAT_R32G32_SFLOAT },
-	{ AttributeType::VEC1D_SIGNED, VK_FORMAT_R32_SFLOAT },
+	{ AttributeType::VEC4F_SIGNED, VK_FORMAT_R32G32B32A32_SFLOAT },
+	{ AttributeType::VEC3F_SIGNED, VK_FORMAT_R32G32B32_SFLOAT },
+	{ AttributeType::VEC2F_SIGNED, VK_FORMAT_R32G32_SFLOAT },
+	{ AttributeType::VEC1F_SIGNED, VK_FORMAT_R32_SFLOAT },
 );
 
 CONVERTER(convert_binding_rate, BindingRate, VkVertexInputRate, VK_VERTEX_INPUT_RATE_VERTEX,

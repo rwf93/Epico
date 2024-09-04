@@ -8,7 +8,7 @@ public:
 	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
 	void clear(LayoutHandle handle);
 
-	RenderLayoutBuilder *add_uniform(ShaderStage stage, UniformType type) override;
+	RenderLayoutBuilder &add_uniform(ShaderStage stage, UniformType type) override;
 	LayoutHandle build();
 
 private:

@@ -6,12 +6,10 @@
 void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager) {
 	this->device = vkdevice;
 	this->resource_manager = vkresourcemanager;
-	this->default_pipeline_layout = resource_manager->create_layout()->build();
+	this->default_pipeline_layout = resource_manager->create_layout().build();
 }
 
-void VulkanGraphicsProgramBuilder::clear(GraphicsProgramHandle program_handle) {
-	this->handle = program_handle;
-
+void VulkanGraphicsProgramBuilder::clear() {
 	bindings.clear();
 	attributes.clear();
 	shader_modules.clear();
@@ -99,24 +97,24 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	return handle;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_primitive(PrimitiveMode type) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_primitive(PrimitiveMode type) {
 	assembly_info.topology = convert::convert_primitive_type(type);
 	assembly_info.primitiveRestartEnable = VK_FALSE;
 
-	return this;
+	return *this;
 };
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_polygon_mode(PolygonMode mode) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_polygon_mode(PolygonMode mode) {
 	rasterizer_info.polygonMode = convert::convert_polygon_mode(mode);
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_format(ImageFormat format) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_depth_format(ImageFormat format) {
 	depth_format = convert::convert_image_format(format);
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_depth_test(
 	bool test_enable,
 	bool write_enable,
 	CompareOp compare
@@ -128,10 +126,10 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_depth_test(
 	rasterizer_info.depthBiasConstantFactor = 4.0f;
 	rasterizer_info.depthBiasSlopeFactor = 1.5f;
 
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_binding(
 	uint32_t size,
 	BindingRate rate,
 	uint32_t binding
@@ -143,20 +141,20 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_binding(
 
 	bindings.push_back(binding_description);
 
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_cull_face(CullFace face) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_cull_face(CullFace face) {
 	rasterizer_info.cullMode = convert::convert_cull_type(face);
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_front_face(FrontFace face) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_front_face(FrontFace face) {
 	rasterizer_info.frontFace = convert::convert_face_type(face);
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_attribute(
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_attribute(
 		uint32_t offset,
 		AttributeType type,
 		uint32_t binding
@@ -168,10 +166,10 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_attribute(
 	attribute_description.format = convert::convert_attribute_format(type);
 	attributes.push_back(attribute_description);
 
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_stage(
 	ShaderStage stage,
 	const char *data,
 	size_t size
@@ -201,15 +199,15 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_stage(
 
 	shader_stages.push_back(shader_stage_info);
 
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::set_layout(LayoutHandle layout_handle) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_layout(LayoutHandle layout_handle) {
 	current_pipeline_layout = layout_handle;
-	return this;
+	return *this;
 }
 
-GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_attachment(ImageFormat format) {
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_attachment(ImageFormat format) {
 	VkPipelineColorBlendAttachmentState color_blend_state = {};
 	color_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 								VK_COLOR_COMPONENT_G_BIT |
@@ -224,5 +222,5 @@ GraphicsProgramBuilder *VulkanGraphicsProgramBuilder::add_attachment(ImageFormat
 	color_info.attachmentCount = static_cast<uint32_t>(color_states.size());
 	color_info.pAttachments = color_states.data();
 
-	return this;
+	return *this;
 }

@@ -6,10 +6,11 @@ enum class BindingRate {
 };
 
 enum class AttributeType {
-	VEC4D_SIGNED,
-	VEC3D_SIGNED,
-	VEC2D_SIGNED,
-	VEC1D_SIGNED
+	MAT4F_SIGNED,
+	VEC4F_SIGNED,
+	VEC3F_SIGNED,
+	VEC2F_SIGNED,
+	VEC1F_SIGNED
 };
 
 enum class ShaderStage {
@@ -63,37 +64,37 @@ public:
 	virtual ~GraphicsProgramBuilder() {}
 
 	virtual GraphicsProgramHandle build() = 0;
-	virtual GraphicsProgramBuilder *set_primitive(PrimitiveMode type) = 0;
-	virtual GraphicsProgramBuilder *set_polygon_mode(PolygonMode mode) = 0;
-	virtual GraphicsProgramBuilder *set_depth_format(ImageFormat format) = 0;
-	virtual GraphicsProgramBuilder *set_depth_test(
+	virtual GraphicsProgramBuilder &set_primitive(PrimitiveMode type) = 0;
+	virtual GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) = 0;
+	virtual GraphicsProgramBuilder &set_depth_format(ImageFormat format) = 0;
+	virtual GraphicsProgramBuilder &set_depth_test(
 		bool test_enable,
 		bool write_enable,
 		CompareOp compare
 	) = 0;
 
-	virtual GraphicsProgramBuilder *set_cull_face(CullFace face) = 0;
-	virtual GraphicsProgramBuilder *set_front_face(FrontFace face) = 0;
+	virtual GraphicsProgramBuilder &set_cull_face(CullFace face) = 0;
+	virtual GraphicsProgramBuilder &set_front_face(FrontFace face) = 0;
 
-	virtual GraphicsProgramBuilder *add_binding(
+	virtual GraphicsProgramBuilder &add_binding(
 		uint32_t size,
 		BindingRate rate,
 		uint32_t binding = 0
 	) = 0;
 
-	virtual GraphicsProgramBuilder *add_attribute(
+	virtual GraphicsProgramBuilder &add_attribute(
 		uint32_t offset,
 		AttributeType type,
 		uint32_t binding = 0
 	) = 0;
 
-	virtual GraphicsProgramBuilder *add_attachment(ImageFormat format) = 0;
+	virtual GraphicsProgramBuilder &add_attachment(ImageFormat format) = 0;
 
-	virtual GraphicsProgramBuilder *add_stage(
+	virtual GraphicsProgramBuilder &add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) = 0;
 
-	virtual GraphicsProgramBuilder *set_layout(LayoutHandle layout) = 0;
+	virtual GraphicsProgramBuilder &set_layout(LayoutHandle layout) = 0;
 };

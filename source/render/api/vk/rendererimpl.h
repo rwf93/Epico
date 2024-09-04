@@ -23,7 +23,7 @@ public:
 	void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) override;
 
 	void draw(uint32_t vertex_count, uint32_t instance_count) override;
-	void draw_instanced(uint32_t index_count, uint32_t instance_count) override;
+	void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t first_instance = 0) override;
 
 	void show_image(TextureHandle handle) override;
 
@@ -67,8 +67,8 @@ public:
 		int num_layers = 1
 	) override;
 
-	RenderLayoutBuilder *create_layout() override;
-	GraphicsProgramBuilder *create_graphics_program() override;
+	RenderLayoutBuilder &create_layout() override;
+	GraphicsProgramBuilder &create_graphics_program() override;
 
 	RenderUI *ui() { return &ui_imgui; };
 
@@ -87,5 +87,4 @@ private:
 	VulkanUI ui_imgui;
 
 	ResizeEventFunction resize_event;
-	uint32_t draw_instance_index = 0;
 };

@@ -73,7 +73,7 @@ public:
 	virtual void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) = 0;
 
 	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;
-	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count) = 0;
+	virtual void draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t first_instance = 0) = 0;
 	// Copies the texture resource to the surface.
 	virtual void show_image(TextureHandle handle) = 0;
 
@@ -85,8 +85,8 @@ public:
 	virtual SamplerHandle create_sampler() = 0;
 	virtual BufferHandle create_buffer() = 0;
 
-	virtual RenderLayoutBuilder *create_layout() = 0;
-	virtual GraphicsProgramBuilder *create_graphics_program() = 0;
+	virtual RenderLayoutBuilder &create_layout() = 0;
+	virtual GraphicsProgramBuilder &create_graphics_program() = 0;
 
 	virtual void buffer(BufferHandle handle, BufferType type, size_t size, void *data) = 0;
 	virtual void buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) = 0;

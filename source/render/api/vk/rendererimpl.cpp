@@ -85,8 +85,6 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	std::vector<VkRenderingAttachmentInfo> color_attachments;
 	std::optional<VkRenderingAttachmentInfo> depth_attachment;
 
-	draw_instance_index = 0;
-
 	for(auto &dependency: dependencies) {
 		auto texture = resource_manager.try_get_texture(dependency.texture).value();
 		auto texture_view = resource_manager.try_get_texture_view(dependency.view).value();
@@ -309,9 +307,9 @@ void VulkanAPI::draw(uint32_t vertex_count, uint32_t instance_count) {
 	command_pool.get_command()->draw(vertex_count, instance_count, 0, 0);
 };
 
-void VulkanAPI::draw_instanced(uint32_t index_count, uint32_t instance_count) {
+void VulkanAPI::draw_instanced(uint32_t index_count, uint32_t instance_count, uint32_t first_instance) {
 	ZoneScoped;
-	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, draw_instance_index++);
+	command_pool.get_command()->draw_instanced(index_count, instance_count, 0, 0, first_instance);
 }
 
 TextureHandle VulkanAPI::create_texture() {
@@ -330,11 +328,11 @@ BufferHandle VulkanAPI::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
-RenderLayoutBuilder *VulkanAPI::create_layout() {
+RenderLayoutBuilder &VulkanAPI::create_layout() {
 	return resource_manager.create_layout();
 }
 
-GraphicsProgramBuilder *VulkanAPI::create_graphics_program() {
+GraphicsProgramBuilder &VulkanAPI::create_graphics_program() {
 	return resource_manager.create_graphics_program();
 }
 

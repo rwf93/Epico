@@ -25,8 +25,8 @@ public:
 	SamplerHandle create_sampler();
 	BufferHandle create_buffer();
 
-	RenderLayoutBuilder *create_layout();
-	GraphicsProgramBuilder *create_graphics_program();
+	RenderLayoutBuilder &create_layout();
+	GraphicsProgramBuilder &create_graphics_program();
 
 	void texture(
 		TextureHandle handle,

@@ -19,7 +19,7 @@ layout(std140, set = 0, binding = 1) readonly buffer StorageDataUniform {
 } storage;
 
 void main() {
-    StorageData object = storage.objects[gl_BaseInstance];
+    StorageData object = storage.objects[gl_InstanceIndex];
     gl_Position = scene.projection * scene.view * object.model * vec4(in_vertex, 1.0);
     mat3 normal = transpose(inverse(mat3(object.model)));
 

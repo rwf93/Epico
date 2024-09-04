@@ -12,7 +12,7 @@ void VulkanLayoutBuilder::clear(LayoutHandle handle) {
 	binding_infos.clear();
 }
 
-RenderLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage, UniformType type) {
+RenderLayoutBuilder &VulkanLayoutBuilder::add_uniform(ShaderStage stage, UniformType type) {
 	uint64_t stage_bits = 0;
 
 	if(stage & ShaderStage::VERTEX)
@@ -29,7 +29,7 @@ RenderLayoutBuilder *VulkanLayoutBuilder::add_uniform(ShaderStage stage, Uniform
 
 	binding_infos.push_back(info);
 
-	return this;
+	return *this;
 }
 
 LayoutHandle VulkanLayoutBuilder::build() {

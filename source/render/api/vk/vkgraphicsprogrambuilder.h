@@ -12,41 +12,46 @@ public:
 	GraphicsProgramHandle build() override;
 
 	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
-	void clear(GraphicsProgramHandle program_handle);
+	void clear();
 
-	GraphicsProgramBuilder *set_primitive(PrimitiveMode type) override;
-	GraphicsProgramBuilder *set_polygon_mode(PolygonMode mode) override;
-	GraphicsProgramBuilder *set_depth_format(ImageFormat format) override;
-	GraphicsProgramBuilder *set_depth_test(
+	GraphicsProgramBuilder &set_program_handle(GraphicsProgramHandle program_handle) {
+		this->handle = program_handle;
+		return *this;
+	};
+
+	GraphicsProgramBuilder &set_primitive(PrimitiveMode type) override;
+	GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) override;
+	GraphicsProgramBuilder &set_depth_format(ImageFormat format) override;
+	GraphicsProgramBuilder &set_depth_test(
 		bool test_enable,
 		bool write_enable,
 		CompareOp compare
 	) override;
 
-	GraphicsProgramBuilder *set_cull_face(CullFace face) override;
-	GraphicsProgramBuilder *set_front_face(FrontFace face) override;
+	GraphicsProgramBuilder &set_cull_face(CullFace face) override;
+	GraphicsProgramBuilder &set_front_face(FrontFace face) override;
 
-	GraphicsProgramBuilder *add_binding(
+	GraphicsProgramBuilder &add_binding(
         uint32_t size,
         BindingRate rate,
         uint32_t binding = 0
     ) override;
 
-	GraphicsProgramBuilder *add_attribute(
+	GraphicsProgramBuilder &add_attribute(
 		uint32_t offset,
 		AttributeType type,
 		uint32_t binding = 0
 	) override;
 
-	GraphicsProgramBuilder *add_stage(
+	GraphicsProgramBuilder &add_stage(
 		ShaderStage stage,
 		const char *data,
 		size_t size
 	) override;
 
-	GraphicsProgramBuilder *set_layout(LayoutHandle layout);
+	GraphicsProgramBuilder &set_layout(LayoutHandle layout);
 
-	GraphicsProgramBuilder *add_attachment(ImageFormat format) override;
+	GraphicsProgramBuilder &add_attachment(ImageFormat format) override;
 private:
 	VulkanDevice *device;
 	VulkanResourceManager *resource_manager;

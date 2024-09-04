@@ -106,7 +106,7 @@ void Mesh::bind() {
 	api->bind_buffer(ibo, BindBufferType::INSTANCE);
 }
 
-void Mesh::draw() {
+void Mesh::draw(uint32_t count, uint32_t first_instance) {
     bind();
-    api->draw_instanced(index_count, 1);
+    api->draw_instanced(index_count, count, first_instance);
 }

@@ -14,7 +14,7 @@ public:
     void process(aiMesh *mesh);
 
     void bind();
-    void draw();
+    void draw(uint32_t count = 1, uint32_t first_instance = 0);
 private:
     Filesystem *filesystem;
     RenderAPI *api;

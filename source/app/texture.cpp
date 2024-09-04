@@ -14,7 +14,7 @@ void Texture::set_format(ImageFormat image_format) {
     format = image_format;
 }
 
-void Texture::upload_from_ktx(std::filesystem::path path) {
+void ImageTexture::upload_from_ktx(std::filesystem::path path) {
     ktxTexture *ktx_texture;
 	ktxTexture_CreateFromNamedFile(
 		filesystem->resolve_physical_dir(path).string().c_str(),
@@ -23,26 +23,26 @@ void Texture::upload_from_ktx(std::filesystem::path path) {
 	);
 
     api->texture(
-		texture,
+		texture->texture,
 		ImageDimensions::IMAGE_2D,
 		ImageSamples::SAMPLE_COUNT_1_BIT,
-		format,
+		texture->format,
 		ImageFlags::SAMPLED,
         ktxTexture_GetData(ktx_texture),
 		ktx_texture->baseWidth, ktx_texture->baseHeight
 	);
 
 	api->texture_view(
-		view,
-		texture,
+		texture->view,
+		texture->texture,
 		ImageViewDimensions::IMAGE_2D,
-		format, 0, 0
+		texture->format, 0, 0
 	);
 
 	api->sampler(
-		sampler,
-		address_u,
-		address_v,
-		address_w
+		texture->sampler,
+		texture->address_u,
+		texture->address_v,
+		texture->address_w
 	);
 }
