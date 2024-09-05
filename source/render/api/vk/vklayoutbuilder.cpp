@@ -2,11 +2,6 @@
 #include "vklayoutbuilder.h"
 #include "vkresourcemanager.h"
 
-void VulkanLayoutBuilder::init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager) {
-	this->device = vkdevice;
-	this->resource_manager = vkresourcemanager;
-}
-
 void VulkanLayoutBuilder::clear() {
 	binding_infos.clear();
 }

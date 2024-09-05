@@ -10,6 +10,7 @@ enum class UniformType {
 
 class RenderLayoutBuilder {
 public:
+    virtual ~RenderLayoutBuilder() = default;
     virtual RenderLayoutBuilder &add_uniform(ShaderStage stage, UniformType type) = 0;
     virtual LayoutHandle build() = 0;
 };

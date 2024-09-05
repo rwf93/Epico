@@ -145,6 +145,8 @@ void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
 			default: break;
 		}
 	}
+
+	ZoneScoped;
 }
 
 void VulkanAPI::present() {
@@ -189,6 +191,8 @@ void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) 
 }
 
 void VulkanAPI::viewport(float width, float height, float x, float y) {
+	ZoneScoped;
+
 	std::vector<VkViewport> viewports = {
 		info::viewport(width, height, x, y)
 	};
@@ -197,6 +201,8 @@ void VulkanAPI::viewport(float width, float height, float x, float y) {
 }
 
 void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
+	ZoneScoped;
+
 	VkRect2D scissor = {};
 	scissor.extent.width = width;
 	scissor.extent.height = height;
@@ -210,6 +216,8 @@ void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
 }
 
 void VulkanAPI::show_image(TextureHandle handle) {
+	ZoneScoped;
+
 	auto resource = resource_manager.try_get_texture(handle).value();
 
 	resource->transition(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -218,6 +226,8 @@ void VulkanAPI::show_image(TextureHandle handle) {
 }
 
 void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
+	ZoneScoped;
+
 	auto resource = resource_manager.try_get_buffer(handle).value();
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
@@ -231,12 +241,16 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 	}
 }
 
-void VulkanAPI::bind_shader(GraphicsProgramHandle handle) {
+void VulkanAPI::bind_program(GraphicsProgramHandle handle) {
+	ZoneScoped;
+
 	auto shader = resource_manager.try_get_graphics_program(handle).value();
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
 void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> binds) {
+	ZoneScoped;
+
 	// Cache write_sets and info_objects.
 	static std::vector<VkWriteDescriptorSet> write_sets = {};
 	if(write_sets.size() < binds.size())

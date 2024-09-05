@@ -69,7 +69,7 @@ public:
 	virtual void scissor(uint32_t width, uint32_t height, int32_t x = 0, int32_t y = 0) = 0;
 
 	virtual void bind_buffer(BufferHandle handle, BindBufferType type) = 0;
-	virtual void bind_shader(GraphicsProgramHandle handle) = 0;
+	virtual void bind_program(GraphicsProgramHandle handle) = 0;
 	virtual void bind_uniform(LayoutHandle layout, std::span<UniformBind> binds) = 0;
 
 	virtual void draw(uint32_t vertex_count, uint32_t index_count) = 0;

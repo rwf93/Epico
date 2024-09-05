@@ -5,7 +5,12 @@ class VulkanLayout;
 class VulkanResourceManager;
 class VulkanLayoutBuilder: public RenderLayoutBuilder {
 public:
-	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
+	VulkanLayoutBuilder(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager)
+		: device(vkdevice)
+		, resource_manager(vkresourcemanager) { clear(); }
+
+	~VulkanLayoutBuilder() { clear(); }
+
 	void clear();
 
 	RenderLayoutBuilder &add_uniform(ShaderStage stage, UniformType type) override;

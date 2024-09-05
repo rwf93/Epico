@@ -3,19 +3,25 @@
 #include "vkresourcemanager.h"
 #include "vkgraphicsprogrambuilder.h"
 
-void VulkanGraphicsProgramBuilder::init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager) {
-	this->device = vkdevice;
-	this->resource_manager = vkresourcemanager;
-	this->default_pipeline_layout = resource_manager->create_layout().build();
+VulkanGraphicsProgramBuilder::VulkanGraphicsProgramBuilder(
+	VulkanDevice *vkdevice,
+	VulkanResourceManager *vkresourcemanager
+)
+	: device(vkdevice)
+	, resource_manager(vkresourcemanager)
+{
+	clear();
+}
+
+VulkanGraphicsProgramBuilder::~VulkanGraphicsProgramBuilder() {
+	clear();
 }
 
 void VulkanGraphicsProgramBuilder::clear() {
-	bindings.clear();
-	attributes.clear();
-	shader_modules.clear();
-	shader_stages.clear();
-	color_states.clear();
-	attachment_formats.clear();
+	clear_bindings();
+	clear_attributes();
+	clear_stages();
+	clear_attachments();
 
 	current_pipeline_layout = LayoutHandle::Invalid;
 
@@ -86,7 +92,11 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	pipeline_info.pDynamicState = &dynamic_info;
 	pipeline_info.layout = resource_manager
 								->try_get_layout(current_pipeline_layout)
-								.value_or(resource_manager->try_get_layout(default_pipeline_layout).value())
+								.value_or(
+									resource_manager->try_get_layout(
+										resource_manager->create_layout().build()
+									).value()
+								)
 								->get_pipeline_layout();
 
 	auto handle = resource_manager->graphics_program_pool.acquire().value();
@@ -197,6 +207,32 @@ GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_stage(
 
 	shader_stages.push_back(shader_stage_info);
 
+	return *this;
+}
+
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::clear_stages() {
+	for(auto &module: shader_modules)
+		vkDestroyShaderModule(device->get_device(), module, nullptr);
+
+	shader_modules.clear();
+	shader_stages.clear();
+
+	return *this;
+}
+
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::clear_bindings() {
+	bindings.clear();
+	return *this;
+}
+
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::clear_attributes() {
+	attributes.clear();
+	return *this;
+}
+
+GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::clear_attachments() {
+	color_states.clear();
+	attachment_formats.clear();
 	return *this;
 }
 

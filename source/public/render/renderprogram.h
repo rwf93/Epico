@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 enum class BindingRate {
 	VERTEX,
 	INDEX
@@ -64,6 +66,13 @@ public:
 	virtual ~GraphicsProgramBuilder() {}
 
 	virtual GraphicsProgramHandle build() = 0;
+
+	// Use these if you want to call add_* functions after a previous .build()
+	virtual GraphicsProgramBuilder &clear_stages() = 0;
+	virtual GraphicsProgramBuilder &clear_bindings() = 0;
+	virtual GraphicsProgramBuilder &clear_attributes() = 0;
+	virtual GraphicsProgramBuilder &clear_attachments() = 0;
+
 	virtual GraphicsProgramBuilder &set_primitive(PrimitiveMode type) = 0;
 	virtual GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) = 0;
 	virtual GraphicsProgramBuilder &set_depth_format(ImageFormat format) = 0;
@@ -94,6 +103,11 @@ public:
 		ShaderStage stage,
 		const char *data,
 		size_t size
+	) = 0;
+
+	virtual GraphicsProgramBuilder &add_stage(
+		ShaderStage stage,
+		std::span<const char> data
 	) = 0;
 
 	virtual GraphicsProgramBuilder &set_layout(LayoutHandle layout) = 0;

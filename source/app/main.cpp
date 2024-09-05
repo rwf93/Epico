@@ -34,10 +34,6 @@ struct RenderResources {
 	SamplerHandle normal_sampler = SamplerHandle::Invalid;
 	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
 
-	TextureHandle missing_texture = TextureHandle::Invalid;
-	TextureViewHandle missing_texture_view = TextureViewHandle::Invalid;
-	SamplerHandle missing_texture_sampler = SamplerHandle::Invalid;
-
 	BufferHandle scene_buffer = BufferHandle::Invalid;
 	BufferHandle storage_buffer = BufferHandle::Invalid;
 	BufferHandle composition_buffer = BufferHandle::Invalid;
@@ -239,9 +235,9 @@ int main(int argc, char *argv[]) {
 	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
 	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
 	auto &deferred_builder = render_api->create_graphics_program()
-		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		.add_attachment(ImageFormat::R8G8B8A8_UNORM)
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT) // Position
+		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT) // Normals
+		.add_attachment(ImageFormat::R8G8B8A8_UNORM) 	  // Albedo
 		.set_depth_format(ImageFormat::D32_SFLOAT)
 		.set_cull_face(CullFace::BACK)
 		.set_front_face(FrontFace::COUNTER_CLOCKWISE)
@@ -251,15 +247,18 @@ int main(int argc, char *argv[]) {
 		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
-		.add_stage(ShaderStage::VERTEX, deferred_vertex_code.data(), deferred_vertex_code.size())
-		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code.data(), deferred_fragment_code.size())
 		.set_layout(deferred_layout);
 
 	auto deferred_program = deferred_builder
+		.clear_stages()
+		.add_stage(ShaderStage::VERTEX, deferred_vertex_code)
+		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code)
 		.build();
 
-	auto deferred_wireframe_program = deferred_builder
-		.set_polygon_mode(PolygonMode::LINE)
+	auto deferred_test_program = deferred_builder
+		.clear_stages()
+		.add_stage(ShaderStage::VERTEX, deferred_vertex_code)
+		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code)
 		.build();
 
 	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
@@ -267,8 +266,8 @@ int main(int argc, char *argv[]) {
 	auto composition_shader = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
-		.add_stage(ShaderStage::VERTEX, composition_vertex_code.data(), composition_vertex_code.size())
-		.add_stage(ShaderStage::FRAGMENT, composition_fragment_code.data(), composition_fragment_code.size())
+		.add_stage(ShaderStage::VERTEX, composition_vertex_code)
+		.add_stage(ShaderStage::FRAGMENT, composition_fragment_code)
 		.set_layout(composition_layout)
 		.build();
 
@@ -285,8 +284,8 @@ int main(int argc, char *argv[]) {
 		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
-		.add_stage(ShaderStage::VERTEX, skybox_vertex_code.data(), skybox_vertex_code.size())
-		.add_stage(ShaderStage::FRAGMENT, skybox_fragment_code.data(), skybox_fragment_code.size())
+		.add_stage(ShaderStage::VERTEX, skybox_vertex_code)
+		.add_stage(ShaderStage::FRAGMENT, skybox_fragment_code)
 		.set_layout(skybox_layout)
 		.build();
 
@@ -407,7 +406,7 @@ int main(int argc, char *argv[]) {
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
 
-				render_api->bind_shader(testing ? deferred_wireframe_program : deferred_program);
+				render_api->bind_program(testing ? deferred_test_program : deferred_program);
 
 				deferred_binds.push_back(armor_albedo_texture.as_bind());
 				deferred_binds.push_back(armor_normal_texture.as_bind());
@@ -487,7 +486,7 @@ int main(int argc, char *argv[]) {
 				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 				render_api->scissor(context.width, context.height);
 				render_api->bind_uniform(composition_layout, composition_binds);
-				render_api->bind_shader(composition_shader);
+				render_api->bind_program(composition_shader);
 				render_api->draw(3, 1);
 			render_api->end_pass(composition_attachments);
 
@@ -518,7 +517,7 @@ int main(int argc, char *argv[]) {
 			// Skybox pass
 			render_api->begin_pass(skybox_attachments);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
-				render_api->bind_shader(skybox_shader);
+				render_api->bind_program(skybox_shader);
 				sphere_mesh.draw();
 			render_api->end_pass(skybox_attachments);
 

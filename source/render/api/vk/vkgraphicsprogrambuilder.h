@@ -6,13 +6,20 @@ class VulkanGraphicsProgram;
 class VulkanResourceManager;
 class VulkanGraphicsProgramBuilder: public GraphicsProgramBuilder {
 public:
-	VulkanGraphicsProgramBuilder() = default;
-	~VulkanGraphicsProgramBuilder() override = default;
+	VulkanGraphicsProgramBuilder(
+		VulkanDevice *vkdevice,
+		VulkanResourceManager *vkresourcemanager
+	);
+	~VulkanGraphicsProgramBuilder() override;
 
 	GraphicsProgramHandle build() override;
 
-	void init(VulkanDevice *vkdevice, VulkanResourceManager *vkresourcemanager);
 	void clear();
+
+	GraphicsProgramBuilder &clear_stages() override;
+	GraphicsProgramBuilder &clear_bindings() override;
+	GraphicsProgramBuilder &clear_attributes() override;
+	GraphicsProgramBuilder &clear_attachments() override;
 
 	GraphicsProgramBuilder &set_primitive(PrimitiveMode type) override;
 	GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) override;
@@ -44,9 +51,15 @@ public:
 		size_t size
 	) override;
 
-	GraphicsProgramBuilder &set_layout(LayoutHandle layout);
+	GraphicsProgramBuilder &add_stage(
+		ShaderStage stage,
+		std::span<const char> data
+	) override { add_stage(stage, data.data(), data.size()); return *this; }
+
+	GraphicsProgramBuilder &set_layout(LayoutHandle layout) override;
 
 	GraphicsProgramBuilder &add_attachment(ImageFormat format) override;
+
 private:
 	VulkanDevice *device;
 	VulkanResourceManager *resource_manager;

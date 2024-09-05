@@ -42,12 +42,12 @@ VulkanResourceManager::VulkanResourceManager(
 	allocator_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
 	VK_CHECK(vmaCreateAllocator(&allocator_info, &allocator));
-
-	layout_builder.init(device, this);
-	graphics_program_builder.init(device, this);
 }
 
 VulkanResourceManager::~VulkanResourceManager() {
+	layout_builders.clear();
+	graphics_program_builders.clear();
+
 	texture_pool.release_all();
 	texture_view_pool.release_all();
 	sampler_pool.release_all();
@@ -75,13 +75,13 @@ BufferHandle VulkanResourceManager::create_buffer() {
 }
 
 RenderLayoutBuilder &VulkanResourceManager::create_layout() {
-	layout_builder.clear();
-	return layout_builder;
+	layout_builders.push_back(std::make_unique<VulkanLayoutBuilder>(device, this));
+	return *layout_builders.at(layout_builders.size() - 1);
 }
 
 GraphicsProgramBuilder &VulkanResourceManager::create_graphics_program() {
-	graphics_program_builder.clear();
-	return graphics_program_builder;
+	graphics_program_builders.push_back(std::make_unique<VulkanGraphicsProgramBuilder>(device, this));
+	return *graphics_program_builders.at(graphics_program_builders.size() - 1);
 }
 
 void VulkanResourceManager::texture(
