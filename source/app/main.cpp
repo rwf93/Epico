@@ -14,7 +14,15 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-struct RenderPassResources {
+struct RenderResources {
+	SamplerHandle position_sampler = SamplerHandle::Invalid;
+	SamplerHandle normal_sampler = SamplerHandle::Invalid;
+	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
+
+	BufferHandle scene_buffer = BufferHandle::Invalid;
+	BufferHandle storage_buffer = BufferHandle::Invalid;
+	BufferHandle light_buffer = BufferHandle::Invalid;
+
 	TextureHandle position = TextureHandle::Invalid;
 	TextureHandle normal = TextureHandle::Invalid;
 	TextureHandle albedo = TextureHandle::Invalid;
@@ -26,23 +34,20 @@ struct RenderPassResources {
 	TextureViewHandle normal_view = TextureViewHandle::Invalid;
 	TextureViewHandle depth_view = TextureViewHandle::Invalid;
 	TextureViewHandle composition_view = TextureViewHandle::Invalid;
-};
 
-struct RenderResources {
-	RenderPassResources *pass_handles;
-	SamplerHandle position_sampler = SamplerHandle::Invalid;
-	SamplerHandle normal_sampler = SamplerHandle::Invalid;
-	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
-
-	BufferHandle scene_buffer = BufferHandle::Invalid;
-	BufferHandle storage_buffer = BufferHandle::Invalid;
-	BufferHandle composition_buffer = BufferHandle::Invalid;
-	BufferHandle light_buffer = BufferHandle::Invalid;
+	SceneData scene;
+	StorageData storage[StorageData::MAX_OBJECTS];
+	LightData lights[LightData::MAX_LIGHTS];
 };
 
 
 void setup_resources(RenderAPI *api, RenderResources *resources);
-void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources);
+void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources);
+void update_shader_buffers(RenderAPI *api, RenderResources *resources) {
+		api->buffer_sub(resources->scene_buffer, 0, sizeof(SceneData), &resources->scene);
+		api->buffer_sub(resources->storage_buffer, 0, StorageData::MAX_OBJECTS, &resources->storage);
+		api->buffer_sub(resources->light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &resources->lights);
+}
 
 // refactor
 struct TempTexture {
@@ -182,9 +187,6 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	TempTexture missing_texture;
-	create_texture(render_api.interface, missing_texture_data.data(), 16, 16, &missing_texture);
-
 	Texture armor_albedo_texture(render_api.interface);
 	ImageTexture armor_albedo_image(&armor_albedo_texture, filesystem.interface);
 	armor_albedo_image.upload_from_ktx("assets/textures/colormap_rgba.ktx");
@@ -201,15 +203,11 @@ int main(int argc, char *argv[]) {
 	ImageTexture monkey_normals_image(&monkey_normals, filesystem.interface);
 	monkey_normals_image.upload_from_ktx("assets/textures/suzanne_normal.ktx");
 
-	RenderPassResources renderpass_resources = {};
-	RenderResources resources = {
-		.pass_handles = &renderpass_resources
-	};
-
+	RenderResources resources = {};
 	setup_resources(render_api.interface, &resources);
-	setup_pass_resources(&context, render_api.interface, &renderpass_resources);
+	setup_pass_resources(&context, render_api.interface, &resources);
 	render_api->on_resize([&](RenderAPI* renderer) {
-		setup_pass_resources(&context, renderer, &renderpass_resources);
+		setup_pass_resources(&context, renderer, &resources);
 	});
 
 	auto deferred_layout = render_api->create_layout()
@@ -232,8 +230,6 @@ int main(int argc, char *argv[]) {
 		.add_uniform(ShaderStage::FRAGMENT, UniformType::TEXTURE)
 		.build();
 
-	auto deferred_vertex_code = filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true);
-	auto deferred_fragment_code = filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true);
 	auto &deferred_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT) // Position
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT) // Normals
@@ -251,28 +247,23 @@ int main(int argc, char *argv[]) {
 
 	auto deferred_program = deferred_builder
 		.clear_stages()
-		.add_stage(ShaderStage::VERTEX, deferred_vertex_code)
-		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code)
+		.add_stage(ShaderStage::VERTEX, filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true))
+		.add_stage(ShaderStage::FRAGMENT, filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true))
 		.build();
 
 	auto deferred_test_program = deferred_builder
-		.clear_stages()
-		.add_stage(ShaderStage::VERTEX, deferred_vertex_code)
-		.add_stage(ShaderStage::FRAGMENT, deferred_fragment_code)
+		.set_cull_face(CullFace::NONE)
+		.set_polygon_mode(PolygonMode::LINE)
 		.build();
 
-	auto composition_vertex_code = filesystem->read_file<char>("assets/shaders/composition.vert.spv", true);
-	auto composition_fragment_code = filesystem->read_file<char>("assets/shaders/composition.frag.spv", true);
 	auto composition_shader = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
-		.add_stage(ShaderStage::VERTEX, composition_vertex_code)
-		.add_stage(ShaderStage::FRAGMENT, composition_fragment_code)
+		.add_stage(ShaderStage::VERTEX, filesystem->read_file<char>("assets/shaders/composition.vert.spv", true))
+		.add_stage(ShaderStage::FRAGMENT, filesystem->read_file<char>("assets/shaders/composition.frag.spv", true))
 		.set_layout(composition_layout)
 		.build();
 
-	auto skybox_vertex_code = filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true);
-	auto skybox_fragment_code = filesystem->read_file<char>("assets/shaders/skybox.frag.spv", true);
 	auto skybox_shader = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
@@ -284,8 +275,8 @@ int main(int argc, char *argv[]) {
 		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
-		.add_stage(ShaderStage::VERTEX, skybox_vertex_code)
-		.add_stage(ShaderStage::FRAGMENT, skybox_fragment_code)
+		.add_stage(ShaderStage::VERTEX, filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true))
+		.add_stage(ShaderStage::FRAGMENT, filesystem->read_file<char>("assets/shaders/skybox.frag.spv", true))
 		.set_layout(skybox_layout)
 		.build();
 
@@ -330,54 +321,46 @@ int main(int argc, char *argv[]) {
 
 		camera.update();
 
-		static SceneData scene_data = {};
-		scene_data.view = camera.get_view_matrix();
-		scene_data.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
-		scene_data.projection[1][1] *= -1;
-		scene_data.resolution = glm::vec2(context.width, context.height);
-		scene_data.time = context.time;
-		scene_data.time_delta = context.time_delta;
-		render_api->buffer_sub(resources.scene_buffer, 0, sizeof(SceneData), &scene_data);
+		resources.scene.view = camera.get_view_matrix();
+		resources.scene.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
+		resources.scene.projection[1][1] *= -1;
+		resources.scene.resolution = glm::vec2(context.width, context.height);
+		resources.scene.time = context.time;
+		resources.scene.time_delta = context.time_delta;
+		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+		resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1));
 
-		static std::vector<StorageData> storage_data(StorageData::MAX_OBJECTS);
-		storage_data.at(0).model = calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0));
-		render_api->buffer_sub(resources.storage_buffer, 0, storage_data.size(), storage_data.data());
-		//uint32_t render_index = 0;
-
-		static CompositionData composition_data = {};
-		composition_data.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-		render_api->buffer_sub(resources.composition_buffer, 0, sizeof(CompositionData), &composition_data);
-
-		static LightData light_data[LightData::MAX_LIGHTS] = {};
-		render_api->buffer_sub(resources.light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &light_data);
+		update_shader_buffers(render_api.interface, &resources);
 
 		render_api->begin();
 		{
 			render_api->clear(0, 0, 0, 1);
+			render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
+			render_api->scissor(context.width, context.height);
 
 			// Offscreen/Deferred rendering (first pass)
 			static std::vector<SubpassAttachment> deferred_attachments = {
 				{
-					.texture = renderpass_resources.position,
-					.view = renderpass_resources.position_view,
+					.texture = resources.position,
+					.view = resources.position_view,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
-					.texture = renderpass_resources.normal,
-					.view = renderpass_resources.normal_view,
+					.texture = resources.normal,
+					.view = resources.normal_view,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
-					.texture = renderpass_resources.albedo,
-					.view = renderpass_resources.albedo_view,
+					.texture = resources.albedo,
+					.view = resources.albedo_view,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
-					.texture = renderpass_resources.depth,
-					.view = renderpass_resources.depth_view,
+					.texture = resources.depth,
+					.view = resources.depth_view,
 					.type = AttachmentType::DEPTH,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 1.0f }, .depth = 0.0f, .stencil = 0 })
 				}
@@ -403,9 +386,6 @@ int main(int argc, char *argv[]) {
 			static bool testing = false;
 
 			render_api->begin_pass(deferred_attachments);
-				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-				render_api->scissor(context.width, context.height);
-
 				render_api->bind_program(testing ? deferred_test_program : deferred_program);
 
 				deferred_binds.push_back(armor_albedo_texture.as_bind());
@@ -414,30 +394,30 @@ int main(int argc, char *argv[]) {
 				deferred_binds.pop_back();
 				deferred_binds.pop_back();
 
-				monkey_mesh.draw(1);
+				monkey_mesh.draw(1, 0);
 
 			render_api->end_pass(deferred_attachments);
 
 			static std::vector<SubpassAttachment> composition_attachments = {
 				{
-					.texture = renderpass_resources.composition,
-					.view = renderpass_resources.composition_view,
+					.texture = resources.composition,
+					.view = resources.composition_view,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
-					.texture = renderpass_resources.position,
-					.view = renderpass_resources.position_view,
+					.texture = resources.position,
+					.view = resources.position_view,
 					.type = AttachmentType::SHADER
 				},
 				{
-					.texture = renderpass_resources.albedo,
-					.view = renderpass_resources.albedo_view,
+					.texture = resources.albedo,
+					.view = resources.albedo_view,
 					.type = AttachmentType::SHADER
 				},
 				{
-					.texture = renderpass_resources.normal,
-					.view = renderpass_resources.normal_view,
+					.texture = resources.normal,
+					.view = resources.normal_view,
 					.type = AttachmentType::SHADER
 				},
 			};
@@ -445,9 +425,9 @@ int main(int argc, char *argv[]) {
 			static std::vector<UniformBind> composition_binds = {
 				{
 					.buffer = {
-						.buffer_handle = resources.composition_buffer,
+						.buffer_handle = resources.scene_buffer,
 						.offset = 0,
-						.range = sizeof(CompositionData)
+						.range = sizeof(SceneData)
 					},
 					.type = UniformType::BUFFER
 				},
@@ -461,21 +441,21 @@ int main(int argc, char *argv[]) {
 				},
 				{
 					.texture = {
-						.texture_view_handle = renderpass_resources.position_view,
+						.texture_view_handle = resources.position_view,
 						.sampler_handle = resources.position_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
 				{
 					.texture = {
-						.texture_view_handle = renderpass_resources.normal_view,
+						.texture_view_handle = resources.normal_view,
 						.sampler_handle = resources.normal_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
 				{
 					.texture = {
-						.texture_view_handle = renderpass_resources.albedo_view,
+						.texture_view_handle = resources.albedo_view,
 						.sampler_handle = resources.albedo_sampler
 					},
 					.type = UniformType::TEXTURE,
@@ -483,8 +463,6 @@ int main(int argc, char *argv[]) {
 			};
 			// Lighting/Composition pass
 			render_api->begin_pass(composition_attachments);
-				render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
-				render_api->scissor(context.width, context.height);
 				render_api->bind_uniform(composition_layout, composition_binds);
 				render_api->bind_program(composition_shader);
 				render_api->draw(3, 1);
@@ -492,13 +470,13 @@ int main(int argc, char *argv[]) {
 
 			static std::vector<SubpassAttachment> skybox_attachments = {
 				{
-					.texture = renderpass_resources.composition,
-					.view = renderpass_resources.composition_view,
+					.texture = resources.composition,
+					.view = resources.composition_view,
 					.type = AttachmentType::COLOR,
 				},
 				{
-					.texture = renderpass_resources.depth,
-					.view = renderpass_resources.depth_view,
+					.texture = resources.depth,
+					.view = resources.depth_view,
 					.type = AttachmentType::DEPTH,
 				}
 			};
@@ -521,7 +499,7 @@ int main(int argc, char *argv[]) {
 				sphere_mesh.draw();
 			render_api->end_pass(skybox_attachments);
 
-			render_api->show_image(resources.pass_handles->composition);
+			render_api->show_image(resources.composition);
 
 			render_api->ui()->begin();
 				ImGui::NewFrame();
@@ -534,12 +512,12 @@ int main(int argc, char *argv[]) {
 					"Specular",
 					"Composition"
 				};
-				ImGui::Combo("G-Buffer", &composition_data.gbuffer_selection, items, IM_ARRAYSIZE(items));
+				ImGui::Combo("G-Buffer", &resources.scene.gbuffer_selection, items, IM_ARRAYSIZE(items));
 
 				for(uint32_t i = 0; i < LightData::MAX_LIGHTS; i++) {
-					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(light_data[i].position), -100, 100);
-					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(light_data[i].color));
-					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light_data[i].radius, 0.5, 100);
+					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(resources.lights[i].position), -100, 100);
+					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(resources.lights[i].color));
+					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &resources.lights[i].radius, 0.5, 100);
 					ImGui::Separator();
 				}
 
@@ -585,23 +563,22 @@ int main(int argc, char *argv[]) {
 }
 
 void setup_resources(RenderAPI *render_api, RenderResources *resources) {
-	resources->pass_handles->position = render_api->create_texture();
-	resources->pass_handles->normal = render_api->create_texture();
-	resources->pass_handles->albedo = render_api->create_texture();
-	resources->pass_handles->depth = render_api->create_texture();
-	resources->pass_handles->composition = render_api->create_texture();
-	resources->pass_handles->position_view = render_api->create_texture_view();
-	resources->pass_handles->normal_view = render_api->create_texture_view();
-	resources->pass_handles->albedo_view = render_api->create_texture_view();
-	resources->pass_handles->depth_view = render_api->create_texture_view();
-	resources->pass_handles->composition_view = render_api->create_texture_view();
-	resources->position_sampler = render_api->create_sampler();
-	resources->normal_sampler = render_api->create_sampler();
-	resources->albedo_sampler = render_api->create_sampler();
-	resources->scene_buffer = render_api->create_buffer();
-	resources->storage_buffer = render_api->create_buffer();
-	resources->composition_buffer = render_api->create_buffer();
-	resources->light_buffer = render_api->create_buffer();
+	resources->position 			= render_api->create_texture();
+	resources->normal 				= render_api->create_texture();
+	resources->albedo 				= render_api->create_texture();
+	resources->depth 				= render_api->create_texture();
+	resources->composition 			= render_api->create_texture();
+	resources->position_view 		= render_api->create_texture_view();
+	resources->normal_view 			= render_api->create_texture_view();
+	resources->albedo_view 			= render_api->create_texture_view();
+	resources->depth_view 			= render_api->create_texture_view();
+	resources->composition_view 	= render_api->create_texture_view();
+	resources->position_sampler 	= render_api->create_sampler();
+	resources->normal_sampler 		= render_api->create_sampler();
+	resources->albedo_sampler 		= render_api->create_sampler();
+	resources->scene_buffer 		= render_api->create_buffer();
+	resources->storage_buffer 		= render_api->create_buffer();
+	resources->light_buffer 		= render_api->create_buffer();
 
 	render_api->sampler(
 		resources->position_sampler,
@@ -639,13 +616,6 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 	);
 
 	render_api->buffer(
-		resources->composition_buffer,
-		BufferType::UNIFORM,
-		sizeof(CompositionData),
-		nullptr
-	);
-
-	render_api->buffer(
 		resources->light_buffer,
 		BufferType::STORAGE,
 		sizeof(LightData) * LightData::MAX_LIGHTS,
@@ -653,7 +623,7 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 	);
 }
 
-void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderPassResources *resources) {
+void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources) {
 	renderer->texture(
 		resources->position,
 		ImageDimensions::IMAGE_2D,

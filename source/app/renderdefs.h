@@ -23,6 +23,8 @@ struct Vertex {
 struct SceneData {
 	C(glm::mat4, mat4) view;
 	C(glm::mat4, mat4) projection;
+	C(glm::vec4, vec4) camera_position;
+	C(int32_t, int) gbuffer_selection;
 	C(glm::vec2, vec2) resolution;
 	float time;
 	float time_delta;
@@ -31,11 +33,6 @@ struct SceneData {
 struct StorageData {
 	C(glm::mat4, mat4) model;
 	C(static const uint32_t MAX_OBJECTS = 1024;,)
-};
-
-struct CompositionData {
-	C(glm::vec4, vec4) camera_position;
-	C(int32_t, int) gbuffer_selection;
 };
 
 struct LightData {

@@ -7,7 +7,7 @@ layout(location = 0) in vec2 in_uv;
 layout(location = 0) out vec4 out_composition;
 
 #include "../../assets/shaders/renderdefs.h"
-UNIFORM_BLOCK(0, CompositionData) composition = CompositionData_block.data;
+UNIFORM_BLOCK(0, SceneData) scene = SceneData_block.data;
 
 layout(std140, set = 0, binding = 1) readonly buffer LightDataUniform {
     LightData lights[];
@@ -23,7 +23,7 @@ void main() {
     vec4 albedo = texture(albedo_attachment, in_uv);
 
     vec3 lighting = albedo.rgb * 0.0;
-    vec3 view_direction = normalize(composition.camera_position.xyz - position);
+    vec3 view_direction = normalize(scene.camera_position.xyz - position);
 
     for(int i = 0; i < MAX_LIGHTS; i++) {
         LightData light = lightdata.lights[i];
@@ -31,7 +31,7 @@ void main() {
         vec3 L = light.position.xyz - position;
         float dist = length(L);
 
-        vec3 V = composition.camera_position.xyz - position;
+        vec3 V = scene.camera_position.xyz - position;
         V = normalize(V);
         L = normalize(L);
 
@@ -48,7 +48,7 @@ void main() {
         lighting += diff + spec;
     }
 
-    switch(composition.gbuffer_selection) {
+    switch(scene.gbuffer_selection) {
         case 0:
             out_composition.rgb = position;
             break;
