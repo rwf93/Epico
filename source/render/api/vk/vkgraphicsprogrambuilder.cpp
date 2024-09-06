@@ -91,16 +91,16 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	pipeline_info.pDepthStencilState = &stencil_info;
 	pipeline_info.pDynamicState = &dynamic_info;
 	pipeline_info.layout = resource_manager
-								->try_get_layout(current_pipeline_layout)
+								->try_get_resource(current_pipeline_layout)
 								.value_or(
-									resource_manager->try_get_layout(
+									resource_manager->try_get_resource(
 										resource_manager->create_layout().build()
 									).value()
 								)
 								->get_pipeline_layout();
 
 	auto handle = resource_manager->graphics_program_pool.acquire().value();
-	resource_manager->try_get_graphics_program(handle).value()->init(device, &pipeline_info);
+	resource_manager->try_get_resource(handle).value()->init(device, &pipeline_info);
 
 	return handle;
 }
@@ -178,45 +178,15 @@ GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_attribute(
 }
 
 GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_stage(
-	ShaderStage stage,
-	const char *data,
-	size_t size
+	ShaderHandle handle
 ) {
-	VkShaderModuleCreateInfo shader_create_info = {};
-	shader_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	shader_create_info.pCode = reinterpret_cast<const uint32_t*>(data);
-	shader_create_info.codeSize = size;
-
-	VkShaderModule shader_module = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateShaderModule(device->get_device(), &shader_create_info, nullptr, &shader_module));
-	shader_modules.push_back(shader_module);
-
-	uint64_t stage_bits = 0;
-
-	if(stage & ShaderStage::VERTEX)
-		stage_bits |= VK_SHADER_STAGE_VERTEX_BIT;
-
-	if(stage & ShaderStage::FRAGMENT)
-		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	VkPipelineShaderStageCreateInfo shader_stage_info = {};
-	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	shader_stage_info.module = shader_module;
-	shader_stage_info.stage = static_cast<VkShaderStageFlagBits>(stage_bits);
-	shader_stage_info.pName = "main";
-
-	shader_stages.push_back(shader_stage_info);
-
+	auto resource = resource_manager->try_get_resource(handle).value();
+	shader_stages.push_back(resource->stage_info);
 	return *this;
 }
 
 GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::clear_stages() {
-	for(auto &module: shader_modules)
-		vkDestroyShaderModule(device->get_device(), module, nullptr);
-
-	shader_modules.clear();
 	shader_stages.clear();
-
 	return *this;
 }
 

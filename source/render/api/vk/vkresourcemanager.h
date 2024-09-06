@@ -4,6 +4,7 @@
 #include "vktextureview.h"
 #include "vksampler.h"
 #include "vkbuffer.h"
+#include "vkshader.h"
 
 #include "vklayoutbuilder.h"
 #include "vklayout.h"
@@ -24,6 +25,7 @@ public:
 	TextureViewHandle create_texture_view();
 	SamplerHandle create_sampler();
 	BufferHandle create_buffer();
+	ShaderHandle create_shader();
 
 	RenderLayoutBuilder &create_layout();
 	GraphicsProgramBuilder &create_graphics_program();
@@ -42,31 +44,37 @@ public:
 
 	void sampler(SamplerHandle handle, VkSamplerCreateInfo sampler_create_info);
 
-	void buffer(BufferHandle handle, VkBufferUsageFlagBits type, void *data, VkDeviceSize size);
+	void buffer(BufferHandle handle, VkBufferCreateInfo create_info, void *data);
 	void buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
-	std::optional<VulkanTexture*> try_get_texture(TextureHandle handle) {
+	void shader(ShaderHandle handle, VkShaderModuleCreateInfo shader_info, VkPipelineShaderStageCreateInfo stage_info);
+
+	std::optional<VulkanTexture*> try_get_resource(TextureHandle handle) {
 		return texture_pool.resource(handle);
 	}
 
-	std::optional<VulkanTextureView*> try_get_texture_view(TextureViewHandle handle) {
-		return texture_view_pool.resource(handle).value();
+	std::optional<VulkanTextureView*> try_get_resource(TextureViewHandle handle) {
+		return texture_view_pool.resource(handle);
 	}
 
-	std::optional<VulkanSampler*> try_get_sampler_resource(SamplerHandle handle) {
-		return sampler_pool.resource(handle).value();
+	std::optional<VulkanSampler*> try_get_resource(SamplerHandle handle) {
+		return sampler_pool.resource(handle);
 	}
 
-	std::optional<VulkanBuffer*> try_get_buffer(BufferHandle handle) {
-		return buffer_pool.resource(handle).value();
+	std::optional<VulkanBuffer*> try_get_resource(BufferHandle handle) {
+		return buffer_pool.resource(handle);
 	}
 
-	std::optional<VulkanLayout*> try_get_layout(LayoutHandle handle) {
-		return layout_pool.resource(handle).value();
+	std::optional<VulkanLayout*> try_get_resource(LayoutHandle handle) {
+		return layout_pool.resource(handle);
 	}
 
-	std::optional<VulkanGraphicsProgram*> try_get_graphics_program(GraphicsProgramHandle handle) {
-		return graphics_program_pool.resource(handle).value();
+	std::optional<VulkanShader*> try_get_resource(ShaderHandle handle) {
+		return shader_pool.resource(handle);
+	}
+
+	std::optional<VulkanGraphicsProgram*> try_get_resource(GraphicsProgramHandle handle) {
+		return graphics_program_pool.resource(handle);
 	}
 
 private:
@@ -105,7 +113,11 @@ private:
 		}
 
 		std::optional<ResourceType*> resource(HandleType handle) {
-			return &resources.at(static_cast<size_t>(handle));
+			try {
+				return &resources.at(static_cast<size_t>(handle));
+			} catch(...) {
+				return std::nullopt;
+			}
 		}
 
 		std::vector<HandleType> free_handles;
@@ -124,5 +136,6 @@ private:
 	ResourcePool<SamplerHandle, VulkanSampler, 1024> sampler_pool;
 	ResourcePool<BufferHandle, VulkanBuffer, 512> buffer_pool;
 	ResourcePool<LayoutHandle, VulkanLayout, 64> layout_pool;
+	ResourcePool<ShaderHandle, VulkanShader, 256> shader_pool;
 	ResourcePool<GraphicsProgramHandle, VulkanGraphicsProgram, 128> graphics_program_pool;
 };

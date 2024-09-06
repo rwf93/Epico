@@ -100,14 +100,7 @@ public:
 	virtual GraphicsProgramBuilder &add_attachment(ImageFormat format) = 0;
 
 	virtual GraphicsProgramBuilder &add_stage(
-		ShaderStage stage,
-		const char *data,
-		size_t size
-	) = 0;
-
-	virtual GraphicsProgramBuilder &add_stage(
-		ShaderStage stage,
-		std::span<const char> data
+		ShaderHandle shader
 	) = 0;
 
 	virtual GraphicsProgramBuilder &set_layout(LayoutHandle layout) = 0;

@@ -46,15 +46,8 @@ public:
 	) override;
 
 	GraphicsProgramBuilder &add_stage(
-		ShaderStage stage,
-		const char *data,
-		size_t size
+		ShaderHandle handle
 	) override;
-
-	GraphicsProgramBuilder &add_stage(
-		ShaderStage stage,
-		std::span<const char> data
-	) override { add_stage(stage, data.data(), data.size()); return *this; }
 
 	GraphicsProgramBuilder &set_layout(LayoutHandle layout) override;
 
@@ -74,7 +67,6 @@ private:
 	std::vector<VkVertexInputBindingDescription> bindings = {};
 	std::vector<VkVertexInputAttributeDescription> attributes = {};
 
-	std::vector<VkShaderModule> shader_modules = {};
 	std::vector<VkPipelineShaderStageCreateInfo> shader_stages = {};
 
 	std::vector<VkPipelineColorBlendAttachmentState> color_states = {};

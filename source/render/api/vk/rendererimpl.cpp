@@ -86,8 +86,8 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	std::optional<VkRenderingAttachmentInfo> depth_attachment;
 
 	for(auto &dependency: dependencies) {
-		auto texture = resource_manager.try_get_texture(dependency.texture).value();
-		auto texture_view = resource_manager.try_get_texture_view(dependency.view).value();
+		auto texture = resource_manager.try_get_resource(dependency.texture).value();
+		auto texture_view = resource_manager.try_get_resource(dependency.view).value();
 
 		VkClearValue *clear_value = dependency.clear.has_value()
 			? reinterpret_cast<VkClearValue*>(&dependency.clear.value())
@@ -136,7 +136,7 @@ void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
 	command_pool.get_command()->end_rendering();
 
 	for(auto &dependency: dependencies) {
-		auto resource = resource_manager.try_get_texture(dependency.texture).value();
+		auto resource = resource_manager.try_get_resource(dependency.texture).value();
 		UNUSED(resource);
 		switch(dependency.type) {
 			case AttachmentType::COLOR:
@@ -180,7 +180,7 @@ void VulkanAPI::clear(float r, float g, float b, float a) {
 void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) {
 	ZoneScoped;
 
-	auto image = resource_manager.try_get_texture(handle).value();
+	auto image = resource_manager.try_get_resource(handle).value();
 
 	VkClearColorValue clear_value = { { r, g, b, a } };
 	static std::vector<VkImageSubresourceRange> clear_ranges = {
@@ -218,7 +218,7 @@ void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
 void VulkanAPI::show_image(TextureHandle handle) {
 	ZoneScoped;
 
-	auto resource = resource_manager.try_get_texture(handle).value();
+	auto resource = resource_manager.try_get_resource(handle).value();
 
 	resource->transition(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	command_pool.get_command()->copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
@@ -228,7 +228,7 @@ void VulkanAPI::show_image(TextureHandle handle) {
 void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 	ZoneScoped;
 
-	auto resource = resource_manager.try_get_buffer(handle).value();
+	auto resource = resource_manager.try_get_resource(handle).value();
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
 		case BindBufferType::VERTEX:
@@ -244,7 +244,7 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 void VulkanAPI::bind_program(GraphicsProgramHandle handle) {
 	ZoneScoped;
 
-	auto shader = resource_manager.try_get_graphics_program(handle).value();
+	auto shader = resource_manager.try_get_resource(handle).value();
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
@@ -260,7 +260,7 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 	if(info_objects.size() < binds.size())
 		info_objects.resize(binds.size());
 
-	auto layout = resource_manager.try_get_layout(layout_handle).value();
+	auto layout = resource_manager.try_get_resource(layout_handle).value();
 
 	for(uint32_t i = 0; i < binds.size(); i++) {
 		UniformBind &bind = binds[i];
@@ -275,7 +275,7 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 		switch(bind.type) {
 			case UniformType::BUFFER:
 			case UniformType::STORAGE: {
-				auto buffer_resource = resource_manager.try_get_buffer(bind.buffer.buffer_handle).value();
+				auto buffer_resource = resource_manager.try_get_resource(bind.buffer.buffer_handle).value();
 
 				VkDescriptorBufferInfo *buffer_info = &info_objects.at(i).first;
 				buffer_info->buffer = buffer_resource->get_buffer();
@@ -289,8 +289,8 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				descriptor_write.pBufferInfo = buffer_info;
 			} break;
 			case UniformType::TEXTURE: {
-				auto texture_view_resource = resource_manager.try_get_texture_view(bind.texture.texture_view_handle).value();
-				auto sampler_resource = resource_manager.try_get_sampler_resource(bind.texture.sampler_handle).value();
+				auto texture_view_resource = resource_manager.try_get_resource(bind.texture.texture_view_handle).value();
+				auto sampler_resource = resource_manager.try_get_resource(bind.texture.sampler_handle).value();
 
 				VkDescriptorImageInfo *image_info = &info_objects.at(i).second;
 				image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -342,6 +342,10 @@ BufferHandle VulkanAPI::create_buffer() {
 	return resource_manager.create_buffer();
 }
 
+ShaderHandle VulkanAPI::create_shader() {
+	return resource_manager.create_shader();
+}
+
 RenderLayoutBuilder &VulkanAPI::create_layout() {
 	return resource_manager.create_layout();
 }
@@ -352,7 +356,14 @@ GraphicsProgramBuilder &VulkanAPI::create_graphics_program() {
 
 void VulkanAPI::buffer(BufferHandle handle, BufferType type, size_t size, void *data) {
 	ZoneScoped;
-	resource_manager.buffer(handle, convert::convert_buffer_type(type), data, size);
+
+	auto buffer_type = convert::convert_buffer_type(type);
+	auto buffer_info = info::buffer_create_info(
+		size,
+		(buffer_type & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT || buffer_type & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) ? buffer_type | VK_BUFFER_USAGE_TRANSFER_DST_BIT : buffer_type
+	);
+
+	resource_manager.buffer(handle, buffer_info, data);
 }
 
 void VulkanAPI::buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) {
@@ -437,6 +448,33 @@ void VulkanAPI::sampler(
 	sampler_info.addressModeW = convert::convert_address_mode(w);
 
 	resource_manager.sampler(handle, sampler_info);
+}
+
+void VulkanAPI::shader(
+	ShaderHandle handle,
+	ShaderStage shader_type,
+	const char *data,
+	size_t size,
+	const char *entry_point
+) {
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.pCode = reinterpret_cast<const uint32_t*>(data);
+	create_info.codeSize = size;
+
+	uint64_t stage_bits = 0;
+	if(shader_type & ShaderStage::VERTEX)
+		stage_bits |= VK_SHADER_STAGE_VERTEX_BIT;
+
+	if(shader_type & ShaderStage::FRAGMENT)
+		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkPipelineShaderStageCreateInfo shader_stage_info = {};
+	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shader_stage_info.stage = static_cast<VkShaderStageFlagBits>(stage_bits);
+	shader_stage_info.pName = entry_point;
+
+	resource_manager.shader(handle, create_info, shader_stage_info);
 }
 
 void VulkanAPI::rebuild() {

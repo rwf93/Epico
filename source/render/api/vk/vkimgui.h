@@ -24,7 +24,7 @@ public:
 
 	void *get_context() override;
 	void *add_texture(SamplerHandle sampler_handle, TextureViewHandle texture_view_handle) override;
-	
+
 private:
 	AppContext *context = nullptr;
 	VulkanInstance *instance = nullptr;

@@ -84,6 +84,7 @@ public:
 	virtual TextureViewHandle create_texture_view() = 0;
 	virtual SamplerHandle create_sampler() = 0;
 	virtual BufferHandle create_buffer() = 0;
+	virtual ShaderHandle create_shader() = 0;
 
 	virtual RenderLayoutBuilder &create_layout() = 0;
 	virtual GraphicsProgramBuilder &create_graphics_program() = 0;
@@ -112,6 +113,21 @@ public:
 		int min_layers,
 		int num_levels = 1,
 		int num_layers = 1
+	) = 0;
+
+	virtual void shader(
+		ShaderHandle handle,
+		ShaderStage shader_type,
+		const char *data,
+		size_t size,
+		const char *entry_point = "main"
+	) = 0;
+
+	virtual void shader(
+		ShaderHandle handle,
+		ShaderStage shader_type,
+		std::span<const char> data,
+		const char *entry_point = "main"
 	) = 0;
 
 	virtual RenderUI *ui() = 0;

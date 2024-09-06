@@ -111,8 +111,8 @@ void VulkanUI::end() {
 }
 
 void *VulkanUI::add_texture(SamplerHandle sampler_handle, TextureViewHandle texture_view_handle) {
-	auto sampler = resource_manager->try_get_sampler_resource(sampler_handle).value();
-	auto texture_view = resource_manager->try_get_texture_view(texture_view_handle).value();
+	auto sampler = resource_manager->try_get_resource(sampler_handle).value();
+	auto texture_view = resource_manager->try_get_resource(texture_view_handle).value();
 
 	return ImGui_ImplVulkan_AddTexture(sampler->get_sampler(), texture_view->get_view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

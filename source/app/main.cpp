@@ -119,12 +119,7 @@ public:
 	}
 
 	glm::mat4 convert_matrix(const aiMatrix4x4 &matrix) {
-		return {
-			matrix.a1, matrix.b1, matrix.c1, matrix.d1,
-			matrix.a2, matrix.b2, matrix.c2, matrix.d2,
-			matrix.a3, matrix.b3, matrix.c3, matrix.d3,
-			matrix.a4, matrix.b4, matrix.c4, matrix.d4
-		};
+		return glm::make_mat4(&matrix.a1);
 	}
 
 	void draw(std::vector<StorageData> &render_objects, uint32_t &render_index) {
@@ -210,6 +205,56 @@ int main(int argc, char *argv[]) {
 		setup_pass_resources(&context, renderer, &resources);
 	});
 
+	auto deferred_vertex = render_api->create_shader();
+	auto deferred_fragment = render_api->create_shader();
+	auto composition_vertex = render_api->create_shader();
+	auto composition_fragment = render_api->create_shader();
+	auto skybox_vertex = render_api->create_shader();
+	auto skybox_fragment = render_api->create_shader();
+	auto skybox_weird_fragment = render_api->create_shader();
+
+	render_api->shader(
+		deferred_vertex,
+		ShaderStage::VERTEX,
+		filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true)
+	);
+
+	render_api->shader(
+		deferred_fragment,
+		ShaderStage::FRAGMENT,
+		filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true)
+	);
+
+	render_api->shader(
+		composition_vertex,
+		ShaderStage::VERTEX,
+		filesystem->read_file<char>("assets/shaders/composition.vert.spv", true)
+	);
+
+	render_api->shader(
+		composition_fragment,
+		ShaderStage::FRAGMENT,
+		filesystem->read_file<char>("assets/shaders/composition.frag.spv", true)
+	);
+
+	render_api->shader(
+		skybox_vertex,
+		ShaderStage::VERTEX,
+		filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true)
+	);
+
+	render_api->shader(
+		skybox_fragment,
+		ShaderStage::FRAGMENT,
+		filesystem->read_file<char>("assets/shaders/skybox.frag.spv", true)
+	);
+
+	render_api->shader(
+		skybox_weird_fragment,
+		ShaderStage::FRAGMENT,
+		filesystem->read_file<char>("assets/shaders/skybox_weird.frag.spv", true)
+	);
+
 	auto deferred_layout = render_api->create_layout()
 		.add_uniform(ShaderStage::VERTEX, UniformType::BUFFER)
 		.add_uniform(ShaderStage::VERTEX, UniformType::STORAGE)
@@ -247,24 +292,27 @@ int main(int argc, char *argv[]) {
 
 	auto deferred_program = deferred_builder
 		.clear_stages()
-		.add_stage(ShaderStage::VERTEX, filesystem->read_file<char>("assets/shaders/deferred.vert.spv", true))
-		.add_stage(ShaderStage::FRAGMENT, filesystem->read_file<char>("assets/shaders/deferred.frag.spv", true))
+		.add_stage(deferred_vertex)
+		.add_stage(deferred_fragment)
 		.build();
 
 	auto deferred_test_program = deferred_builder
 		.set_cull_face(CullFace::NONE)
 		.set_polygon_mode(PolygonMode::LINE)
+		.clear_stages()
+		.add_stage(deferred_vertex)
+		.add_stage(deferred_fragment)
 		.build();
 
 	auto composition_shader = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
-		.add_stage(ShaderStage::VERTEX, filesystem->read_file<char>("assets/shaders/composition.vert.spv", true))
-		.add_stage(ShaderStage::FRAGMENT, filesystem->read_file<char>("assets/shaders/composition.frag.spv", true))
+		.add_stage(composition_vertex)
+		.add_stage(composition_fragment)
 		.set_layout(composition_layout)
 		.build();
 
-	auto skybox_shader = render_api->create_graphics_program()
+	auto &skybox_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
 		.set_cull_face(CullFace::FRONT)
@@ -275,10 +323,21 @@ int main(int argc, char *argv[]) {
 		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
-		.add_stage(ShaderStage::VERTEX, filesystem->read_file<char>("assets/shaders/skybox.vert.spv", true))
-		.add_stage(ShaderStage::FRAGMENT, filesystem->read_file<char>("assets/shaders/skybox.frag.spv", true))
-		.set_layout(skybox_layout)
+		.set_layout(skybox_layout);
+
+	auto skybox_shader = skybox_builder
+		.clear_stages()
+		.add_stage(skybox_vertex)
+		.add_stage(skybox_fragment)
 		.build();
+
+	auto skybox_weird_program = skybox_builder
+		.clear_stages()
+		.add_stage(skybox_vertex)
+		.add_stage(skybox_weird_fragment)
+		.build();
+
+	UNUSED(skybox_weird_program);
 
 	Mesh armor_mesh(filesystem.interface, render_api.interface);
 	armor_mesh.load_from_file("assets/models/armor.gltf");
@@ -495,7 +554,7 @@ int main(int argc, char *argv[]) {
 			// Skybox pass
 			render_api->begin_pass(skybox_attachments);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
-				render_api->bind_program(skybox_shader);
+				render_api->bind_program(testing ? skybox_weird_program : skybox_shader);
 				sphere_mesh.draw();
 			render_api->end_pass(skybox_attachments);
 

@@ -29,7 +29,7 @@ RenderLayoutBuilder &VulkanLayoutBuilder::add_uniform(ShaderStage stage, Uniform
 LayoutHandle VulkanLayoutBuilder::build() {
 	auto layout_info = info::descriptor_set_layout_info(binding_infos, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
 	auto handle = resource_manager->layout_pool.acquire().value();
-	resource_manager->try_get_layout(handle).value()->init(device, &layout_info);
+	resource_manager->try_get_resource(handle).value()->init(device, &layout_info);
 
 	return handle;
 }

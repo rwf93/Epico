@@ -35,6 +35,7 @@ public:
 	TextureViewHandle create_texture_view() override;
 	SamplerHandle create_sampler() override;
 	BufferHandle create_buffer() override;
+	ShaderHandle create_shader() override;
 
 	void buffer(BufferHandle handle, BufferType type, size_t size, void *data) override;
 	void buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) override;
@@ -66,6 +67,21 @@ public:
 		int num_levels = 1,
 		int num_layers = 1
 	) override;
+
+	void shader(
+		ShaderHandle handle,
+		ShaderStage shader_type,
+		const char *data,
+		size_t size,
+		const char *entry_point = "main"
+	) override;
+
+	void shader(
+		ShaderHandle handle,
+		ShaderStage shader_type,
+		std::span<const char> data,
+		const char *entry_point = "main"
+	) override { shader(handle, shader_type, data.data(), data.size(), entry_point); }
 
 	RenderLayoutBuilder &create_layout() override;
 	GraphicsProgramBuilder &create_graphics_program() override;
