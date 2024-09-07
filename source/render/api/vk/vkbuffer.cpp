@@ -3,15 +3,9 @@
 #include "vkbuffer.h"
 
 void VulkanBuffer::init(
-	VulkanDevice *vkdevice,
-	VulkanCommandPool *vkcommandpool,
-	VmaAllocator vkallocator,
 	VkBufferCreateInfo *buffer_create_info,
 	VmaAllocationCreateInfo *allocation_create_info
 ) {
-	this->device = vkdevice;
-	this->command_pool = vkcommandpool;
-	this->allocator = vkallocator;
 	this->create_info = *buffer_create_info;
 
 	VK_CHECK(vmaCreateBuffer(

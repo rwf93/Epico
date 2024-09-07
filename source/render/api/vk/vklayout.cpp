@@ -1,9 +1,7 @@
 #include "vkdevice.h"
 #include "vklayout.h"
 
-void VulkanLayout::init(VulkanDevice *vkdevice, VkDescriptorSetLayoutCreateInfo *layout_info) {
-    this->device = vkdevice;
-
+void VulkanLayout::init(VkDescriptorSetLayoutCreateInfo *layout_info) {
     VK_CHECK(vkCreateDescriptorSetLayout(device->get_device(), layout_info, nullptr, &layout));
 
     std::vector<VkDescriptorSetLayout> layouts = { layout };

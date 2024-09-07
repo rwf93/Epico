@@ -3,10 +3,15 @@
 class VulkanDevice;
 class VulkanShader: public RenderResource {
 public:
-    VulkanShader() = default;
+    VulkanShader(
+        VulkanDevice *vkdevice
+    )
+        : device(vkdevice) {}
     ~VulkanShader() override { if(get_state() != ResourceState::UNREADY) fini(); };
 
-    void init(VulkanDevice *vkdevice, VkShaderModuleCreateInfo *vkcreateinfo, VkPipelineShaderStageCreateInfo *vkstageinfo);
+    VK_TRACY_MEMORY_OVERLOADS;
+
+    void init(VkShaderModuleCreateInfo *vkcreateinfo, VkPipelineShaderStageCreateInfo *vkstageinfo);
 
     ResourceState get_state() override { return state; }
 	void fini() override;

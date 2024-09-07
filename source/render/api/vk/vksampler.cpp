@@ -1,11 +1,8 @@
 #include "vkdevice.h"
 #include "vksampler.h"
 
-void VulkanSampler::init(VulkanDevice *vkdevice, VkSamplerCreateInfo *create_info) {
-    this->device = vkdevice;
-
+void VulkanSampler::init(VkSamplerCreateInfo *create_info) {
     VK_CHECK(vkCreateSampler(device->get_device(), create_info, nullptr, &sampler));
-
     state = ResourceState::READY;
 }
 

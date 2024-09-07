@@ -4,19 +4,22 @@ class VulkanDevice;
 class VulkanTexture;
 class VulkanTextureView: public RenderResource {
 public:
-    VulkanTextureView() = default;
-    ~VulkanTextureView() override { if(get_state() != ResourceState::UNREADY) fini(); }
+	VulkanTextureView(VulkanDevice *vkdevice)
+		: device(vkdevice) {}
+	~VulkanTextureView() override { if(get_state() != ResourceState::UNREADY) fini(); }
 
-    ResourceState get_state() override { return state; }
+	VK_TRACY_MEMORY_OVERLOADS;
 
-    void init(VulkanDevice *vkdevice, VkImageViewCreateInfo *view_info);
-    void fini();
+	ResourceState get_state() override { return state; }
 
-    VkImageView get_view() { return view; }
+	void init(VkImageViewCreateInfo *view_info);
+	void fini();
+
+	VkImageView get_view() { return view; }
 
 private:
-    VulkanDevice *device;
+	VulkanDevice *device;
 
-    VkImageView view;
-    ResourceState state = ResourceState::UNREADY;
+	VkImageView view;
+	ResourceState state = ResourceState::UNREADY;
 };

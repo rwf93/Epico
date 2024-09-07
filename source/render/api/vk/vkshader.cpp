@@ -2,11 +2,9 @@
 #include "vkshader.h"
 
 void VulkanShader::init(
-	VulkanDevice *vkdevice,
 	VkShaderModuleCreateInfo *vkcreateinfo,
 	VkPipelineShaderStageCreateInfo *vkstageinfo
 ) {
-	this->device = vkdevice;
 	this->stage_info = *vkstageinfo;
 	VK_CHECK(vkCreateShaderModule(device->get_device(), vkcreateinfo, nullptr, &shader_module));
 

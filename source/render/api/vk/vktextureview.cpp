@@ -2,11 +2,8 @@
 #include "vktexture.h"
 #include "vktextureview.h"
 
-void VulkanTextureView::init(VulkanDevice *vkdevice, VkImageViewCreateInfo *view_info) {
-    this->device = vkdevice;
-
+void VulkanTextureView::init(VkImageViewCreateInfo *view_info) {
     VK_CHECK(vkCreateImageView(device->get_device(), view_info, nullptr, &view));
-
     state = ResourceState::READY;
 }
 

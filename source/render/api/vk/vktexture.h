@@ -6,12 +6,18 @@ class VulkanBuffer;
 class VulkanCommand;
 class VulkanTexture: public RenderResource {
 public:
+	VulkanTexture(
+		VulkanDevice *vkdevice,
+		VulkanCommandPool *vkcommandpool,
+		VmaAllocator vkallocator
+	)
+		: device(vkdevice)
+		, command_pool(vkcommandpool)
+		, allocator(vkallocator) {}
+
 	~VulkanTexture() override { if(get_state() != ResourceState::UNREADY) fini(); }
 
 	void init(
-		VulkanDevice *vkdevice,
-		VulkanCommandPool *vkcommandpool,
-		VmaAllocator vkallocator,
 		VkImageCreateInfo *image_info,
 		VmaAllocationCreateInfo *create_info
 	);
@@ -41,4 +47,6 @@ private:
 
 	ResourceState state = ResourceState::UNREADY;
 	VkImageLayout last_layout;
+
+	VK_TRACY_MEMORY_OVERLOADS;
 };

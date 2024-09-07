@@ -59,24 +59,38 @@ VulkanResourceManager::~VulkanResourceManager() {
 	vmaDestroyAllocator(allocator);
 }
 
+BufferHandle VulkanResourceManager::create_buffer() {
+	return buffer_pool.acquire(new VulkanBuffer(
+		device,
+		command_pool,
+		allocator
+	)).value();
+}
+
 TextureHandle VulkanResourceManager::create_texture() {
-	return texture_pool.acquire().value();
+	return texture_pool.acquire(new VulkanTexture(
+		device,
+		command_pool,
+		allocator
+	)).value();
 }
 
 TextureViewHandle VulkanResourceManager::create_texture_view() {
-	return texture_view_pool.acquire().value();
+	return texture_view_pool.acquire(new VulkanTextureView(
+		device
+	)).value();
 }
 
 SamplerHandle VulkanResourceManager::create_sampler() {
-	return sampler_pool.acquire().value();
-}
-
-BufferHandle VulkanResourceManager::create_buffer() {
-	return buffer_pool.acquire().value();
+	return sampler_pool.acquire(new VulkanSampler(
+		device
+	)).value();
 }
 
 ShaderHandle VulkanResourceManager::create_shader() {
-	return shader_pool.acquire().value();
+	return shader_pool.acquire(new VulkanShader(
+		device
+	)).value();
 }
 
 RenderLayoutBuilder &VulkanResourceManager::create_layout() {
@@ -87,89 +101,6 @@ RenderLayoutBuilder &VulkanResourceManager::create_layout() {
 GraphicsProgramBuilder &VulkanResourceManager::create_graphics_program() {
 	graphics_program_builders.push_back(std::make_unique<VulkanGraphicsProgramBuilder>(device, this));
 	return *graphics_program_builders.at(graphics_program_builders.size() - 1);
-}
-
-void VulkanResourceManager::texture(
-	TextureHandle handle,
-	VkImageCreateInfo image_info,
-	void *data
-) {
-	auto resource = try_get_resource(handle).value();
-	assert(resource);
-
-	if(resource->get_state() == ResourceState::READY)
-		resource->fini();
-
-	auto allocate_info = info::allocation_create_info(0);
-	allocate_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	allocate_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	resource->init(
-		device,
-		command_pool,
-		allocator,
-		&image_info,
-		&allocate_info
-	);
-
-	// ditto.
-	if(!data)
-		return;
-
-	size_t size = image_info.extent.depth * image_info.extent.width * image_info.extent.height * 4;
-
-	auto staging_allocate_info = info::allocation_create_info();
-	auto staging_buffer_info = info::buffer_create_info(size);
-
-	VulkanBuffer staging_buffer;
-
-	staging_buffer.init(
-		device,
-		command_pool,
-		allocator,
-		&staging_buffer_info,
-		&staging_allocate_info
-	);
-
-	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
-	resource->stage(&staging_buffer, image_info.extent);
-
-	staging_buffer.fini();
-}
-
-void VulkanResourceManager::texture_view(
-	TextureViewHandle view_handle,
-	TextureHandle image_handle,
-	VkImageViewCreateInfo image_view_info
-) {
-	auto image_view = try_get_resource(view_handle).value();
-	auto image = try_get_resource(image_handle).value();
-
-	assert(image_view);
-	assert(image);
-
-	if(image_view->get_state() != ResourceState::UNREADY)
-		image_view->fini();
-
-	image_view_info.image = image->get_image();
-	image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	if(image->get_info()->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-
-	image_view->init(device, &image_view_info);
-}
-
-void VulkanResourceManager::sampler(
-	SamplerHandle handle,
-	VkSamplerCreateInfo sampler_create_info
-) {
-	auto sampler = try_get_resource(handle).value();
-	assert(sampler);
-
-	if(sampler->get_state() != ResourceState::UNREADY)
-		sampler->fini();
-
-	sampler->init(device, &sampler_create_info);
 }
 
 void VulkanResourceManager::buffer(BufferHandle handle, VkBufferCreateInfo create_info, void *data) {
@@ -183,9 +114,6 @@ void VulkanResourceManager::buffer(BufferHandle handle, VkBufferCreateInfo creat
 	auto allocate_info = info::allocation_create_info();
 
 	resource->init(
-		device,
-		command_pool,
-		allocator,
 		&create_info,
 		&allocate_info
 	);
@@ -194,11 +122,12 @@ void VulkanResourceManager::buffer(BufferHandle handle, VkBufferCreateInfo creat
 		return;
 
 	if(create_info.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
-		VulkanBuffer staging_buffer;
-		staging_buffer.init(
+		VulkanBuffer staging_buffer(
 			device,
 			command_pool,
-			allocator,
+			allocator
+		);
+		staging_buffer.init(
 			&staging_buffer_info,
 			&allocate_info
 		);
@@ -221,11 +150,12 @@ void VulkanResourceManager::buffer_sub(BufferHandle handle, VkDeviceSize offset,
 		auto allocate_info = info::allocation_create_info();
 		auto staging_buffer_info = info::buffer_create_info(size);
 
-		VulkanBuffer staging_buffer;
-		staging_buffer.init(
+		VulkanBuffer staging_buffer(
 			device,
 			command_pool,
-			allocator,
+			allocator
+		);
+		staging_buffer.init(
 			&staging_buffer_info,
 			&allocate_info
 		);
@@ -239,6 +169,84 @@ void VulkanResourceManager::buffer_sub(BufferHandle handle, VkDeviceSize offset,
 	}
 }
 
+void VulkanResourceManager::texture(
+	TextureHandle handle,
+	VkImageCreateInfo image_info,
+	void *data
+) {
+	auto resource = try_get_resource(handle).value();
+	assert(resource);
+
+	if(resource->get_state() == ResourceState::READY)
+		resource->fini();
+
+	auto allocate_info = info::allocation_create_info(0);
+	allocate_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	allocate_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	resource->init(
+		&image_info,
+		&allocate_info
+	);
+
+	// ditto.
+	if(!data)
+		return;
+
+	size_t size = image_info.extent.depth * image_info.extent.width * image_info.extent.height * 4;
+
+	auto staging_allocate_info = info::allocation_create_info();
+	auto staging_buffer_info = info::buffer_create_info(size);
+
+	VulkanBuffer staging_buffer(
+		device,
+		command_pool,
+		allocator
+	);
+	staging_buffer.init(
+		&staging_buffer_info,
+		&staging_allocate_info
+	);
+
+	memcpy(staging_buffer.get_allocation_info().pMappedData, data, size);
+	resource->stage(&staging_buffer, image_info.extent);
+}
+
+void VulkanResourceManager::texture_view(
+	TextureViewHandle view_handle,
+	TextureHandle image_handle,
+	VkImageViewCreateInfo image_view_info
+) {
+	auto image_view = try_get_resource(view_handle).value();
+	auto image = try_get_resource(image_handle).value();
+
+	assert(image_view);
+	assert(image);
+
+	if(image_view->get_state() != ResourceState::UNREADY)
+		image_view->fini();
+
+	image_view_info.image = image->get_image();
+	image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	if(image->get_info()->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+	image_view->init(&image_view_info);
+}
+
+void VulkanResourceManager::sampler(
+	SamplerHandle handle,
+	VkSamplerCreateInfo sampler_create_info
+) {
+	auto sampler = try_get_resource(handle).value();
+	assert(sampler);
+
+	if(sampler->get_state() != ResourceState::UNREADY)
+		sampler->fini();
+
+	sampler->init(&sampler_create_info);
+}
+
 void VulkanResourceManager::shader(ShaderHandle handle,
 	VkShaderModuleCreateInfo shader_info,
 	VkPipelineShaderStageCreateInfo stage_info
@@ -250,7 +258,6 @@ void VulkanResourceManager::shader(ShaderHandle handle,
 		resource->fini();
 
 	resource->init(
-		device,
 		&shader_info,
 		&stage_info
 	);

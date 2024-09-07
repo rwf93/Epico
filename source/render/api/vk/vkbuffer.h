@@ -4,9 +4,19 @@ class VulkanDevice;
 class VulkanCommandPool;
 class VulkanBuffer: public RenderResource {
 public:
+	VulkanBuffer(
+		VulkanDevice *vkdevice,
+		VulkanCommandPool *vkcommandpool,
+		VmaAllocator vkallocator
+	)
+		: device(vkdevice)
+		, command_pool(vkcommandpool)
+		, allocator(vkallocator) {}
 	~VulkanBuffer() override {
 		if(get_state() != ResourceState::UNREADY) fini();
 	}
+
+	VK_TRACY_MEMORY_OVERLOADS;
 
 	VkBuffer &get_buffer() { return buffer; }
 	VmaAllocation &get_allocation() { return allocation; }
@@ -20,13 +30,9 @@ public:
 	);
 
 	ResourceState get_state() override { return state; }
-
 	VkBufferCreateInfo &get_info() { return create_info; }
 
 	void init(
-		VulkanDevice *vkdevice,
-		VulkanCommandPool *vkcommandpool,
-		VmaAllocator vkallocator,
 		VkBufferCreateInfo *buffer_create_info,
 		VmaAllocationCreateInfo *allocation_create_info
 	);

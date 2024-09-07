@@ -4,15 +4,9 @@
 #include "vktexture.h"
 
 void VulkanTexture::init(
-	VulkanDevice *vkdevice,
-	VulkanCommandPool *vkcommandpool,
-	VmaAllocator vkallocator,
 	VkImageCreateInfo *image_info,
 	VmaAllocationCreateInfo *create_info
 ) {
-	this->device = vkdevice;
-	this->command_pool = vkcommandpool;
-	this->allocator = vkallocator;
 	this->info = *image_info;
 	this->last_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 

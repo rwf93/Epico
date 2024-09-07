@@ -21,14 +21,17 @@ public:
 	VulkanResourceManager(VulkanInstance *vkinstance, VulkanDevice *vkdevice, VulkanCommandPool *vkcommandpool);
 	~VulkanResourceManager();
 
+	BufferHandle create_buffer();
 	TextureHandle create_texture();
 	TextureViewHandle create_texture_view();
 	SamplerHandle create_sampler();
-	BufferHandle create_buffer();
 	ShaderHandle create_shader();
 
 	RenderLayoutBuilder &create_layout();
 	GraphicsProgramBuilder &create_graphics_program();
+
+	void buffer(BufferHandle handle, VkBufferCreateInfo create_info, void *data);
+	void buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
 	void texture(
 		TextureHandle handle,
@@ -43,9 +46,6 @@ public:
 	);
 
 	void sampler(SamplerHandle handle, VkSamplerCreateInfo sampler_create_info);
-
-	void buffer(BufferHandle handle, VkBufferCreateInfo create_info, void *data);
-	void buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size);
 
 	void shader(ShaderHandle handle, VkShaderModuleCreateInfo shader_info, VkPipelineShaderStageCreateInfo stage_info);
 
@@ -94,9 +94,10 @@ private:
 			}
 		}
 
-		std::optional<HandleType> acquire() {
+		std::optional<HandleType> acquire(ResourceType *type) {
 			if(head < PoolSize) {
 				auto handle = free_handles.at(head++);
+				resources.at(static_cast<size_t>(handle)) = type;
 				return handle;
 			}
 
@@ -104,24 +105,32 @@ private:
 		}
 
 		void release(HandleType handle) {
+			if(head <= 0) return;
 			free_handles.at(head--) = handle;
+
+			ResourceType **resource = &resources.at(static_cast<size_t>(handle));
+			if(*resource == nullptr) return;
+			delete *resource;
+			*resource = nullptr;
 		}
 
 		void release_all() {
-			resources.clear();
+			for(auto resource: resources)
+				if(resource != nullptr)
+					delete resource;
 			free_handles.clear();
 		}
 
 		std::optional<ResourceType*> resource(HandleType handle) {
 			try {
-				return &resources.at(static_cast<size_t>(handle));
+				return resources.at(static_cast<size_t>(handle));
 			} catch(...) {
 				return std::nullopt;
 			}
 		}
 
 		std::vector<HandleType> free_handles;
-		std::vector<ResourceType> resources;
+		std::vector<ResourceType*> resources;
 		uint32_t head = 0;
 	};
 
