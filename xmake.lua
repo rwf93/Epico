@@ -33,9 +33,10 @@ add_requires("glslang 1.3.283+0", {
 	}
 })
 
-add_requires("glfw 3.4" , {
+add_requires("libsdl", {
 	configs = {
-		glfw_includes = "vulkan"
+		sdlmain = false,
+		shared = true
 	}
 })
 
