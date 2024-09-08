@@ -5,12 +5,12 @@ set_warnings("allextra", "error")
 add_requires(
 	"stb 2024.06.01",
 	"spdlog v1.14.1",
-	"vulkan-headers",
-	"volk",
-	"vk-bootstrap",
-	"magic_enum",
-	"vulkan-memory-allocator",
-	"glm",
+	"vulkan-headers 1.3.290+0",
+	"volk 1.3.290+0",
+	"vk-bootstrap v1.3.292",
+	"vulkan-memory-allocator v3.1.0",
+	"magic_enum v0.9.6",
+	"glm 1.0.1",
 	"ktx",
 	"tracy"
 )
@@ -21,7 +21,7 @@ add_requires("fmt 11.0.1", {
 	}
 })
 
-add_requires("assimp", {
+add_requires("assimp v5.4.3", {
 	configs = {
 		shared = false
 	}
@@ -33,10 +33,9 @@ add_requires("glslang 1.3.283+0", {
 	}
 })
 
-add_requires("libsdl", {
+add_requires("glfw 3.4" , {
 	configs = {
-		sdlmain = false,
-		shared = true
+		glfw_includes = "vulkan"
 	}
 })
 
