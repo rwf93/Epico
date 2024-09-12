@@ -77,6 +77,31 @@ public:
 		return graphics_program_pool.resource(handle);
 	}
 
+	using HandleVariant = std::variant<
+		TextureHandle,
+		TextureViewHandle,
+		SamplerHandle,
+		BufferHandle,
+		LayoutHandle,
+		ShaderHandle,
+		GraphicsProgramHandle
+	>;
+
+	template<class... Ts>
+	struct OverloadedVisitor : Ts... { using Ts::operator()...; };
+
+	void release(HandleVariant handle) {
+		std::visit(OverloadedVisitor{
+			[&](TextureHandle handle) 			{ texture_pool.release(handle); },
+			[&](TextureViewHandle handle) 		{ texture_view_pool.release(handle); },
+			[&](SamplerHandle handle) 			{ sampler_pool.release(handle); },
+			[&](BufferHandle handle) 			{ buffer_pool.release(handle); },
+			[&](LayoutHandle handle) 			{ layout_pool.release(handle); },
+			[&](ShaderHandle handle) 			{ shader_pool.release(handle); },
+			[&](GraphicsProgramHandle handle) 	{ graphics_program_pool.release(handle); }
+		}, handle);
+	}
+
 private:
 	VulkanInstance *instance;
 	VulkanDevice *device;

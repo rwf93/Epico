@@ -9,6 +9,8 @@
 
 #include "rendererimpl.h"
 
+#include <variant>
+
 CREATE_FACTORY(VulkanAPI, AppContext);
 
 VulkanAPI::VulkanAPI(AppContext *context)
@@ -468,6 +470,9 @@ void VulkanAPI::shader(
 
 	if(shader_type & ShaderStage::FRAGMENT)
 		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	if(shader_type & ShaderStage::GEOMETRY)
+		stage_bits |= VK_SHADER_STAGE_GEOMETRY_BIT;
 
 	VkPipelineShaderStageCreateInfo shader_stage_info = {};
 	shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

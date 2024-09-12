@@ -8,7 +8,7 @@ void Mesh::load_from_file(std::filesystem::path path) {
     Assimp::Importer importer;
 	const aiScene *scene = importer.ReadFile(
 		filesystem->resolve_physical_dir(path).string().c_str(),
-		aiProcess_FlipUVs
+		aiProcess_FlipUVs | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | aiProcess_GenSmoothNormals
 	);
 
 	for(unsigned int i = 0; i < scene->mNumMeshes; i++) {

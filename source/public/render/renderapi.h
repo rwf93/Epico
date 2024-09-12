@@ -1,5 +1,6 @@
 #pragma once
 
+#include <public/refcountable.h>
 #include <public/render/renderresource.h>
 #include <public/render/renderlayout.h>
 #include <public/render/renderprogram.h>
@@ -50,7 +51,7 @@ struct UniformBind {
 struct AppContext;
 
 class RenderUI;
-class RenderAPI {
+class RenderAPI: public RefCountable {
 public:
 	virtual ~RenderAPI() = default;
 

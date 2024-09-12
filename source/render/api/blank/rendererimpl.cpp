@@ -1,4 +1,4 @@
-#include <platform/platform.h>
+#include <public/platform/platform.h>
 
 #include <public/render/renderapi.h>
 

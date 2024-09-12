@@ -15,6 +15,9 @@ RenderLayoutBuilder &VulkanLayoutBuilder::add_uniform(ShaderStage stage, Uniform
 	if(stage & ShaderStage::FRAGMENT)
 		stage_bits |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
+	if(stage & ShaderStage::GEOMETRY)
+		stage_bits |= VK_SHADER_STAGE_GEOMETRY_BIT;
+
 	auto info = info::descriptor_set_layout_binding(
 		convert::convert_uniform_type(type),
 		static_cast<VkShaderStageFlagBits>(stage_bits),

@@ -17,7 +17,8 @@ enum class AttributeType {
 
 enum class ShaderStage {
 	VERTEX = 1 << 0,
-	FRAGMENT = 1 << 1
+	FRAGMENT = 1 << 1,
+	GEOMETRY = 1 << 2,
 };
 
 inline ShaderStage operator | ( ShaderStage lhs, ShaderStage rhs ) {

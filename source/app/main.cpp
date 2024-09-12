@@ -11,8 +11,19 @@ glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm:
 	return translation_matrix * rotation_matrix * scale_matrix;
 }
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+glm::vec2 calculate_billboard(glm::vec3 translation, glm::mat4 projection, glm::mat4 view, int w, int h) {
+	glm::vec2 xy = {};
+
+	glm::vec4 world_space = glm::vec4(translation, 1.0f);
+	glm::vec4 screen_space = projection * view * world_space;
+	if(screen_space.w < 0.01) { return glm::vec2(-1000, -1000); }
+	screen_space /= screen_space.w;
+
+	xy.x = (screen_space.x + 1.0f) * 0.5f * w;
+	xy.y = (screen_space.y + 1.0f) * 0.5f * h;
+
+	return xy;
+}
 
 struct RenderResources {
 	SamplerHandle position_sampler = SamplerHandle::Invalid;
@@ -43,47 +54,7 @@ struct RenderResources {
 
 void setup_resources(RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources);
-void update_shader_buffers(RenderAPI *api, RenderResources *resources) {
-		api->buffer_sub(resources->scene_buffer, 0, sizeof(SceneData), &resources->scene);
-		api->buffer_sub(resources->storage_buffer, 0, StorageData::MAX_OBJECTS, &resources->storage);
-		api->buffer_sub(resources->light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &resources->lights);
-}
-
-// refactor
-struct TempTexture {
-	TextureHandle texture;
-	TextureViewHandle view;
-	SamplerHandle sampler;
-};
-
-void create_texture(RenderAPI *render_api, void *data, int width, int height, TempTexture *texture, ImageFormat format = ImageFormat::R8G8B8A8_UNORM) {
-	texture->texture = render_api->create_texture();
-	texture->view = render_api->create_texture_view();
-	texture->sampler = render_api->create_sampler();
-
-	render_api->texture(
-		texture->texture,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		format,
-		ImageFlags::SAMPLED,
-		data, width, height
-	);
-
-	render_api->texture_view(
-		texture->view,
-		texture->texture,
-		ImageViewDimensions::IMAGE_2D,
-		format, 0, 0
-	);
-
-	render_api->sampler(
-		texture->sampler,
-		SamplerAddressMode::REPEAT,
-		SamplerAddressMode::REPEAT,
-		SamplerAddressMode::REPEAT
-	);
-}
+void update_shader_buffers(RenderAPI *api, RenderResources *resources);
 
 class Model {
 public:
@@ -129,7 +100,7 @@ public:
 		for(auto &mesh: meshes)
 			mesh.draw(1, 0);
 	}
-private:
+public:
 	std::vector<Mesh> meshes;
 	std::vector<glm::mat4> transforms;
 
@@ -154,18 +125,16 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = get_factory<Filesystem*>("filesystem_std", &context, std::filesystem::weakly_canonical(argv[0]).parent_path().append("./"));
-	auto render_api = get_factory<RenderAPI*>("api_vk", &context, std::filesystem::weakly_canonical(argv[0]).parent_path().append("./"));
-
-	if(!filesystem.good) {
-		spdlog::error("Couldn't load VFS");
-		return 0;
-	}
-
-	if(!render_api.good) {
-		spdlog::error("Couldn't load renderer");
-		return 0;
-	}
+	auto filesystem = FactoryHandle<Filesystem, AppContext*>(
+		"filesystem_std",
+		&context,
+		std::filesystem::weakly_canonical(argv[0]).parent_path().append("./")
+	);
+	auto render_api = FactoryHandle<RenderAPI, AppContext*>(
+		"api_vk",
+		&context,
+		std::filesystem::weakly_canonical(argv[0]).parent_path().append("./")
+	);
 
 	filesystem->mount("assets/", "../../assets/");
 	filesystem->mount("assets/models/", "../../assets/models/");
@@ -173,34 +142,25 @@ int main(int argc, char *argv[]) {
 	filesystem->mount("assets/textures/", "../../assets/textures/");
 	filesystem->mount("assets/shaders/", "../assets/shaders/");
 
-	uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
-	uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
-	std::array<uint32_t, 16 *16> missing_texture_data;
-	for (int x = 0; x < 16; x++) {
-		for (int y = 0; y < 16; y++) {
-			missing_texture_data[y*16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
-		}
-	}
-
-	Texture armor_albedo_texture(render_api.interface);
-	ImageTexture armor_albedo_image(&armor_albedo_texture, filesystem.interface);
+	Texture armor_albedo_texture(render_api);
+	ImageTexture armor_albedo_image(&armor_albedo_texture, filesystem);
 	armor_albedo_image.upload_from_ktx("assets/textures/colormap_rgba.ktx");
 
-	Texture armor_normal_texture(render_api.interface);
-	ImageTexture armor_normal_image(&armor_normal_texture, filesystem.interface);
+	Texture armor_normal_texture(render_api);
+	ImageTexture armor_normal_image(&armor_normal_texture, filesystem);
 	armor_normal_image.upload_from_ktx("assets/textures/normalmap_rgba.ktx");
 
-	Texture skybox_texture(render_api.interface);
-	ImageTexture skybox_image(&skybox_texture, filesystem.interface);
+	Texture skybox_texture(render_api);
+	ImageTexture skybox_image(&skybox_texture, filesystem);
 	skybox_image.upload_from_ktx("assets/textures/skysphere_rgba.ktx");
 
-	Texture monkey_normals(render_api.interface);
-	ImageTexture monkey_normals_image(&monkey_normals, filesystem.interface);
+	Texture monkey_normals(render_api);
+	ImageTexture monkey_normals_image(&monkey_normals, filesystem);
 	monkey_normals_image.upload_from_ktx("assets/textures/suzanne_normal.ktx");
 
 	RenderResources resources = {};
-	setup_resources(render_api.interface, &resources);
-	setup_pass_resources(&context, render_api.interface, &resources);
+	setup_resources(render_api, &resources);
+	setup_pass_resources(&context, render_api, &resources);
 	render_api->on_resize([&](RenderAPI* renderer) {
 		setup_pass_resources(&context, renderer, &resources);
 	});
@@ -212,6 +172,8 @@ int main(int argc, char *argv[]) {
 	auto skybox_vertex = render_api->create_shader();
 	auto skybox_fragment = render_api->create_shader();
 	auto skybox_weird_fragment = render_api->create_shader();
+	auto shadow_vertex = render_api->create_shader();
+	auto shadow_geometry = render_api->create_shader();
 
 	render_api->shader(
 		deferred_vertex,
@@ -253,6 +215,18 @@ int main(int argc, char *argv[]) {
 		skybox_weird_fragment,
 		ShaderStage::FRAGMENT,
 		filesystem->read_file<char>("assets/shaders/skybox_weird.frag.spv", true)
+	);
+
+	render_api->shader(
+		shadow_vertex,
+		ShaderStage::VERTEX,
+		filesystem->read_file<char>("assets/shaders/shadow.vert.spv", true)
+	);
+
+	render_api->shader(
+		shadow_geometry,
+		ShaderStage::GEOMETRY,
+		filesystem->read_file<char>("assets/shaders/shadow.geom.spv", true)
 	);
 
 	auto deferred_layout = render_api->create_layout()
@@ -312,6 +286,17 @@ int main(int argc, char *argv[]) {
 		.set_layout(composition_layout)
 		.build();
 
+	auto shadow_program = render_api->create_graphics_program()
+		.set_depth_format(ImageFormat::D32_SFLOAT)
+		.add_binding(sizeof(Vertex), BindingRate::VERTEX)
+		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
+		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
+		.add_stage(shadow_vertex)
+		.add_stage(shadow_geometry)
+		.build();
+
 	auto &skybox_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
@@ -337,15 +322,15 @@ int main(int argc, char *argv[]) {
 		.add_stage(skybox_weird_fragment)
 		.build();
 
-	UNUSED(skybox_weird_program);
+	UNUSED(shadow_program)
 
-	Mesh armor_mesh(filesystem.interface, render_api.interface);
+	Mesh armor_mesh(filesystem, render_api);
 	armor_mesh.load_from_file("assets/models/armor.gltf");
 
-	Mesh monkey_mesh(filesystem.interface, render_api.interface);
+	Mesh monkey_mesh(filesystem, render_api);
 	monkey_mesh.load_from_file("assets/models/monkey.glb");
 
-	Mesh sphere_mesh(filesystem.interface, render_api.interface);
+	Mesh sphere_mesh(filesystem, render_api);
 	sphere_mesh.load_from_file("assets/models/sphere.glb");
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
@@ -386,10 +371,10 @@ int main(int argc, char *argv[]) {
 		resources.scene.resolution = glm::vec2(context.width, context.height);
 		resources.scene.time = context.time;
 		resources.scene.time_delta = context.time_delta;
-		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-		resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1));
+		resources.scene.camera_position = camera.get_position() * -1.0f;
+		resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(context.time), glm::vec3(0.01f));
 
-		update_shader_buffers(render_api.interface, &resources);
+		update_shader_buffers(render_api, &resources);
 
 		render_api->begin();
 		{
@@ -453,8 +438,7 @@ int main(int argc, char *argv[]) {
 				deferred_binds.pop_back();
 				deferred_binds.pop_back();
 
-				monkey_mesh.draw(1, 0);
-
+				armor_mesh.draw(1, 0);
 			render_api->end_pass(deferred_attachments);
 
 			static std::vector<SubpassAttachment> composition_attachments = {
@@ -578,6 +562,23 @@ int main(int argc, char *argv[]) {
 					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(resources.lights[i].color));
 					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &resources.lights[i].radius, 0.5, 100);
 					ImGui::Separator();
+
+					auto pos = calculate_billboard(
+						resources.lights[i].position,
+						resources.scene.projection,
+						resources.scene.view,
+						context.width,
+						context.height
+					);
+					ImGui::GetBackgroundDrawList()->AddCircleFilled(
+						ImVec2(pos.x, pos.y),
+						resources.lights[i].radius,
+						ImColor(
+							resources.lights[i].color.x,
+							resources.lights[i].color.y,
+							resources.lights[i].color.z
+						)
+					);
 				}
 
 				ImGui::Checkbox("Enable Testing Shader", &testing);
@@ -614,8 +615,6 @@ int main(int argc, char *argv[]) {
 		start_time = current_time;
 	}
 
-	render_api.release();
-	filesystem.release();
 	SDL_Quit();
 
 	return 0;
@@ -772,4 +771,10 @@ void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResour
 		ImageFormat::R16G16B16A16_SFLOAT,
 		0, 0
 	);
+}
+
+void update_shader_buffers(RenderAPI *api, RenderResources *resources) {
+	api->buffer_sub(resources->scene_buffer, 0, sizeof(SceneData), &resources->scene);
+	api->buffer_sub(resources->storage_buffer, 0, StorageData::MAX_OBJECTS, &resources->storage);
+	api->buffer_sub(resources->light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &resources->lights);
 }

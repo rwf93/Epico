@@ -1,7 +1,7 @@
 #ifndef STDAFX_H
 #define STDAFX_H
 
-#include <platform/platform.h>
+#include <public/platform/platform.h>
 #include <public/filesystem/filesystem.h>
 
 #include <spdlog/spdlog.h>

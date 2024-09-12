@@ -12,11 +12,11 @@
 #endif
 
 #if defined(PLATFORM_WINDOWS)
-	#include <platform/platform_windows.h>
+	#include <public/platform/platform_windows.h>
 #elif defined(PLATFORM_LINUX)
-	#include <platform/platform_linux.h>
+	#include <public/platform/platform_linux.h>
 #else
 	#error "Unsupported Platform"
 #endif
 
-#include <platform/platform_shared.h>
+#include <public/platform/platform_shared.h>

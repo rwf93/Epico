@@ -5,8 +5,9 @@
 #include <functional>
 #include <map>
 #include <span>
+#include <variant>
 
-#include <platform/platform.h>
+#include <public/platform/platform.h>
 
 #define VK_NO_PROTOTYPES
 

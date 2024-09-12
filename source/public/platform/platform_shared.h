@@ -36,52 +36,52 @@ inline void platform_freelibrary(ModuleHandle_t handle) {
 	WIN_LINUX(FreeLibrary, dlclose)(handle);
 }
 
-template<typename T>
-struct FactoryHandle {
-	ModuleHandle_t handle = nullptr;
-	T interface = nullptr;
-	bool good = false;
+#include <public/refcountable.h>
+template<class T, class U>
+concept Derived = std::is_base_of<U, T>::value;
+
+template<Derived<RefCountable> T, typename ContextType>
+class FactoryHandle {
+public:
+	FactoryHandle(
+		const char *binary,
+		ContextType context,
+		std::filesystem::path dir = "./",
+		const char *factory_function = "create_factory"
+	)
+		: handle(platform_loadlibrary(binary, dir))
+		, create_factory(platform_get_function<CreateFactoryType>(handle, factory_function))
+		, interface(create_factory(context)) {
+			interface->add_ref();
+		}
+
+	~FactoryHandle() {
+		release();
+	}
 
 	void release() {
-		if(good) {
-			delete interface;
-			platform_freelibrary(handle);
+		if(interface->get_ref() > 0) {
+			interface->del_ref();
+			return;
 		}
+
+		delete interface;
+		platform_freelibrary(handle);
 	}
 
-	T operator->() {
-		if(good)
-			return interface;
-		return nullptr;
+	T *operator->() {
+		return interface;
 	}
-};
 
-// Loads a shared library, calls it's factory function, and returns a FactoryHandle instance. ContextType is for your userdefined ContextType (check source/public/appcontext.h)
-template<typename T, typename ContextType>
-inline FactoryHandle<T> get_factory(const char *binary, ContextType context, std::filesystem::path dir = "./", const char *factory_function = "create_factory") {
-	using CreateFactoryType = T(ContextType);
-	CreateFactoryType *create_factory;
-	T factory_result;
+	operator T*() {
+		return interface;
+	}
 
-	ModuleHandle_t handle = platform_loadlibrary(binary, dir);
-
-	if(!handle)
-		goto fail;
-
-	create_factory = platform_get_function<CreateFactoryType>(handle, factory_function);
-
-	if(!create_factory)
-		goto fail_factory;
-
-	factory_result = create_factory(context);
-	if(!factory_result)
-		goto fail_factory;
-
-	return {handle, factory_result, true};
-fail_factory:
-	platform_freelibrary(handle);
-fail:
-	return {nullptr, nullptr, false};
+private:
+	using CreateFactoryType = T*(ContextType);
+	ModuleHandle_t handle = nullptr;
+	CreateFactoryType *create_factory = nullptr;
+	T *interface = nullptr;
 };
 
 #define CREATE_FACTORY(CONCRETE_IMPL, CONTEXT_TYPE)									\

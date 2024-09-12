@@ -88,9 +88,15 @@ public:
 
 	RenderUI *ui() { return &ui_imgui; };
 
+	void add_ref() { ref_count++; }
+	void del_ref() { ref_count--; }
+	uint32_t get_ref() { return ref_count;  }
+
 protected:
 	void rebuild();
 private:
+	std::atomic<uint32_t> ref_count = 0;
+
 	AppContext *context;
 	std::shared_ptr<spdlog::logger> logger;
 

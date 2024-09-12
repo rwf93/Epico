@@ -1,7 +1,7 @@
 #ifndef STDAFX_H
 #define STDAFX_H
 
-#include <platform/platform.h>
+#include <public/platform/platform.h>
 
 #include <public/appcontext.h>
 #include <public/render/renderapi.h>

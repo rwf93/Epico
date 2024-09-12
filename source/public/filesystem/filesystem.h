@@ -5,9 +5,10 @@
 #include <fstream>
 #include <vector>
 
-struct AppContext;
+#include <public/refcountable.h>
 
-class Filesystem {
+struct AppContext;
+class Filesystem: public RefCountable {
 public:
 	virtual ~Filesystem() = default;
 

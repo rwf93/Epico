@@ -22,7 +22,7 @@ void main() {
     vec3 normal = texture(normal_attachment, in_uv).rgb;
     vec4 albedo = texture(albedo_attachment, in_uv);
 
-    vec3 lighting = albedo.rgb * 0.0;
+    vec3 lighting = albedo.rgb * 0.1;
     vec3 view_direction = normalize(scene.camera_position.xyz - position);
 
     for(int i = 0; i < MAX_LIGHTS; i++) {

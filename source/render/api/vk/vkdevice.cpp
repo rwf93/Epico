@@ -13,6 +13,8 @@ VulkanDevice::VulkanDevice(VulkanInstance *vkinstance, VulkanSurface *vksurface)
 void VulkanDevice::retreive_device() {
 	VkPhysicalDeviceFeatures features = {};
 	features.fillModeNonSolid = true;
+	features.geometryShader = true;
+	features.tessellationShader = true;
 
 	VkPhysicalDeviceVulkan13Features features_13 = {};
 	features_13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

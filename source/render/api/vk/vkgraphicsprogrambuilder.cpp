@@ -69,7 +69,8 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 
 	std::vector<VkDynamicState> dynamic_states = {
 		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR
+		VK_DYNAMIC_STATE_SCISSOR,
+		VK_DYNAMIC_STATE_DEPTH_BIAS
 	};
 
 	VkPipelineDynamicStateCreateInfo dynamic_info = {};
@@ -132,9 +133,6 @@ GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_depth_test(
 	stencil_info.depthTestEnable = test_enable;
 	stencil_info.depthWriteEnable = write_enable;
 	stencil_info.depthCompareOp = convert::convert_compare_op(compare);
-	rasterizer_info.depthBiasEnable = VK_TRUE;
-	rasterizer_info.depthBiasConstantFactor = 4.0f;
-	rasterizer_info.depthBiasSlopeFactor = 1.5f;
 
 	return *this;
 }
@@ -215,11 +213,11 @@ GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_layout(LayoutHandle la
 
 GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::add_attachment(ImageFormat format) {
 	VkPipelineColorBlendAttachmentState color_blend_state = {};
-	color_blend_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+	color_blend_state.colorWriteMask =
+								VK_COLOR_COMPONENT_R_BIT |
 								VK_COLOR_COMPONENT_G_BIT |
 								VK_COLOR_COMPONENT_B_BIT |
 								VK_COLOR_COMPONENT_A_BIT;
-	color_blend_state.blendEnable = VK_FALSE;
 	color_states.push_back(color_blend_state);
 
 	attachment_formats.push_back(convert::convert_image_format(format));
