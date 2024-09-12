@@ -39,11 +39,11 @@ void main() {
         vec3 N = normalize(normal);
         float NdotL = max(0.0, dot(N, L));
 
-        vec3 diff = light.color * albedo.rgb * NdotL * atten;
+        vec3 diff = light.color.rgb * albedo.rgb * NdotL * atten;
 
         vec3 R = reflect(-L, N);
         float NdotR = max(0.0, dot(R, V));
-        vec3 spec = light.color * albedo.a * pow(NdotR, 16.0) * atten;
+        vec3 spec = light.color.rgb * albedo.a * pow(NdotR, 16.0) * atten;
 
         lighting += diff + spec;
     }

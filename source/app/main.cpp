@@ -371,7 +371,7 @@ int main(int argc, char *argv[]) {
 		resources.scene.resolution = glm::vec2(context.width, context.height);
 		resources.scene.time = context.time;
 		resources.scene.time_delta = context.time_delta;
-		resources.scene.camera_position = camera.get_position() * -1.0f;
+		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 		resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(context.time), glm::vec3(0.01f));
 
 		update_shader_buffers(render_api, &resources);
