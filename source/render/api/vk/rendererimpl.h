@@ -9,8 +9,11 @@ public:
 	void end() override;
 	void present() override;
 
+	void begin_label(DebugLabel marker) override;
+	void end_label() override;
+
 	void begin_pass(std::span<SubpassAttachment> dependencies) override;
-	void end_pass(std::span<SubpassAttachment> dependencies) override;
+	void end_pass() override;
 
 	void clear(float r, float g, float b, float a) override;
 	void clear(TextureHandle handle, float r, float g, float b, float a) override;

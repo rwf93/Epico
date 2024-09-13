@@ -55,6 +55,61 @@ void setup_resources(RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources);
 void update_shader_buffers(RenderAPI *api, RenderResources *resources);
 
+class NewTexture {
+	struct M {
+		RenderAPI *api;
+		TextureHandle texture;
+		TextureViewHandle view;
+		SamplerHandle sampler;
+	} m;
+
+	explicit NewTexture(M m) : m(std::move(m)) {}
+public:
+	static NewTexture create(
+		RenderAPI *api,
+		SamplerAddressMode address_u, SamplerAddressMode address_v,
+		ImageFormat format,
+		void *data,
+		int width, int height
+	) {
+		auto texture = api->create_texture();
+		auto view = api->create_texture_view();
+		auto sampler = api->create_sampler();
+
+		api->texture(
+			texture,
+			ImageDimensions::IMAGE_2D,
+			ImageSamples::SAMPLE_COUNT_1_BIT,
+			format,
+			ImageFlags::SAMPLED,
+			data,
+			width, height
+		);
+
+		api->texture_view(
+			view,
+			texture,
+			ImageViewDimensions::IMAGE_2D,
+			format,
+			0, 0
+		);
+
+		api->sampler(
+			sampler,
+			address_u,
+			address_v,
+			SamplerAddressMode::CLAMP_BORDER
+		);
+
+		return NewTexture(M{
+			.api = api,
+			.texture = texture,
+			.view = view,
+			.sampler = sampler
+		});
+	}
+};
+
 class Mesh {
 	struct M {
 		RenderAPI *api;
@@ -113,23 +168,30 @@ public:
 			.api = api,
 			.vbo = vbo,
 			.ibo = ibo,
-			.index_count = static_cast<uint32_t>(indicies.size())
+			.index_count = static_cast<uint32_t>(indicies.size()),
 		});
 	}
 
-	void draw() {
+	void draw(uint32_t instance_count = 1, uint32_t first_instance = 0) {
 		m.api->bind_buffer(m.vbo, BindBufferType::VERTEX);
 		m.api->bind_buffer(m.ibo, BindBufferType::INSTANCE);
-		m.api->draw_instanced(m.index_count, 1);
+		m.api->draw_instanced(m.index_count, instance_count, first_instance);
 	}
 };
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 class Model {
+	struct PerMeshData {
+		Mesh mesh;
+		glm::mat4 transform;
+	};
+
 	struct M {
 		RenderAPI *api;
 		Filesystem *fs;
-		std::vector<Mesh> meshes;
-		std::vector<glm::mat4> transforms;
+		std::vector<PerMeshData> data;
 	} m;
 
 	explicit Model(M m) : m(std::move(m)) {}
@@ -145,22 +207,23 @@ class Model {
 
 	static void process_node(
 		RenderAPI *api,
+		Filesystem *fs,
 		aiNode *node,
 		const aiScene *scene,
-		std::vector<Mesh> &meshes,
-		std::vector<glm::mat4> &transform,
+		std::vector<PerMeshData> &data,
 		glm::mat4 parent_transform
 	) {
-		auto current_transform = parent_transform * convert_matrix(node->mTransformation);
+		auto local_transform = parent_transform * convert_matrix(node->mTransformation);
 
 		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
-			auto mesh = scene->mMeshes[node->mMeshes[i]];
-			meshes.push_back(Mesh::create(api, mesh));
-			transform.push_back(current_transform);
+			data.push_back(PerMeshData{
+				.mesh = Mesh::create(api, scene->mMeshes[node->mMeshes[i]]),
+				.transform = local_transform
+			});
 		}
 
 		for(unsigned int i = 0; i < node->mNumChildren; i++) {
-			process_node(api, node, scene, meshes, transform, current_transform);
+			process_node(api, fs, node, scene, data, local_transform);
 		}
 	}
 
@@ -175,40 +238,39 @@ public:
 			fs->resolve_physical_dir(model_file).string(),
 			aiProcess_Triangulate | aiProcess_FlipUVs
 		);
-		std::vector<Mesh> meshes = {};
-		std::vector<glm::mat4> transforms = {};
+
+		std::vector<PerMeshData> data = {};
 
 		process_node(
 			api,
+			fs,
 			scene->mRootNode,
 			scene,
-			meshes,
-			transforms,
+			data,
 			calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0f))
 		);
 
-		return Model(M {
+		return Model(M{
 			.api = api,
 			.fs = fs,
-			.meshes = meshes,
-			.transforms = transforms
+			.data = data
 		});
 	}
 
 	void draw(StorageData *render_objects, uint32_t &object_index) {
-		UNUSED(render_objects);
-		UNUSED(object_index);
+		m.api->begin_label(DebugLabel { .name = fmt::format("Model ({})", (void*)this).c_str(), .rgba = { 0.2f, 0.761f, 0.71f, 1.0f } });
 
-		for(auto &transform: m.transforms)
-			render_objects[object_index++].model = transform;
+		for(auto &data: m.data) {
+			data.mesh.draw(1, object_index > 0 ? object_index : 0);
+			render_objects[object_index++].model = data.transform;
+		}
 
-		for(auto &mesh: m.meshes)
-			mesh.draw();
+		m.api->end_label();
 	}
 
 	void draw() {
-		for(auto &mesh: m.meshes)
-			mesh.draw();
+		for(auto &data: m.data)
+			data.mesh.draw();
 	}
 };
 
@@ -410,6 +472,12 @@ int main(int argc, char *argv[]) {
 	auto sponza_model = Model::create(
 		render_api,
 		filesystem,
+		"assets/models/sponza.glb"
+	);
+
+	auto armor_model = Model::create(
+		render_api,
+		filesystem,
 		"assets/models/armor.gltf"
 	);
 
@@ -509,7 +577,7 @@ int main(int argc, char *argv[]) {
 			};
 
 			static bool testing = false;
-
+			render_api->begin_label(DebugLabel { .name = "Geometry Pass", .rgba = { 0.22f, 0.761f, 0.294f, 1.0f } });
 			render_api->begin_pass(deferred_attachments);
 				render_api->bind_program(testing ? deferred_test_program : deferred_program);
 
@@ -521,7 +589,8 @@ int main(int argc, char *argv[]) {
 
 				uint32_t storage_index = 0;
 				sponza_model.draw(resources.storage, storage_index);
-			render_api->end_pass(deferred_attachments);
+			render_api->end_pass();
+			render_api->end_label();
 
 			static std::vector<SubpassAttachment> composition_attachments = {
 				{
@@ -586,12 +655,14 @@ int main(int argc, char *argv[]) {
 					.type = UniformType::TEXTURE,
 				},
 			};
-			// Lighting/Composition pass
+
+			render_api->begin_label(DebugLabel { .name = "Composition Pass", .rgba = { 0.82f, 0.82f, 0.278f, 1.0f } });
 			render_api->begin_pass(composition_attachments);
 				render_api->bind_uniform(composition_layout, composition_binds);
 				render_api->bind_program(composition_shader);
 				render_api->draw(3, 1);
-			render_api->end_pass(composition_attachments);
+			render_api->end_pass();
+			render_api->end_label();
 
 			static std::vector<SubpassAttachment> skybox_attachments = {
 				{
@@ -618,11 +689,13 @@ int main(int argc, char *argv[]) {
 			};
 
 			// Skybox pass
+			render_api->begin_label(DebugLabel { .name = "Skybox Pass", .rgba = { 0.224f, 0.804f, 0.902f, 1.0f } });
 			render_api->begin_pass(skybox_attachments);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
 				render_api->bind_program(testing ? skybox_weird_program : skybox_shader);
 				sphere_model.draw();
-			render_api->end_pass(skybox_attachments);
+			render_api->end_pass();
+			render_api->end_label();
 
 			render_api->show_image(resources.composition);
 

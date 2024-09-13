@@ -11,6 +11,11 @@
 #include <array>
 #include <optional>
 
+struct DebugLabel {
+	const char *name;
+	std::array<float, 4> rgba = { 0.0f, 0.0f, 0.0f, 1.0f };
+};
+
 enum class AttachmentType {
 	COLOR,
 	DEPTH,
@@ -57,11 +62,13 @@ public:
 
 	virtual void begin() = 0;
 	virtual void end() = 0;
+	virtual void present() = 0;
+
+	virtual void begin_label(DebugLabel marker) = 0;
+	virtual void end_label() = 0;
 
 	virtual void begin_pass(std::span<SubpassAttachment> dependencies) = 0;
-	virtual void end_pass(std::span<SubpassAttachment> dependencies) = 0;
-
-	virtual void present() = 0;
+	virtual void end_pass() = 0;
 
 	virtual void clear(TextureHandle handle, float r, float g, float b, float a) = 0;
 	virtual void clear(float r, float g, float b, float a) = 0;

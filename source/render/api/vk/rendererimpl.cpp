@@ -85,6 +85,40 @@ void VulkanAPI::end() {
 	VK_CHECK(vkQueueSubmit2(device.get_graphics_queue(), 1, &submit_info, command_pool.get_fence()));
 }
 
+void VulkanAPI::present() {
+	ZoneScoped;
+
+	VkPresentInfoKHR present_info = {};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.pSwapchains = &swapchain.get_swapchain().swapchain;
+	present_info.swapchainCount = 1;
+	present_info.pWaitSemaphores = &command_pool.get_finished_semaphore();
+	present_info.waitSemaphoreCount = 1;
+	present_info.pImageIndices = &swapchain.get_image_index();
+
+	VkResult present_result = vkQueuePresentKHR(device.get_present_queue(), &present_info);
+	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
+		rebuild();
+
+	command_pool.advance();
+	FrameMark;
+}
+
+void VulkanAPI::begin_label(DebugLabel marker) {
+	VkDebugUtilsLabelEXT label_info = {};
+	label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+	label_info.color[0] = marker.rgba[0];
+	label_info.color[1] = marker.rgba[1];
+	label_info.color[2] = marker.rgba[2];
+	label_info.color[3] = marker.rgba[3];
+	label_info.pLabelName = marker.name;
+	vkCmdBeginDebugUtilsLabelEXT(command_pool.get_command()->get_command(), &label_info);
+}
+
+void VulkanAPI::end_label() {
+	vkCmdEndDebugUtilsLabelEXT(command_pool.get_command()->get_command());
+}
+
 void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	ZoneScoped;
 
@@ -138,40 +172,9 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	command_pool.get_command()->begin_rendering(&rendering_info);
 }
 
-void VulkanAPI::end_pass(std::span<SubpassAttachment> dependencies) {
+void VulkanAPI::end_pass() {
+	ZoneScoped;
 	command_pool.get_command()->end_rendering();
-
-	for(auto &dependency: dependencies) {
-		auto resource = resource_manager.try_get_resource(dependency.texture).value();
-		UNUSED(resource);
-		switch(dependency.type) {
-			case AttachmentType::COLOR:
-			case AttachmentType::DEPTH:
-			case AttachmentType::SHADER:
-			default: break;
-		}
-	}
-
-	ZoneScoped;
-}
-
-void VulkanAPI::present() {
-	ZoneScoped;
-
-	VkPresentInfoKHR present_info = {};
-	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.pSwapchains = &swapchain.get_swapchain().swapchain;
-	present_info.swapchainCount = 1;
-	present_info.pWaitSemaphores = &command_pool.get_finished_semaphore();
-	present_info.waitSemaphoreCount = 1;
-	present_info.pImageIndices = &swapchain.get_image_index();
-
-	VkResult present_result = vkQueuePresentKHR(device.get_present_queue(), &present_info);
-	if(present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
-		rebuild();
-
-	command_pool.advance();
-	FrameMark;
 }
 
 void VulkanAPI::clear(float r, float g, float b, float a) {
