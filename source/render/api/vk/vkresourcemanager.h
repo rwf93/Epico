@@ -162,8 +162,8 @@ private:
 	friend class VulkanLayoutBuilder;
 	friend class VulkanGraphicsProgramBuilder;
 
-	std::vector<std::unique_ptr<VulkanLayoutBuilder>> layout_builders;
-	std::vector<std::unique_ptr<VulkanGraphicsProgramBuilder>> graphics_program_builders;
+	std::vector<VulkanLayoutBuilder> layout_builders;
+	std::vector<VulkanGraphicsProgramBuilder> graphics_program_builders;
 
 	ResourcePool<TextureHandle, VulkanTexture, 1024> texture_pool;
 	ResourcePool<TextureViewHandle, VulkanTextureView, 1024> texture_view_pool;

@@ -94,13 +94,13 @@ ShaderHandle VulkanResourceManager::create_shader() {
 }
 
 RenderLayoutBuilder &VulkanResourceManager::create_layout() {
-	layout_builders.push_back(std::make_unique<VulkanLayoutBuilder>(device, this));
-	return *layout_builders.at(layout_builders.size() - 1);
+	layout_builders.push_back(VulkanLayoutBuilder(device, this));
+	return layout_builders.at(layout_builders.size() - 1);
 }
 
 GraphicsProgramBuilder &VulkanResourceManager::create_graphics_program() {
-	graphics_program_builders.push_back(std::make_unique<VulkanGraphicsProgramBuilder>(device, this));
-	return *graphics_program_builders.at(graphics_program_builders.size() - 1);
+	graphics_program_builders.push_back(VulkanGraphicsProgramBuilder(device, this));
+	return graphics_program_builders.at(graphics_program_builders.size() - 1);
 }
 
 void VulkanResourceManager::buffer(BufferHandle handle, VkBufferCreateInfo create_info, void *data) {

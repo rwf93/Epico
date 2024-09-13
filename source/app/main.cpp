@@ -125,12 +125,12 @@ int main(int argc, char *argv[]) {
 		return 0;
 	};
 
-	auto filesystem = FactoryHandle<Filesystem, AppContext*>(
+	auto filesystem = FactoryHandle<Filesystem, AppContext*>::create(
 		"filesystem_std",
 		&context,
 		std::filesystem::weakly_canonical(argv[0]).parent_path().append("./")
 	);
-	auto render_api = FactoryHandle<RenderAPI, AppContext*>(
+	auto render_api = FactoryHandle<RenderAPI, AppContext*>::create(
 		"api_vk",
 		&context,
 		std::filesystem::weakly_canonical(argv[0]).parent_path().append("./")
@@ -172,8 +172,6 @@ int main(int argc, char *argv[]) {
 	auto skybox_vertex = render_api->create_shader();
 	auto skybox_fragment = render_api->create_shader();
 	auto skybox_weird_fragment = render_api->create_shader();
-	auto shadow_vertex = render_api->create_shader();
-	auto shadow_geometry = render_api->create_shader();
 
 	render_api->shader(
 		deferred_vertex,
@@ -215,18 +213,6 @@ int main(int argc, char *argv[]) {
 		skybox_weird_fragment,
 		ShaderStage::FRAGMENT,
 		filesystem->read_file<char>("assets/shaders/skybox_weird.frag.spv", true)
-	);
-
-	render_api->shader(
-		shadow_vertex,
-		ShaderStage::VERTEX,
-		filesystem->read_file<char>("assets/shaders/shadow.vert.spv", true)
-	);
-
-	render_api->shader(
-		shadow_geometry,
-		ShaderStage::GEOMETRY,
-		filesystem->read_file<char>("assets/shaders/shadow.geom.spv", true)
 	);
 
 	auto deferred_layout = render_api->create_layout()
@@ -286,17 +272,6 @@ int main(int argc, char *argv[]) {
 		.set_layout(composition_layout)
 		.build();
 
-	auto shadow_program = render_api->create_graphics_program()
-		.set_depth_format(ImageFormat::D32_SFLOAT)
-		.add_binding(sizeof(Vertex), BindingRate::VERTEX)
-		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
-		.add_stage(shadow_vertex)
-		.add_stage(shadow_geometry)
-		.build();
-
 	auto &skybox_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
 		.set_depth_format(ImageFormat::D32_SFLOAT)
@@ -321,8 +296,6 @@ int main(int argc, char *argv[]) {
 		.add_stage(skybox_vertex)
 		.add_stage(skybox_weird_fragment)
 		.build();
-
-	UNUSED(shadow_program)
 
 	Mesh armor_mesh(filesystem, render_api);
 	armor_mesh.load_from_file("assets/models/armor.gltf");

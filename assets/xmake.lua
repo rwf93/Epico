@@ -1,7 +1,7 @@
 target("shaders")
 	set_kind("object")
 	add_rules("utils.glsl2spv", { outputdir = "$(projectdir)/output/assets/shaders" })
-	add_files("shaders/*.vert", "shaders/*.frag", "shaders/*.geom")
+	add_files("shaders/*.vert", "shaders/*.frag")
 	add_packages("glslang")
 	add_rules("defaults_rule")
 	on_install(function(target)

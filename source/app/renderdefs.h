@@ -24,8 +24,8 @@ struct SceneData {
 	C(glm::mat4, mat4) view;
 	C(glm::mat4, mat4) projection;
 	C(glm::vec4, vec4) camera_position;
-	C(int32_t, int) gbuffer_selection;
 	C(glm::vec2, vec2) resolution;
+	C(int, int) gbuffer_selection;
 	float time;
 	float time_delta;
 };

@@ -70,7 +70,6 @@ GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
 	std::vector<VkDynamicState> dynamic_states = {
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
-		VK_DYNAMIC_STATE_DEPTH_BIAS
 	};
 
 	VkPipelineDynamicStateCreateInfo dynamic_info = {};

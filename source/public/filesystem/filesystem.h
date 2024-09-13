@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 
-#include <public/refcountable.h>
+#include <public/apploader.h>
 
 struct AppContext;
 class Filesystem: public RefCountable {
