@@ -3,14 +3,16 @@
 CREATE_FACTORY(StandardFilesystem, AppContext);
 
 StandardFilesystem::StandardFilesystem(AppContext *context)
-	: context(context)
+	: logger(spdlog::stdout_color_mt("filesystem"))
+	, context(context)
 {
-	auto console = spdlog::stdout_color_mt("filesystem");
-	UNUSED(console);
+#if defined(CONFIG_SPEW)
+	logger->set_level(spdlog::level::debug);
+#endif
 }
 
 void StandardFilesystem::mount(std::filesystem::path virtual_dir, std::filesystem::path physical_dir) {
-	spdlog::get("filesystem")->info("Mounting {} to {}", virtual_dir.string(), physical_dir.string());
+	spdlog::get("filesystem")->debug("Mounting {} to {}", virtual_dir.string(), physical_dir.string());
 	mounts[virtual_dir].push_back(physical_dir);
 }
 

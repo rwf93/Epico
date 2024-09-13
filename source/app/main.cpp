@@ -1,6 +1,5 @@
 #include "renderdefs.h"
 #include "camera.h"
-#include "mesh.h"
 #include "texture.h"
 
 glm::mat4 calculate_model_matrix(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) {
@@ -56,56 +55,161 @@ void setup_resources(RenderAPI *api, RenderResources *resources);
 void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources);
 void update_shader_buffers(RenderAPI *api, RenderResources *resources);
 
-class Model {
+class Mesh {
+	struct M {
+		RenderAPI *api;
+		BufferHandle vbo;
+		BufferHandle ibo;
+		uint32_t index_count;
+	} m;
+
+	explicit Mesh(M m) : m(std::move(m)) {}
 public:
-	Model(RenderAPI *api, Filesystem *filesystem):
-		api(api),
-		filesystem(filesystem) {}
+	static Mesh create(
+		RenderAPI *api,
+		aiMesh *mesh
+	) {
+		auto vbo = api->create_buffer();
+		auto ibo = api->create_buffer();
 
-	void load(std::filesystem::path path) {
-		Assimp::Importer importer;
-		const aiScene *scene = importer.ReadFile(
-			filesystem->resolve_physical_dir(path).string(),
-			aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace
-		);
+		std::vector<Vertex> verticies = {};
+		std::vector<uint32_t> indicies = {};
 
-		process_node(scene->mRootNode, scene, calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0)));
-	}
+		for(unsigned int j = 0; j < mesh->mNumFaces; j++) {
+			aiFace &face = mesh->mFaces[j];
+			for(unsigned int k = 0; k < face.mNumIndices; k++) {
+				Vertex vertex = {};
 
-	void process_node(aiNode *node, const aiScene *scene, glm::mat4 parent_transform) {
-		transforms.push_back(parent_transform);
-		glm::mat4 transform = convert_matrix(node->mTransformation) * parent_transform;
+				aiVector3D position = mesh->mVertices[face.mIndices[k]];
+				aiVector3D normal = mesh->HasNormals() ? mesh->mNormals[face.mIndices[k]] : aiVector3D(1.0f);
+				aiVector3d tangent = mesh->HasTangentsAndBitangents() ? mesh->mTangents[face.mIndices[k]] : aiVector3D(1.0f);
+				aiVector3D texcoord = mesh->mTextureCoords[0][face.mIndices[k]];
 
-		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
-			aiMesh *assimp_mesh = scene->mMeshes[node->mMeshes[i]];
+				vertex.position = { position.x, position.y, position.z };
+				vertex.normal = { normal.x, normal.y, normal.z };
+				vertex.tangent = { tangent.x, tangent.y, tangent.z };
+				vertex.uv = { texcoord.x, texcoord.y };
 
-			Mesh mesh(filesystem, api);
-			mesh.process(assimp_mesh);
-
-			meshes.push_back(mesh);
+				verticies.push_back(vertex);
+				indicies.push_back(static_cast<uint32_t>(indicies.size()));
+			}
 		}
 
-		for(unsigned int i = 0; i < node->mNumChildren; i++)
-			process_node(node->mChildren[i], scene, transform);
+		api->buffer(
+			vbo,
+			BufferType::VERTEX,
+			sizeof(Vertex) * verticies.size(),
+			verticies.data()
+		);
+
+		api->buffer(
+			ibo,
+			BufferType::INSTANCE,
+			sizeof(uint32_t) * indicies.size(),
+			indicies.data()
+		);
+
+		return Mesh(M{
+			.api = api,
+			.vbo = vbo,
+			.ibo = ibo,
+			.index_count = static_cast<uint32_t>(indicies.size())
+		});
 	}
 
-	glm::mat4 convert_matrix(const aiMatrix4x4 &matrix) {
-		return glm::make_mat4(&matrix.a1);
+	void draw() {
+		m.api->bind_buffer(m.vbo, BindBufferType::VERTEX);
+		m.api->bind_buffer(m.ibo, BindBufferType::INSTANCE);
+		m.api->draw_instanced(m.index_count, 1);
+	}
+};
+
+class Model {
+	struct M {
+		RenderAPI *api;
+		Filesystem *fs;
+		std::vector<Mesh> meshes;
+		std::vector<glm::mat4> transforms;
+	} m;
+
+	explicit Model(M m) : m(std::move(m)) {}
+
+	static glm::mat4 convert_matrix(const aiMatrix4x4 &matrix) {
+		return {
+			matrix.a1, matrix.b1, matrix.c1, matrix.d1,
+			matrix.a2, matrix.b2, matrix.c2, matrix.d2,
+			matrix.a3, matrix.b3, matrix.c3, matrix.d3,
+			matrix.a4, matrix.b4, matrix.c4, matrix.d4
+		};
 	}
 
-	void draw(std::vector<StorageData> &render_objects, uint32_t &render_index) {
-		UNUSED(render_objects);
-		UNUSED(render_index);
+	static void process_node(
+		RenderAPI *api,
+		aiNode *node,
+		const aiScene *scene,
+		std::vector<Mesh> &meshes,
+		std::vector<glm::mat4> &transform,
+		glm::mat4 parent_transform
+	) {
+		auto current_transform = parent_transform * convert_matrix(node->mTransformation);
 
-		for(auto &mesh: meshes)
-			mesh.draw(1, 0);
+		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
+			auto mesh = scene->mMeshes[node->mMeshes[i]];
+			meshes.push_back(Mesh::create(api, mesh));
+			transform.push_back(current_transform);
+		}
+
+		for(unsigned int i = 0; i < node->mNumChildren; i++) {
+			process_node(api, node, scene, meshes, transform, current_transform);
+		}
 	}
+
 public:
-	std::vector<Mesh> meshes;
-	std::vector<glm::mat4> transforms;
+	static Model create(
+		RenderAPI *api,
+		Filesystem *fs,
+		std::filesystem::path model_file
+	) {
+		Assimp::Importer importer;
+		const aiScene *scene = importer.ReadFile(
+			fs->resolve_physical_dir(model_file).string(),
+			aiProcess_Triangulate | aiProcess_FlipUVs
+		);
+		std::vector<Mesh> meshes = {};
+		std::vector<glm::mat4> transforms = {};
 
-	RenderAPI *api;
-	Filesystem *filesystem;
+		process_node(
+			api,
+			scene->mRootNode,
+			scene,
+			meshes,
+			transforms,
+			calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0f))
+		);
+
+		return Model(M {
+			.api = api,
+			.fs = fs,
+			.meshes = meshes,
+			.transforms = transforms
+		});
+	}
+
+	void draw(StorageData *render_objects, uint32_t &object_index) {
+		UNUSED(render_objects);
+		UNUSED(object_index);
+
+		for(auto &transform: m.transforms)
+			render_objects[object_index++].model = transform;
+
+		for(auto &mesh: m.meshes)
+			mesh.draw();
+	}
+
+	void draw() {
+		for(auto &mesh: m.meshes)
+			mesh.draw();
+	}
 };
 
 int main(int argc, char *argv[]) {
@@ -297,14 +401,17 @@ int main(int argc, char *argv[]) {
 		.add_stage(skybox_weird_fragment)
 		.build();
 
-	Mesh armor_mesh(filesystem, render_api);
-	armor_mesh.load_from_file("assets/models/armor.gltf");
+	auto sphere_model = Model::create(
+		render_api,
+		filesystem,
+		"assets/models/sphere.glb"
+	);
 
-	Mesh monkey_mesh(filesystem, render_api);
-	monkey_mesh.load_from_file("assets/models/monkey.glb");
-
-	Mesh sphere_mesh(filesystem, render_api);
-	sphere_mesh.load_from_file("assets/models/sphere.glb");
+	auto sponza_model = Model::create(
+		render_api,
+		filesystem,
+		"assets/models/armor.gltf"
+	);
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
 
@@ -345,7 +452,8 @@ int main(int argc, char *argv[]) {
 		resources.scene.time = context.time;
 		resources.scene.time_delta = context.time_delta;
 		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-		resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(context.time), glm::vec3(0.01f));
+		//resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(0.01f));
+		//resources.storage[1].model = calculate_model_matrix(glm::vec3(0), glm::vec3(context.time), glm::vec3(1.0f));
 
 		update_shader_buffers(render_api, &resources);
 
@@ -411,7 +519,8 @@ int main(int argc, char *argv[]) {
 				deferred_binds.pop_back();
 				deferred_binds.pop_back();
 
-				armor_mesh.draw(1, 0);
+				uint32_t storage_index = 0;
+				sponza_model.draw(resources.storage, storage_index);
 			render_api->end_pass(deferred_attachments);
 
 			static std::vector<SubpassAttachment> composition_attachments = {
@@ -512,7 +621,7 @@ int main(int argc, char *argv[]) {
 			render_api->begin_pass(skybox_attachments);
 				render_api->bind_uniform(skybox_layout, skybox_uniforms);
 				render_api->bind_program(testing ? skybox_weird_program : skybox_shader);
-				sphere_mesh.draw();
+				sphere_model.draw();
 			render_api->end_pass(skybox_attachments);
 
 			render_api->show_image(resources.composition);

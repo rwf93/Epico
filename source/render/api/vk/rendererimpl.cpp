@@ -29,6 +29,10 @@ VulkanAPI::VulkanAPI(AppContext *context)
 		TracyMessage(msg.payload.data(), msg.payload.size());
 	});
 	logger->sinks().push_back(tracy_log_sink);
+
+	#if defined(CONFIG_SPEW)
+		logger->set_level(spdlog::level::debug);
+	#endif
 }
 
 VulkanAPI::~VulkanAPI() {

@@ -16,6 +16,7 @@ public:
 
 private:
 	std::atomic<uint32_t> ref_count = 0;
+	std::shared_ptr<spdlog::logger> logger;
 	std::map<std::filesystem::path, std::vector<std::filesystem::path>> mounts;
 	AppContext *context;
 };
