@@ -104,8 +104,7 @@ GraphicsProgramBuilder &VulkanResourceManager::create_graphics_program() {
 }
 
 void VulkanResourceManager::buffer(BufferHandle handle, VkBufferCreateInfo create_info, void *data) {
-	auto resource = try_get_resource(handle).value();
-	assert(resource);
+	auto resource = CHECK_RESOURCE(try_get_resource(handle))
 
 	if(resource->get_state() == ResourceState::READY)
 		resource->fini();
@@ -143,8 +142,7 @@ void VulkanResourceManager::buffer(BufferHandle handle, VkBufferCreateInfo creat
 }
 
 void VulkanResourceManager::buffer_sub(BufferHandle handle, VkDeviceSize offset, void *data, VkDeviceSize size) {
-	auto resource = try_get_resource(handle).value();
-	assert(resource);
+	auto resource = CHECK_RESOURCE(try_get_resource(handle))
 
 	if(resource->get_info().usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) {
 		auto allocate_info = info::allocation_create_info();
@@ -174,8 +172,7 @@ void VulkanResourceManager::texture(
 	VkImageCreateInfo image_info,
 	void *data
 ) {
-	auto resource = try_get_resource(handle).value();
-	assert(resource);
+	auto resource = CHECK_RESOURCE(try_get_resource(handle))
 
 	if(resource->get_state() == ResourceState::READY)
 		resource->fini();
@@ -217,11 +214,8 @@ void VulkanResourceManager::texture_view(
 	TextureHandle image_handle,
 	VkImageViewCreateInfo image_view_info
 ) {
-	auto image_view = try_get_resource(view_handle).value();
-	auto image = try_get_resource(image_handle).value();
-
-	assert(image_view);
-	assert(image);
+	auto image_view = CHECK_RESOURCE(try_get_resource(view_handle))
+	auto image = CHECK_RESOURCE(try_get_resource(image_handle))
 
 	if(image_view->get_state() != ResourceState::UNREADY)
 		image_view->fini();
@@ -238,7 +232,7 @@ void VulkanResourceManager::sampler(
 	SamplerHandle handle,
 	VkSamplerCreateInfo sampler_create_info
 ) {
-	auto sampler = try_get_resource(handle).value();
+	auto sampler = CHECK_RESOURCE(try_get_resource(handle))
 	assert(sampler);
 
 	if(sampler->get_state() != ResourceState::UNREADY)
@@ -251,7 +245,7 @@ void VulkanResourceManager::shader(ShaderHandle handle,
 	VkShaderModuleCreateInfo shader_info,
 	VkPipelineShaderStageCreateInfo stage_info
 ) {
-	auto resource = try_get_resource(handle).value();
+	auto resource = CHECK_RESOURCE(try_get_resource(handle))
 	assert(resource);
 
 	if(resource->get_state() == ResourceState::READY)

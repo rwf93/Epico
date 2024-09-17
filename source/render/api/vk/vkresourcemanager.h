@@ -12,6 +12,15 @@
 #include "vkgraphicsprogrambuilder.h"
 #include "vkgraphicsprogram.h"
 
+#define CHECK_RESOURCE(res) 								\
+	res.value_or(nullptr);									\
+	assert(res.has_value());								\
+	if(!res.has_value()) { 									\
+		LOGGER->error("\n{}\nCause: Invalid Render Handle is being passed to the API.", cpptrace::generate_trace().to_string()); \
+		return; 											\
+	}														\
+
+
 class VulkanDevice;
 class VulkanResource;
 class VulkanCommandPool;
@@ -165,11 +174,11 @@ private:
 	std::vector<VulkanLayoutBuilder> layout_builders;
 	std::vector<VulkanGraphicsProgramBuilder> graphics_program_builders;
 
-	ResourcePool<TextureHandle, VulkanTexture, 1024> texture_pool;
-	ResourcePool<TextureViewHandle, VulkanTextureView, 1024> texture_view_pool;
-	ResourcePool<SamplerHandle, VulkanSampler, 1024> sampler_pool;
-	ResourcePool<BufferHandle, VulkanBuffer, 512> buffer_pool;
-	ResourcePool<LayoutHandle, VulkanLayout, 64> layout_pool;
-	ResourcePool<ShaderHandle, VulkanShader, 256> shader_pool;
+	ResourcePool<TextureHandle, 		VulkanTexture, 1024> texture_pool;
+	ResourcePool<TextureViewHandle, 	VulkanTextureView, 1024> texture_view_pool;
+	ResourcePool<SamplerHandle, 		VulkanSampler, 1024> sampler_pool;
+	ResourcePool<BufferHandle, 			VulkanBuffer, 4096> buffer_pool;
+	ResourcePool<LayoutHandle, 			VulkanLayout, 64> layout_pool;
+	ResourcePool<ShaderHandle, 			VulkanShader, 256> shader_pool;
 	ResourcePool<GraphicsProgramHandle, VulkanGraphicsProgram, 128> graphics_program_pool;
 };

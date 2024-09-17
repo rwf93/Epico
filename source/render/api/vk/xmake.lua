@@ -36,7 +36,8 @@ target("api_vk")
 		"vk-bootstrap",
 		"vulkan-memory-allocator",
 		"magic_enum",
-		"tracy"
+		"tracy",
+		"cpptrace"
 	)
 	add_rules("defaults_rule", { precompiled_header = path.absolute("./stdafx.h") })
 	add_options("tracing", "validation", "api_vk_spew")

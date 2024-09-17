@@ -60,7 +60,7 @@ void VulkanGraphicsProgramBuilder::clear() {
 	stencil_info.minDepthBounds = 0.f;
 	stencil_info.maxDepthBounds = 1.f;
 
-	depth_format = VK_FORMAT_UNDEFINED;
+	depth_format = device->find_depth_format().value_or(VK_FORMAT_D32_SFLOAT);
 }
 
 GraphicsProgramHandle VulkanGraphicsProgramBuilder::build() {
@@ -116,11 +116,6 @@ GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_primitive(PrimitiveMod
 
 GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_polygon_mode(PolygonMode mode) {
 	rasterizer_info.polygonMode = convert::convert_polygon_mode(mode);
-	return *this;
-}
-
-GraphicsProgramBuilder &VulkanGraphicsProgramBuilder::set_depth_format(ImageFormat format) {
-	depth_format = convert::convert_image_format(format);
 	return *this;
 }
 

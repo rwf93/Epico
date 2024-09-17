@@ -60,21 +60,18 @@ class NewTexture {
 		RenderAPI *api;
 		TextureHandle texture;
 		TextureViewHandle view;
-		SamplerHandle sampler;
 	} m;
 
 	explicit NewTexture(M m) : m(std::move(m)) {}
 public:
 	static NewTexture create(
 		RenderAPI *api,
-		SamplerAddressMode address_u, SamplerAddressMode address_v,
 		ImageFormat format,
 		void *data,
 		int width, int height
 	) {
 		auto texture = api->create_texture();
 		auto view = api->create_texture_view();
-		auto sampler = api->create_sampler();
 
 		api->texture(
 			texture,
@@ -94,20 +91,15 @@ public:
 			0, 0
 		);
 
-		api->sampler(
-			sampler,
-			address_u,
-			address_v,
-			SamplerAddressMode::CLAMP_BORDER
-		);
-
 		return NewTexture(M{
 			.api = api,
 			.texture = texture,
 			.view = view,
-			.sampler = sampler
 		});
 	}
+
+	TextureHandle texture() { return m.texture; }
+	TextureViewHandle view() { return m.view; }
 };
 
 class Mesh {
@@ -122,7 +114,7 @@ class Mesh {
 public:
 	static Mesh create(
 		RenderAPI *api,
-		aiMesh *mesh
+		const aiMesh *mesh
 	) {
 		auto vbo = api->create_buffer();
 		auto ibo = api->create_buffer();
@@ -186,12 +178,20 @@ class Model {
 	struct PerMeshData {
 		Mesh mesh;
 		glm::mat4 transform;
+		unsigned int texture_id;
+	};
+
+	struct PerTextureData {
+		NewTexture albedo;
+		NewTexture normal;
 	};
 
 	struct M {
 		RenderAPI *api;
 		Filesystem *fs;
-		std::vector<PerMeshData> data;
+		std::vector<PerMeshData> meshes;
+		std::vector<PerTextureData> textures;
+		SamplerHandle texture_sampler;
 	} m;
 
 	explicit Model(M m) : m(std::move(m)) {}
@@ -205,25 +205,58 @@ class Model {
 		};
 	}
 
+	static NewTexture load_texture(RenderAPI *api, Filesystem *fs, aiMaterial *material, aiTextureType texture_type) {
+		aiString texture_file;
+		material->GetTexture(texture_type, 0, &texture_file);
+
+		auto path = fs->resolve_physical_dir(fmt::format("assets/textures/{}", texture_file.C_Str()));
+		int width, height, nrchannels;
+		unsigned char *image_data = stbi_load(path.string().c_str(), &width, &height, &nrchannels, 4);
+
+		auto texture = image_data == nullptr
+				? NewTexture::create(
+					api, ImageFormat::R8G8B8A8_UNORM, nullptr, 1024, 1024
+				)
+				: NewTexture::create(
+					api, ImageFormat::R8G8B8A8_UNORM, image_data, width, height
+				);
+		return texture;
+	}
+
 	static void process_node(
 		RenderAPI *api,
 		Filesystem *fs,
-		aiNode *node,
 		const aiScene *scene,
-		std::vector<PerMeshData> &data,
+		aiNode *node,
+		std::vector<PerMeshData> &meshes,
+		std::vector<PerTextureData> &textures,
 		glm::mat4 parent_transform
 	) {
-		auto local_transform = parent_transform * convert_matrix(node->mTransformation);
+		UNUSED(fs);
+		UNUSED(textures);
 
-		for(unsigned int i = 0; i < node->mNumMeshes; i++) {
-			data.push_back(PerMeshData{
-				.mesh = Mesh::create(api, scene->mMeshes[node->mMeshes[i]]),
-				.transform = local_transform
-			});
-		}
+		std::stack<std::pair<aiNode*, glm::mat4>> stack;
+		stack.push({node, parent_transform});
 
-		for(unsigned int i = 0; i < node->mNumChildren; i++) {
-			process_node(api, fs, node, scene, data, local_transform);
+		while(!stack.empty()) {
+			auto [current_node, current_transform] = stack.top();
+			stack.pop();
+
+			auto local_transform = current_transform * convert_matrix(current_node->mTransformation);
+
+			for (unsigned int i = 0; i < current_node->mNumMeshes; i++) {
+				const aiMesh* mesh = scene->mMeshes[current_node->mMeshes[i]];
+
+				meshes.push_back(PerMeshData{
+					.mesh = Mesh::create(api, mesh),
+					.transform = local_transform,
+					.texture_id = mesh->mMaterialIndex,
+				});
+			}
+
+			for (unsigned int i = 0; i < current_node->mNumChildren; i++) {
+				stack.push({current_node->mChildren[i], local_transform});
+        	}
 		}
 	}
 
@@ -239,37 +272,55 @@ public:
 			aiProcess_Triangulate | aiProcess_FlipUVs
 		);
 
-		std::vector<PerMeshData> data = {};
+		std::vector<PerMeshData> meshes = {};
+		std::vector<PerTextureData> textures = {};
+
+		auto sampler = api->create_sampler();
+		api->sampler(
+			sampler,
+			SamplerAddressMode::CLAMP_BORDER,
+			SamplerAddressMode::CLAMP_BORDER,
+			SamplerAddressMode::CLAMP_BORDER
+		);
 
 		process_node(
 			api,
 			fs,
-			scene->mRootNode,
 			scene,
-			data,
+			scene->mRootNode,
+			meshes,
+			textures,
 			calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(1.0f))
 		);
 
 		return Model(M{
 			.api = api,
 			.fs = fs,
-			.data = data
+			.meshes = std::move(meshes),
+			.textures = std::move(textures),
+			.texture_sampler = sampler
 		});
 	}
 
-	void draw(StorageData *render_objects, uint32_t &object_index) {
-		m.api->begin_label(DebugLabel { .name = fmt::format("Model ({})", (void*)this).c_str(), .rgba = { 0.2f, 0.761f, 0.71f, 1.0f } });
+	void draw(
+		StorageData *render_objects,
+		uint32_t &object_index,
+		std::vector<UniformBind> &binds,
+		LayoutHandle geometry_layout
+	) {
+		UNUSED(binds);
+		UNUSED(geometry_layout);
 
-		for(auto &data: m.data) {
+		m.api->begin_label(DebugLabel { .name = fmt::format("Model ({})", (void*)this).c_str(), .rgba = { 0.2f, 0.761f, 0.71f, 1.0f } });
+		for(auto &data: m.meshes) {
 			data.mesh.draw(1, object_index > 0 ? object_index : 0);
 			render_objects[object_index++].model = data.transform;
 		}
-
 		m.api->end_label();
 	}
 
 	void draw() {
-		for(auto &data: m.data)
+		for(auto &data: m.meshes)
 			data.mesh.draw();
 	}
 };
@@ -284,7 +335,7 @@ int main(int argc, char *argv[]) {
 	context.width = 1280;
 	context.height = 762;
 
-	Camera camera(&context);
+	Camera camera = Camera::create(&context);
 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		spdlog::error("Couldn't init SDL: {}", SDL_GetError());
@@ -405,7 +456,6 @@ int main(int argc, char *argv[]) {
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT) // Position
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT) // Normals
 		.add_attachment(ImageFormat::R8G8B8A8_UNORM) 	  // Albedo
-		.set_depth_format(ImageFormat::D32_SFLOAT)
 		.set_cull_face(CullFace::BACK)
 		.set_front_face(FrontFace::COUNTER_CLOCKWISE)
 		.set_depth_test(true, true, CompareOp::LESS_OR_EQUAL)
@@ -432,7 +482,6 @@ int main(int argc, char *argv[]) {
 
 	auto composition_shader = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		.set_depth_format(ImageFormat::D32_SFLOAT)
 		.add_stage(composition_vertex)
 		.add_stage(composition_fragment)
 		.set_layout(composition_layout)
@@ -440,14 +489,11 @@ int main(int argc, char *argv[]) {
 
 	auto &skybox_builder = render_api->create_graphics_program()
 		.add_attachment(ImageFormat::R16G16B16A16_SFLOAT)
-		.set_depth_format(ImageFormat::D32_SFLOAT)
 		.set_cull_face(CullFace::FRONT)
 		.set_front_face(FrontFace::COUNTER_CLOCKWISE)
 		.set_depth_test(true, false, CompareOp::EQUAL)
 		.add_binding(sizeof(Vertex), BindingRate::VERTEX)
 		.add_attribute(offsetof(Vertex, position), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, normal), AttributeType::VEC3F_SIGNED)
-		.add_attribute(offsetof(Vertex, tangent), AttributeType::VEC3F_SIGNED)
 		.add_attribute(offsetof(Vertex, uv), AttributeType::VEC2F_SIGNED)
 		.set_layout(skybox_layout);
 
@@ -520,8 +566,6 @@ int main(int argc, char *argv[]) {
 		resources.scene.time = context.time;
 		resources.scene.time_delta = context.time_delta;
 		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-		//resources.storage[0].model = calculate_model_matrix(glm::vec3(0), glm::vec3(0), glm::vec3(0.01f));
-		//resources.storage[1].model = calculate_model_matrix(glm::vec3(0), glm::vec3(context.time), glm::vec3(1.0f));
 
 		update_shader_buffers(render_api, &resources);
 
@@ -574,6 +618,8 @@ int main(int argc, char *argv[]) {
 					},
 					.type = UniformType::STORAGE,
 				},
+				armor_albedo_texture.as_bind(),
+				armor_normal_texture.as_bind()
 			};
 
 			static bool testing = false;
@@ -581,14 +627,10 @@ int main(int argc, char *argv[]) {
 			render_api->begin_pass(deferred_attachments);
 				render_api->bind_program(testing ? deferred_test_program : deferred_program);
 
-				deferred_binds.push_back(armor_albedo_texture.as_bind());
-				deferred_binds.push_back(armor_normal_texture.as_bind());
 				render_api->bind_uniform(deferred_layout, deferred_binds);
-				deferred_binds.pop_back();
-				deferred_binds.pop_back();
 
 				uint32_t storage_index = 0;
-				sponza_model.draw(resources.storage, storage_index);
+				sponza_model.draw(resources.storage, storage_index, deferred_binds, deferred_layout);
 			render_api->end_pass();
 			render_api->end_label();
 
@@ -699,6 +741,7 @@ int main(int argc, char *argv[]) {
 
 			render_api->show_image(resources.composition);
 
+			render_api->begin_label(DebugLabel { .name = "ImGUI", .rgba = { 0.988f, 0.443f, 0.553f, 1.0f } });
 			render_api->ui()->begin();
 				ImGui::NewFrame();
 
@@ -718,6 +761,8 @@ int main(int argc, char *argv[]) {
 					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &resources.lights[i].radius, 0.5, 100);
 					ImGui::Separator();
 
+					auto dist = glm::length(camera.get_position() - resources.lights[i].position.xyz);
+
 					auto pos = calculate_billboard(
 						resources.lights[i].position,
 						resources.scene.projection,
@@ -727,7 +772,7 @@ int main(int argc, char *argv[]) {
 					);
 					ImGui::GetBackgroundDrawList()->AddCircleFilled(
 						ImVec2(pos.x, pos.y),
-						resources.lights[i].radius,
+						resources.lights[i].radius * 4 / dist,
 						ImColor(
 							resources.lights[i].color.x,
 							resources.lights[i].color.y,
@@ -763,6 +808,7 @@ int main(int argc, char *argv[]) {
 
 				ImGui::Render();
 			render_api->ui()->end();
+			render_api->end_label();
 		}
 		render_api->end();
 		render_api->present();

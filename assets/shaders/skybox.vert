@@ -2,9 +2,7 @@
 #extension GL_ARB_shading_language_include: require
 
 layout(location = 0) in vec3 in_position;
-layout(location = 1) in vec3 in_normal;
-layout(location = 2) in vec3 in_tangent;
-layout(location = 3) in vec2 in_uv;
+layout(location = 1) in vec2 in_uv;
 
 #include "../../assets/shaders/renderdefs.h"
 UNIFORM_BLOCK(0, SceneData) scene = SceneData_block.data;

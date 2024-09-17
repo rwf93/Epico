@@ -12,7 +12,8 @@ add_requires(
 	"magic_enum v0.9.6",
 	"glm 1.0.1",
 	"ktx",
-	"tracy"
+	"tracy",
+	"cpptrace"
 )
 
 add_requires("fmt 11.0.1", {

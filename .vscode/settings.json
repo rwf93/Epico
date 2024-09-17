@@ -101,7 +101,9 @@
         "memory_resource": "cpp",
         "string_view": "cpp",
         "numbers": "cpp",
-        "*.rh": "cpp"
+        "*.rh": "cpp",
+        "source_location": "cpp",
+        "stacktrace": "cpp"
     },
     "cmake.ignoreCMakeListsMissing": true
 }

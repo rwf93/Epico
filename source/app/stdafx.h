@@ -11,6 +11,9 @@
 #include <SDL2/SDL.h>
 
 #include <math.h>
+#include <stack>
+
+#define GLM_SWIZZLE
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>

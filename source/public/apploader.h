@@ -2,6 +2,21 @@
 
 #include <public/platform/platform.h>
 
+// Taken from https://quuxplusone.github.io/blog/2018/05/17/super-elider-round-2/
+template<class F>
+class WithResultOf {
+	F &&fun;
+public:
+	using T = decltype(std::declval<F&&>()());
+	explicit WithResultOf(F &&f) : fun(std::forward<F>(f)) {}
+	operator T() { return fun(); }
+};
+
+template<class F>
+inline WithResultOf<F> with_result_of(F &&f) {
+	return WithResultOf<F>(std::forward<F>(f));
+}
+
 class RefCountable {
 public:
     virtual void add_ref() = 0;

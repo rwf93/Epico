@@ -6,6 +6,8 @@
 #include <map>
 #include <span>
 #include <variant>
+#include <stacktrace>
+#include <source_location>
 
 #include <public/platform/platform.h>
 
@@ -17,6 +19,8 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/callback_sink.h>
+
+#include <cpptrace/cpptrace.hpp>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>

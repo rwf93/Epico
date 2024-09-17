@@ -23,7 +23,6 @@ public:
 
 	GraphicsProgramBuilder &set_primitive(PrimitiveMode type) override;
 	GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) override;
-	GraphicsProgramBuilder &set_depth_format(ImageFormat format) override;
 	GraphicsProgramBuilder &set_depth_test(
 		bool test_enable,
 		bool write_enable,

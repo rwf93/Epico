@@ -76,7 +76,6 @@ public:
 
 	virtual GraphicsProgramBuilder &set_primitive(PrimitiveMode type) = 0;
 	virtual GraphicsProgramBuilder &set_polygon_mode(PolygonMode mode) = 0;
-	virtual GraphicsProgramBuilder &set_depth_format(ImageFormat format) = 0;
 	virtual GraphicsProgramBuilder &set_depth_test(
 		bool test_enable,
 		bool write_enable,

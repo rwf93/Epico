@@ -9,8 +9,6 @@
 
 #include "rendererimpl.h"
 
-#include <variant>
-
 CREATE_FACTORY(VulkanAPI, AppContext);
 
 VulkanAPI::VulkanAPI(AppContext *context)
@@ -126,8 +124,8 @@ void VulkanAPI::begin_pass(std::span<SubpassAttachment> dependencies) {
 	std::optional<VkRenderingAttachmentInfo> depth_attachment;
 
 	for(auto &dependency: dependencies) {
-		auto texture = resource_manager.try_get_resource(dependency.texture).value();
-		auto texture_view = resource_manager.try_get_resource(dependency.view).value();
+		auto texture = CHECK_RESOURCE(resource_manager.try_get_resource(dependency.texture));
+		auto texture_view = CHECK_RESOURCE(resource_manager.try_get_resource(dependency.view));
 
 		VkClearValue *clear_value = dependency.clear.has_value()
 			? reinterpret_cast<VkClearValue*>(&dependency.clear.value())
@@ -189,7 +187,7 @@ void VulkanAPI::clear(float r, float g, float b, float a) {
 void VulkanAPI::clear(TextureHandle handle, float r, float g, float b, float a) {
 	ZoneScoped;
 
-	auto image = resource_manager.try_get_resource(handle).value();
+	auto image = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
 
 	VkClearColorValue clear_value = { { r, g, b, a } };
 	static std::vector<VkImageSubresourceRange> clear_ranges = {
@@ -227,7 +225,7 @@ void VulkanAPI::scissor(uint32_t width, uint32_t height, int32_t x, int32_t y) {
 void VulkanAPI::show_image(TextureHandle handle) {
 	ZoneScoped;
 
-	auto resource = resource_manager.try_get_resource(handle).value();
+	auto resource = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
 
 	resource->transition(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	command_pool.get_command()->copy_image(resource->get_image(), swapchain.get_swapchain_image(), resource->get_info()->extent, VkExtent3D{ swapchain.get_swapchain().extent.width, swapchain.get_swapchain().extent.height, 1 });
@@ -237,7 +235,7 @@ void VulkanAPI::show_image(TextureHandle handle) {
 void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 	ZoneScoped;
 
-	auto resource = resource_manager.try_get_resource(handle).value();
+	auto resource = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
 	VkDeviceSize offset[] = { 0 };
 	switch(type) {
 		case BindBufferType::VERTEX:
@@ -253,7 +251,7 @@ void VulkanAPI::bind_buffer(BufferHandle handle, BindBufferType type) {
 void VulkanAPI::bind_program(GraphicsProgramHandle handle) {
 	ZoneScoped;
 
-	auto shader = resource_manager.try_get_resource(handle).value();
+	auto shader = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
 	command_pool.get_command()->bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, shader->get_pipeline());
 };
 
@@ -269,7 +267,7 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 	if(info_objects.size() < binds.size())
 		info_objects.resize(binds.size());
 
-	auto layout = resource_manager.try_get_resource(layout_handle).value();
+	auto layout = CHECK_RESOURCE(resource_manager.try_get_resource(layout_handle));
 
 	for(uint32_t i = 0; i < binds.size(); i++) {
 		UniformBind &bind = binds[i];
@@ -284,7 +282,7 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 		switch(bind.type) {
 			case UniformType::BUFFER:
 			case UniformType::STORAGE: {
-				auto buffer_resource = resource_manager.try_get_resource(bind.buffer.buffer_handle).value();
+				auto buffer_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.buffer.buffer_handle));
 
 				VkDescriptorBufferInfo *buffer_info = &info_objects.at(i).first;
 				buffer_info->buffer = buffer_resource->get_buffer();
@@ -298,8 +296,8 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				descriptor_write.pBufferInfo = buffer_info;
 			} break;
 			case UniformType::TEXTURE: {
-				auto texture_view_resource = resource_manager.try_get_resource(bind.texture.texture_view_handle).value();
-				auto sampler_resource = resource_manager.try_get_resource(bind.texture.sampler_handle).value();
+				auto texture_view_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.texture.texture_view_handle))
+				auto sampler_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.texture.sampler_handle));
 
 				VkDescriptorImageInfo *image_info = &info_objects.at(i).second;
 				image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
