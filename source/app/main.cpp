@@ -195,13 +195,17 @@ public:
 		m.data = static_cast<T*>(m.api->map(m.handle));
 	}
 
-	inline T *data() { return m.data; }
-	inline T &at(size_t index) { return m.data[index]; }
-
 	void unlock() {
 		m.api->unmap(m.handle);
 		m.data = nullptr;
 	}
+
+	void flush() {
+		m.api->flush(m.handle, 0, sizeof(T) * Size);
+	}
+
+	inline T *data() { return m.data; }
+	inline T &at(size_t index) { return m.data[index]; }
 
 	operator UniformBind() {
 		return {

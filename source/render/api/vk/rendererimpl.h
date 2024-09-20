@@ -40,6 +40,9 @@ public:
 	BufferHandle create_buffer() override;
 	ShaderHandle create_shader() override;
 
+	RenderLayoutBuilder &create_layout() override;
+	GraphicsProgramBuilder &create_graphics_program() override;
+
 	void buffer(BufferHandle handle, BufferType type, size_t size, void *data) override;
 	void buffer_sub(BufferHandle handle, size_t offset, size_t size, void *data) override;
 
@@ -88,9 +91,7 @@ public:
 
 	void *map(BufferHandle handle) override;
 	void unmap(BufferHandle handle) override;
-
-	RenderLayoutBuilder &create_layout() override;
-	GraphicsProgramBuilder &create_graphics_program() override;
+	void flush(BufferHandle handle, size_t offset, size_t size) override;
 
 	RenderUI *ui() { return &ui_imgui; };
 

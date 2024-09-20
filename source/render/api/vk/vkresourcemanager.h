@@ -127,6 +127,10 @@ public:
 		vmaUnmapMemory(allocator, buffer->get_allocation());
 	}
 
+ 	void flush(VulkanBuffer *buffer, VkDeviceSize offset, VkDeviceSize size) {
+		vmaFlushAllocation(allocator, buffer->allocation, offset, size);
+	}
+
 private:
 	VulkanInstance *instance;
 	VulkanDevice *device;

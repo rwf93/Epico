@@ -510,6 +510,11 @@ void VulkanAPI::unmap(BufferHandle handle) {
 	resource_manager.unmap(buffer);
 }
 
+void VulkanAPI::flush(BufferHandle handle, size_t offset, size_t size) {
+	auto buffer = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
+	resource_manager.flush(buffer, offset, size);
+}
+
 void VulkanAPI::rebuild() {
 	ZoneScoped;
 

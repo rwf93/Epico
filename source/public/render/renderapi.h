@@ -140,6 +140,7 @@ public:
 
 	virtual void *map(BufferHandle handle) = 0;
 	virtual void unmap(BufferHandle handle) = 0;
+	virtual void flush(BufferHandle handle, size_t offset = 0, size_t size = UINT64_MAX) = 0;
 
 	virtual RenderUI *ui() = 0;
 };
