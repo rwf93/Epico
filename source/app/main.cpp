@@ -196,6 +196,7 @@ public:
 	}
 
 	inline T *data() { return m.data; }
+	inline T &at(size_t index) { return m.data[index]; }
 
 	void unlock() {
 		m.api->unmap(m.handle);
@@ -847,12 +848,10 @@ int main(int argc, char *argv[]) {
 					"Composition"
 				};
 				ImGui::Combo("G-Buffer", &resources.scene.gbuffer_selection, items, IM_ARRAYSIZE(items));
-
-				// Huge code perf drop here. Fuck pointers.
+/*
 				resources.lights.lock();
 				for(uint32_t i = 0; i < 4; i++) {
-					LightData light = {};
-					memcpy(&light, resources.lights.data() + sizeof(LightData) * i, sizeof(LightData)); // Read data... PUKE
+					LightData &light = resources.lights.at(i);
 					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(light.position), -100, 100);
 					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(light.color));
 					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light.radius, 0.5, 100);
@@ -876,10 +875,9 @@ int main(int argc, char *argv[]) {
 							light.color.z
 						)
 					);
-					memcpy(resources.lights.data() + sizeof(LightData) * i, &light, sizeof(LightData)); // Write Data... BLEH
 				}
 				resources.lights.unlock();
-
+*/
 
 				ImGui::Checkbox("Enable Testing Shader", &testing);
 
