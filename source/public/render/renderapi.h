@@ -37,14 +37,14 @@ struct SubpassAttachment {
 };
 
 struct BufferBind {
-	BufferHandle buffer_handle = BufferHandle::Invalid;
+	BufferHandle buffer = BufferHandle::Invalid;
 	size_t offset = 0;
 	size_t range = 0;
 };
 
 struct TextureBind {
-	TextureViewHandle texture_view_handle = TextureViewHandle::Invalid;
-	SamplerHandle sampler_handle = SamplerHandle::Invalid;
+	TextureViewHandle view = TextureViewHandle::Invalid;
+	SamplerHandle sampler = SamplerHandle::Invalid;
 };
 
 struct UniformBind {
@@ -137,6 +137,9 @@ public:
 		std::span<const char> data,
 		const char *entry_point = "main"
 	) = 0;
+
+	virtual void *map(BufferHandle handle) = 0;
+	virtual void unmap(BufferHandle handle) = 0;
 
 	virtual RenderUI *ui() = 0;
 };

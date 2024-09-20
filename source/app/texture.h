@@ -11,11 +11,11 @@ public:
 	void set_sampler_addressing(SamplerAddressMode u, SamplerAddressMode v, SamplerAddressMode w = SamplerAddressMode::CLAMP_BORDER);
 	void set_format(ImageFormat format);
 
-	UniformBind as_bind() {
+	operator UniformBind() {
 		return {
 			.texture = {
-				.texture_view_handle = view,
-				.sampler_handle = sampler
+				.view = view,
+				.sampler = sampler
 			},
 			.type = UniformType::TEXTURE
 		};

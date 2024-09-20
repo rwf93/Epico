@@ -20,6 +20,14 @@
 		return; 											\
 	}														\
 
+#define CHECK_RESOURCE_RET(res, ret) 						\
+	res.value_or(nullptr);									\
+	assert(res.has_value());								\
+	if(!res.has_value()) { 									\
+		LOGGER->error("\n{}\nCause: Invalid Render Handle is being passed to the API.", cpptrace::generate_trace().to_string()); \
+		return ret; 										\
+	}														\
+
 
 class VulkanDevice;
 class VulkanResource;
@@ -109,6 +117,14 @@ public:
 			[&](ShaderHandle handle) 			{ shader_pool.release(handle); },
 			[&](GraphicsProgramHandle handle) 	{ graphics_program_pool.release(handle); }
 		}, handle);
+	}
+
+	void map(VulkanBuffer *buffer, void **mapped) {
+		vmaMapMemory(allocator, buffer->get_allocation(), mapped);
+	}
+
+	void unmap(VulkanBuffer *buffer) {
+		vmaUnmapMemory(allocator, buffer->get_allocation());
 	}
 
 private:

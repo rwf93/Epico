@@ -84,7 +84,10 @@ public:
 		ShaderStage shader_type,
 		std::span<const char> data,
 		const char *entry_point = "main"
-	) override { shader(handle, shader_type, data.data(), data.size(), entry_point); }
+	) override;
+
+	void *map(BufferHandle handle) override;
+	void unmap(BufferHandle handle) override;
 
 	RenderLayoutBuilder &create_layout() override;
 	GraphicsProgramBuilder &create_graphics_program() override;

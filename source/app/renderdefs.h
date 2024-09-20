@@ -32,7 +32,7 @@ struct SceneData {
 
 struct StorageData {
 	C(glm::mat4, mat4) model;
-	C(inline static constexpr uint32_t MAX_OBJECTS = 4096*2;,)
+	C(inline static constexpr uint32_t MAX_OBJECTS = 4096;,)
 };
 
 struct LightData {

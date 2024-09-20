@@ -282,7 +282,7 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 		switch(bind.type) {
 			case UniformType::BUFFER:
 			case UniformType::STORAGE: {
-				auto buffer_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.buffer.buffer_handle));
+				auto buffer_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.buffer.buffer));
 
 				VkDescriptorBufferInfo *buffer_info = &info_objects.at(i).first;
 				buffer_info->buffer = buffer_resource->get_buffer();
@@ -296,8 +296,8 @@ void VulkanAPI::bind_uniform(LayoutHandle layout_handle, std::span<UniformBind> 
 				descriptor_write.pBufferInfo = buffer_info;
 			} break;
 			case UniformType::TEXTURE: {
-				auto texture_view_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.texture.texture_view_handle))
-				auto sampler_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.texture.sampler_handle));
+				auto texture_view_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.texture.view))
+				auto sampler_resource = CHECK_RESOURCE(resource_manager.try_get_resource(bind.texture.sampler));
 
 				VkDescriptorImageInfo *image_info = &info_objects.at(i).second;
 				image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -485,6 +485,29 @@ void VulkanAPI::shader(
 	shader_stage_info.pName = entry_point;
 
 	resource_manager.shader(handle, create_info, shader_stage_info);
+}
+
+void VulkanAPI::shader(
+	ShaderHandle handle,
+	ShaderStage shader_type,
+	std::span<const char> data,
+	const char *entry_point
+) {
+	shader(handle, shader_type, data.data(), data.size(), entry_point);
+}
+
+void *VulkanAPI::map(BufferHandle handle) {
+	auto buffer = CHECK_RESOURCE_RET(resource_manager.try_get_resource(handle), nullptr);
+	void *mapped = nullptr;
+	resource_manager.map(buffer, &mapped);
+	assert(mapped);
+
+	return mapped;
+}
+
+void VulkanAPI::unmap(BufferHandle handle) {
+	auto buffer = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
+	resource_manager.unmap(buffer);
 }
 
 void VulkanAPI::rebuild() {

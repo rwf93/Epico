@@ -24,51 +24,23 @@ glm::vec2 calculate_billboard(glm::vec3 translation, glm::mat4 projection, glm::
 	return xy;
 }
 
-struct RenderResources {
-	SamplerHandle position_sampler = SamplerHandle::Invalid;
-	SamplerHandle normal_sampler = SamplerHandle::Invalid;
-	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
-
-	BufferHandle scene_buffer = BufferHandle::Invalid;
-	BufferHandle storage_buffer = BufferHandle::Invalid;
-	BufferHandle light_buffer = BufferHandle::Invalid;
-
-	TextureHandle position = TextureHandle::Invalid;
-	TextureHandle normal = TextureHandle::Invalid;
-	TextureHandle albedo = TextureHandle::Invalid;
-	TextureHandle depth = TextureHandle::Invalid;
-	TextureHandle composition = TextureHandle::Invalid;
-
-	TextureViewHandle position_view = TextureViewHandle::Invalid;
-	TextureViewHandle albedo_view = TextureViewHandle::Invalid;
-	TextureViewHandle normal_view = TextureViewHandle::Invalid;
-	TextureViewHandle depth_view = TextureViewHandle::Invalid;
-	TextureViewHandle composition_view = TextureViewHandle::Invalid;
-
-	SceneData scene;
-	StorageData storage[StorageData::MAX_OBJECTS];
-	LightData lights[LightData::MAX_LIGHTS];
-};
-
-
-void setup_resources(RenderAPI *api, RenderResources *resources);
-void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources);
-void update_shader_buffers(RenderAPI *api, RenderResources *resources);
-
 class NewTexture {
 	struct M {
 		RenderAPI *api;
 		TextureHandle texture;
 		TextureViewHandle view;
+		ImageFormat format;
+		ImageFlags flags;
 	} m;
 
 	explicit NewTexture(M m) : m(std::move(m)) {}
 public:
 	static NewTexture create(
 		RenderAPI *api,
-		ImageFormat format,
-		void *data,
-		int width, int height
+		int width, int height,
+		ImageFormat format = ImageFormat::R8G8B8A8_UNORM,
+		ImageFlags flags = ImageFlags::SAMPLED,
+		void *data = nullptr
 	) {
 		auto texture = api->create_texture();
 		auto view = api->create_texture_view();
@@ -78,7 +50,7 @@ public:
 			ImageDimensions::IMAGE_2D,
 			ImageSamples::SAMPLE_COUNT_1_BIT,
 			format,
-			ImageFlags::SAMPLED,
+			flags,
 			data,
 			width, height
 		);
@@ -95,11 +67,33 @@ public:
 			.api = api,
 			.texture = texture,
 			.view = view,
+			.format = format,
+			.flags = flags
 		});
 	}
 
-	TextureHandle texture() { return m.texture; }
-	TextureViewHandle view() { return m.view; }
+	void resize(int width, int height, void *data = nullptr) {
+		m.api->texture(
+			m.texture,
+			ImageDimensions::IMAGE_2D,
+			ImageSamples::SAMPLE_COUNT_1_BIT,
+			m.format,
+			m.flags,
+			data,
+			width, height
+		);
+
+		m.api->texture_view(
+			m.view,
+			m.texture,
+			ImageViewDimensions::IMAGE_2D,
+			m.format,
+			0, 0
+		);
+	}
+
+	operator TextureHandle() { return m.texture; }
+	operator TextureViewHandle() { return m.view; }
 };
 
 class Mesh {
@@ -174,6 +168,52 @@ public:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+template<typename T, size_t Size>
+class StorageBuffer {
+	struct M {
+		RenderAPI *api;
+		BufferHandle handle;
+		T *data;
+	} m;
+
+	explicit StorageBuffer(M m) : m(std::move(m)) {}
+public:
+	~StorageBuffer() {
+	}
+
+	static StorageBuffer create(RenderAPI *api) {
+		auto handle = api->create_buffer();
+		api->buffer(handle, BufferType::STORAGE, sizeof(T) * Size, nullptr);
+
+		return StorageBuffer(M{
+			.api = api,
+			.handle = handle,
+		});
+	}
+
+	void lock() {
+		m.data = static_cast<T*>(m.api->map(m.handle));
+	}
+
+	inline T *data() { return m.data; }
+
+	void unlock() {
+		m.api->unmap(m.handle);
+		m.data = nullptr;
+	}
+
+	operator UniformBind() {
+		return {
+			.buffer = {
+				.buffer = m.handle,
+				.offset = 0,
+				.range = sizeof(T) * Size
+			},
+			.type = UniformType::STORAGE
+		};
+	}
+};
+
 class Model {
 	struct PerMeshData {
 		Mesh mesh;
@@ -215,10 +255,10 @@ class Model {
 
 		auto texture = image_data == nullptr
 				? NewTexture::create(
-					api, ImageFormat::R8G8B8A8_UNORM, nullptr, 1024, 1024
+					api, 1024, 1024
 				)
 				: NewTexture::create(
-					api, ImageFormat::R8G8B8A8_UNORM, image_data, width, height
+					api, width, height, ImageFormat::R8G8B8A8_UNORM, ImageFlags::SAMPLED, image_data
 				);
 		return texture;
 	}
@@ -256,7 +296,7 @@ class Model {
 
 			for (unsigned int i = 0; i < current_node->mNumChildren; i++) {
 				stack.push({current_node->mChildren[i], local_transform});
-        	}
+			}
 		}
 	}
 
@@ -303,7 +343,7 @@ public:
 	}
 
 	void draw(
-		StorageData *render_objects,
+		StorageBuffer<StorageData, StorageData::MAX_OBJECTS> &render_objects,
 		uint32_t &object_index,
 		std::vector<UniformBind> &binds,
 		LayoutHandle geometry_layout
@@ -312,10 +352,12 @@ public:
 		UNUSED(geometry_layout);
 
 		m.api->begin_label(DebugLabel { .name = fmt::format("Model ({})", (void*)this).c_str(), .rgba = { 0.2f, 0.761f, 0.71f, 1.0f } });
+		render_objects.lock();
 		for(auto &data: m.meshes) {
 			data.mesh.draw(1, object_index > 0 ? object_index : 0);
-			render_objects[object_index++].model = data.transform;
+			render_objects.data()[object_index++].model = data.transform;
 		}
+		render_objects.unlock();
 		m.api->end_label();
 	}
 
@@ -324,6 +366,27 @@ public:
 			data.mesh.draw();
 	}
 };
+
+struct RenderResources {
+	SamplerHandle position_sampler = SamplerHandle::Invalid;
+	SamplerHandle normal_sampler = SamplerHandle::Invalid;
+	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
+
+	BufferHandle scene_buffer = BufferHandle::Invalid;
+
+	NewTexture position;
+	NewTexture normal;
+	NewTexture albedo;
+	NewTexture depth;
+	NewTexture composition;
+
+	SceneData scene;
+	StorageBuffer<StorageData, StorageData::MAX_OBJECTS> storage;
+	StorageBuffer<LightData, LightData::MAX_LIGHTS> lights;
+};
+
+void setup_resources(RenderAPI *api, RenderResources *resources);
+void update_shader_buffers(RenderAPI *api, RenderResources *resources);
 
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
@@ -375,11 +438,53 @@ int main(int argc, char *argv[]) {
 	ImageTexture monkey_normals_image(&monkey_normals, filesystem);
 	monkey_normals_image.upload_from_ktx("assets/textures/suzanne_normal.ktx");
 
-	RenderResources resources = {};
+	RenderResources resources = {
+		.position = NewTexture::create(
+			render_api,
+			context.width,
+			context.height,
+			ImageFormat::R16G16B16A16_SFLOAT,
+			ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED
+		),
+		.normal = NewTexture::create(
+			render_api,
+			context.width,
+			context.height,
+			ImageFormat::R16G16B16A16_SFLOAT,
+			ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED
+		),
+		.albedo = NewTexture::create(
+			render_api,
+			context.width,
+			context.height,
+			ImageFormat::R8G8B8A8_UNORM,
+			ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED
+		),
+		.depth = NewTexture::create(
+			render_api,
+			context.width,
+			context.height,
+			ImageFormat::D32_SFLOAT,
+			ImageFlags::DEPTH_ATTACHMENT
+		),
+		.composition = NewTexture::create(
+			render_api,
+			context.width,
+			context.height,
+			ImageFormat::R16G16B16A16_SFLOAT,
+			ImageFlags::COLOR_ATTACHMENT
+		),
+		.storage = StorageBuffer<StorageData, StorageData::MAX_OBJECTS>::create(render_api),
+		.lights = StorageBuffer<LightData, LightData::MAX_LIGHTS>::create(render_api),
+	};
 	setup_resources(render_api, &resources);
-	setup_pass_resources(&context, render_api, &resources);
 	render_api->on_resize([&](RenderAPI* renderer) {
-		setup_pass_resources(&context, renderer, &resources);
+		UNUSED(renderer);
+		resources.position.resize(context.width, context.height);
+		resources.normal.resize(context.width, context.height);
+		resources.albedo.resize(context.width, context.height);
+		resources.depth.resize(context.width, context.height);
+		resources.composition.resize(context.width, context.height);
 	});
 
 	auto deferred_vertex = render_api->create_shader();
@@ -567,10 +672,11 @@ int main(int argc, char *argv[]) {
 		resources.scene.time_delta = context.time_delta;
 		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 
-		update_shader_buffers(render_api, &resources);
-
 		render_api->begin();
 		{
+			update_shader_buffers(render_api, &resources);
+
+
 			render_api->clear(0, 0, 0, 1);
 			render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 			render_api->scissor(context.width, context.height);
@@ -579,25 +685,25 @@ int main(int argc, char *argv[]) {
 			static std::vector<SubpassAttachment> deferred_attachments = {
 				{
 					.texture = resources.position,
-					.view = resources.position_view,
+					.view = resources.position,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = resources.normal,
-					.view = resources.normal_view,
+					.view = resources.normal,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = resources.albedo,
-					.view = resources.albedo_view,
+					.view = resources.albedo,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = resources.depth,
-					.view = resources.depth_view,
+					.view = resources.depth,
 					.type = AttachmentType::DEPTH,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 1.0f }, .depth = 0.0f, .stencil = 0 })
 				}
@@ -606,20 +712,14 @@ int main(int argc, char *argv[]) {
 			static std::vector<UniformBind> deferred_binds = {
 				{
 					.buffer = {
-						.buffer_handle = resources.scene_buffer,
+						.buffer = resources.scene_buffer,
 						.range = sizeof(SceneData)
 					},
 					.type = UniformType::BUFFER,
 				},
-				{
-					.buffer = {
-						.buffer_handle = resources.storage_buffer,
-						.range = sizeof(StorageData) * StorageData::MAX_OBJECTS
-					},
-					.type = UniformType::STORAGE,
-				},
-				armor_albedo_texture.as_bind(),
-				armor_normal_texture.as_bind()
+				resources.storage,
+				armor_albedo_texture,
+				armor_normal_texture
 			};
 
 			static bool testing = false;
@@ -630,30 +730,30 @@ int main(int argc, char *argv[]) {
 				render_api->bind_uniform(deferred_layout, deferred_binds);
 
 				uint32_t storage_index = 0;
-				sponza_model.draw(resources.storage, storage_index, deferred_binds, deferred_layout);
+				armor_model.draw(resources.storage, storage_index, deferred_binds, deferred_layout);
 			render_api->end_pass();
 			render_api->end_label();
 
 			static std::vector<SubpassAttachment> composition_attachments = {
 				{
 					.texture = resources.composition,
-					.view = resources.composition_view,
+					.view = resources.composition,
 					.type = AttachmentType::COLOR,
 					.clear = (SubpassAttachment::ClearValue{ .rgba = { 0.0f, 0.0f, 0.0f, 0.0f } })
 				},
 				{
 					.texture = resources.position,
-					.view = resources.position_view,
+					.view = resources.position,
 					.type = AttachmentType::SHADER
 				},
 				{
 					.texture = resources.albedo,
-					.view = resources.albedo_view,
+					.view = resources.albedo,
 					.type = AttachmentType::SHADER
 				},
 				{
 					.texture = resources.normal,
-					.view = resources.normal_view,
+					.view = resources.normal,
 					.type = AttachmentType::SHADER
 				},
 			};
@@ -661,38 +761,31 @@ int main(int argc, char *argv[]) {
 			static std::vector<UniformBind> composition_binds = {
 				{
 					.buffer = {
-						.buffer_handle = resources.scene_buffer,
+						.buffer = resources.scene_buffer,
 						.offset = 0,
 						.range = sizeof(SceneData)
 					},
 					.type = UniformType::BUFFER
 				},
-				{
-					.buffer = {
-						.buffer_handle = resources.light_buffer,
-						.offset = 0,
-						.range = sizeof(LightData) * LightData::MAX_LIGHTS
-					},
-					.type = UniformType::STORAGE
-				},
+				resources.lights,
 				{
 					.texture = {
-						.texture_view_handle = resources.position_view,
-						.sampler_handle = resources.position_sampler
+						.view = resources.position,
+						.sampler = resources.position_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
 				{
 					.texture = {
-						.texture_view_handle = resources.normal_view,
-						.sampler_handle = resources.normal_sampler
+						.view = resources.normal,
+						.sampler = resources.normal_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
 				{
 					.texture = {
-						.texture_view_handle = resources.albedo_view,
-						.sampler_handle = resources.albedo_sampler
+						.view = resources.albedo,
+						.sampler = resources.albedo_sampler
 					},
 					.type = UniformType::TEXTURE,
 				},
@@ -709,12 +802,12 @@ int main(int argc, char *argv[]) {
 			static std::vector<SubpassAttachment> skybox_attachments = {
 				{
 					.texture = resources.composition,
-					.view = resources.composition_view,
+					.view = resources.composition,
 					.type = AttachmentType::COLOR,
 				},
 				{
 					.texture = resources.depth,
-					.view = resources.depth_view,
+					.view = resources.depth,
 					.type = AttachmentType::DEPTH,
 				}
 			};
@@ -722,12 +815,12 @@ int main(int argc, char *argv[]) {
 			static std::vector<UniformBind> skybox_uniforms = {
 				{
 					.buffer = {
-						.buffer_handle = resources.scene_buffer,
+						.buffer = resources.scene_buffer,
 						.range = sizeof(SceneData)
 					},
 					.type = UniformType::BUFFER,
 				},
-				skybox_texture.as_bind()
+				skybox_texture
 			};
 
 			// Skybox pass
@@ -755,16 +848,20 @@ int main(int argc, char *argv[]) {
 				};
 				ImGui::Combo("G-Buffer", &resources.scene.gbuffer_selection, items, IM_ARRAYSIZE(items));
 
-				for(uint32_t i = 0; i < LightData::MAX_LIGHTS; i++) {
-					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(resources.lights[i].position), -100, 100);
-					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(resources.lights[i].color));
-					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &resources.lights[i].radius, 0.5, 100);
+				// Huge code perf drop here. Fuck pointers.
+				resources.lights.lock();
+				for(uint32_t i = 0; i < 4; i++) {
+					LightData light = {};
+					memcpy(&light, resources.lights.data() + sizeof(LightData) * i, sizeof(LightData)); // Read data... PUKE
+					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(light.position), -100, 100);
+					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(light.color));
+					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light.radius, 0.5, 100);
 					ImGui::Separator();
 
-					auto dist = glm::length(camera.get_position() - resources.lights[i].position.xyz);
+					auto dist = glm::length(camera.get_position() - light.position.xyz);
 
 					auto pos = calculate_billboard(
-						resources.lights[i].position,
+						light.position,
 						resources.scene.projection,
 						resources.scene.view,
 						context.width,
@@ -772,14 +869,17 @@ int main(int argc, char *argv[]) {
 					);
 					ImGui::GetBackgroundDrawList()->AddCircleFilled(
 						ImVec2(pos.x, pos.y),
-						resources.lights[i].radius * 4 / dist,
+						light.radius * 4 / dist,
 						ImColor(
-							resources.lights[i].color.x,
-							resources.lights[i].color.y,
-							resources.lights[i].color.z
+							light.color.x,
+							light.color.y,
+							light.color.z
 						)
 					);
+					memcpy(resources.lights.data() + sizeof(LightData) * i, &light, sizeof(LightData)); // Write Data... BLEH
 				}
+				resources.lights.unlock();
+
 
 				ImGui::Checkbox("Enable Testing Shader", &testing);
 
@@ -822,22 +922,10 @@ int main(int argc, char *argv[]) {
 }
 
 void setup_resources(RenderAPI *render_api, RenderResources *resources) {
-	resources->position 			= render_api->create_texture();
-	resources->normal 				= render_api->create_texture();
-	resources->albedo 				= render_api->create_texture();
-	resources->depth 				= render_api->create_texture();
-	resources->composition 			= render_api->create_texture();
-	resources->position_view 		= render_api->create_texture_view();
-	resources->normal_view 			= render_api->create_texture_view();
-	resources->albedo_view 			= render_api->create_texture_view();
-	resources->depth_view 			= render_api->create_texture_view();
-	resources->composition_view 	= render_api->create_texture_view();
 	resources->position_sampler 	= render_api->create_sampler();
 	resources->normal_sampler 		= render_api->create_sampler();
 	resources->albedo_sampler 		= render_api->create_sampler();
 	resources->scene_buffer 		= render_api->create_buffer();
-	resources->storage_buffer 		= render_api->create_buffer();
-	resources->light_buffer 		= render_api->create_buffer();
 
 	render_api->sampler(
 		resources->position_sampler,
@@ -866,116 +954,8 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 		sizeof(SceneData),
 		nullptr
 	);
-
-	render_api->buffer(
-		resources->storage_buffer,
-		BufferType::STORAGE,
-		sizeof(StorageData) * StorageData::MAX_OBJECTS,
-		nullptr
-	);
-
-	render_api->buffer(
-		resources->light_buffer,
-		BufferType::STORAGE,
-		sizeof(LightData) * LightData::MAX_LIGHTS,
-		nullptr
-	);
-}
-
-void setup_pass_resources(AppContext *context, RenderAPI *renderer, RenderResources *resources) {
-	renderer->texture(
-		resources->position,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
-		nullptr,
-		context->width, context->height
-	);
-
-	renderer->texture(
-		resources->albedo,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R8G8B8A8_UNORM,
-		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
-		nullptr,
-		context->width, context->height
-	);
-
-	renderer->texture(
-		resources->normal,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT | ImageFlags::SAMPLED,
-		nullptr,
-		context->width, context->height
-	);
-
-	renderer->texture(
-		resources->depth,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::D32_SFLOAT,
-		ImageFlags::DEPTH_ATTACHMENT,
-		nullptr,
-		context->width, context->height
-	);
-
-	renderer->texture(
-		resources->composition,
-		ImageDimensions::IMAGE_2D,
-		ImageSamples::SAMPLE_COUNT_1_BIT,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		ImageFlags::COLOR_ATTACHMENT,
-		nullptr,
-		context->width, context->height
-	);
-
-	renderer->texture_view(
-		resources->position_view,
-		resources->position,
-		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		0, 0
-	);
-
-	renderer->texture_view(
-		resources->albedo_view,
-		resources->albedo,
-		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R8G8B8A8_UNORM,
-		0, 0
-	);
-
-	renderer->texture_view(
-		resources->normal_view,
-		resources->normal,
-		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		0, 0
-	);
-
-	renderer->texture_view(
-		resources->depth_view,
-		resources->depth,
-		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::D32_SFLOAT,
-		0, 0
-	);
-
-	renderer->texture_view(
-		resources->composition_view,
-		resources->composition,
-		ImageViewDimensions::IMAGE_2D,
-		ImageFormat::R16G16B16A16_SFLOAT,
-		0, 0
-	);
 }
 
 void update_shader_buffers(RenderAPI *api, RenderResources *resources) {
 	api->buffer_sub(resources->scene_buffer, 0, sizeof(SceneData), &resources->scene);
-	api->buffer_sub(resources->storage_buffer, 0, StorageData::MAX_OBJECTS, &resources->storage);
-	api->buffer_sub(resources->light_buffer, 0, sizeof(LightData) * LightData::MAX_LIGHTS, &resources->lights);
 }
