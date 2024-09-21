@@ -497,6 +497,7 @@ void VulkanAPI::shader(
 }
 
 void *VulkanAPI::map(BufferHandle handle) {
+	ZoneScoped;
 	auto buffer = CHECK_RESOURCE_RET(resource_manager.try_get_resource(handle), nullptr);
 	void *mapped = nullptr;
 	resource_manager.map(buffer, &mapped);
@@ -506,11 +507,13 @@ void *VulkanAPI::map(BufferHandle handle) {
 }
 
 void VulkanAPI::unmap(BufferHandle handle) {
+	ZoneScoped;
 	auto buffer = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
 	resource_manager.unmap(buffer);
 }
 
 void VulkanAPI::flush(BufferHandle handle, size_t offset, size_t size) {
+	ZoneScoped;
 	auto buffer = CHECK_RESOURCE(resource_manager.try_get_resource(handle));
 	resource_manager.flush(buffer, offset, size);
 }

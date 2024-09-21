@@ -390,6 +390,74 @@ struct RenderResources {
 	StorageBuffer<LightData, LightData::MAX_LIGHTS> lights;
 };
 
+class Time {
+	struct M {
+		std::chrono::high_resolution_clock::time_point last_time;
+		int frame_count;
+		float framerate;
+		float average_framerate;
+		float maximum_framerate;
+		float delta;
+		std::vector<float> frame_history;
+	} m;
+
+	explicit Time(M m) : m(std::move(m)) {}
+public:
+	static Time create() {
+		return Time(M{
+			.last_time = std::chrono::high_resolution_clock::now(),
+			.frame_count = 0,
+			.framerate = 0,
+			.average_framerate = 0,
+			.maximum_framerate = 0,
+			.delta = 0,
+			.frame_history = {}
+		});
+	}
+
+	void start() {
+		m.last_time = std::chrono::high_resolution_clock::now();
+	}
+
+	void end() {
+		auto current_time = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<float> elapsed = current_time - m.last_time;
+		m.delta = elapsed.count();
+
+		if(elapsed.count() > 0.0f) {
+			float current_framerate = 1.0f / elapsed.count();
+			m.frame_count++;
+			m.framerate += current_framerate;
+
+			if(current_framerate > m.maximum_framerate)
+				m.maximum_framerate = current_framerate;
+
+			m.frame_history.push_back(current_framerate);
+			m.average_framerate = m.framerate / m.frame_count;
+		}
+	}
+
+	float time() {
+		return std::chrono::duration<float>(m.last_time.time_since_epoch()).count();
+	}
+
+	float delta() {
+		return m.delta;
+	}
+
+	float framerate() {
+		return m.frame_count > 0.0f ? 1.0f / std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - m.last_time).count() : 0.0f;
+	}
+
+	float average_framerate() {
+		return m.average_framerate;
+	}
+
+	float maximum_framerate() {
+		return m.maximum_framerate;
+	}
+};
+
 void setup_resources(RenderAPI *api, RenderResources *resources);
 void update_shader_buffers(RenderAPI *api, RenderResources *resources);
 
@@ -403,7 +471,8 @@ int main(int argc, char *argv[]) {
 	context.width = 1280;
 	context.height = 762;
 
-	Camera camera = Camera::create(&context);
+	auto camera = Camera::create(&context);
+	auto time = Time::create();
 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
 		spdlog::error("Couldn't init SDL: {}", SDL_GetError());
@@ -639,14 +708,10 @@ int main(int argc, char *argv[]) {
 
 	ImGui::SetCurrentContext(static_cast<ImGuiContext*>(render_api->ui()->get_context()));
 
-	clock_t start_time = std::clock();
-
 	static bool quit = false;
 	static bool minimized = false;
 	while(!quit) {
-		clock_t current_time = std::clock();
-		context.time_delta = static_cast<float>(current_time - start_time) / CLOCKS_PER_SEC;
-		context.time = static_cast<float>(current_time) / CLOCKS_PER_SEC;
+		time.start();
 
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
@@ -673,8 +738,8 @@ int main(int argc, char *argv[]) {
 		resources.scene.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
 		resources.scene.projection[1][1] *= -1;
 		resources.scene.resolution = glm::vec2(context.width, context.height);
-		resources.scene.time = context.time;
-		resources.scene.time_delta = context.time_delta;
+		resources.scene.time = time.time();
+		resources.scene.time_delta = time.delta();
 		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 
 		render_api->begin();
@@ -887,7 +952,6 @@ int main(int argc, char *argv[]) {
 
 				ImGui::End();
 
-				ImGuiIO &io = ImGui::GetIO();
 				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
 				{
 					ImGui::SetNextWindowPos(ImVec2(1.5f, 1.5f));
@@ -895,7 +959,9 @@ int main(int argc, char *argv[]) {
 					{
 						ImGui::Text("Statistics");
 						ImGui::Separator();
-						ImGui::Text("Frames Per Second: %.1f (%.3fms/frame)", io.Framerate, 1000.0f / io.Framerate);
+						ImGui::Text("Frames Per Second: %.1f (%.3fms)", time.framerate(), 1000.0f / time.framerate());
+						ImGui::Text("Average Frames Per Second: %.1f (%.3fms)", time.average_framerate(), 1000.0f / time.average_framerate());
+						ImGui::Text("Maximum Frames Per Second: %.1f (%.3fms)", time.maximum_framerate(), 1000.0f / time.maximum_framerate());
 						ImGui::Text("Surface Size: %ix%i", context.width, context.height);
 
 						if(ImGui::BeginPopupContextWindow()) {
@@ -915,7 +981,7 @@ int main(int argc, char *argv[]) {
 		render_api->end();
 		render_api->present();
 
-		start_time = current_time;
+		time.end();
 	}
 
 	SDL_Quit();
