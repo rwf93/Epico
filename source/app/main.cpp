@@ -168,6 +168,44 @@ public:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+template<typename T>
+class UniformBuffer {
+	struct M {
+		RenderAPI *api;
+		BufferHandle handle;
+		T data;
+	} m;
+
+	explicit UniformBuffer(M m) : m(std::move(m)) {}
+public:
+	static UniformBuffer create(RenderAPI *api) {
+		auto handle = api->create_buffer();
+		api->buffer(handle, BufferType::UNIFORM, sizeof(T), nullptr);
+
+		return UniformBuffer(M{
+			.api = api,
+			.handle = handle,
+		});
+	}
+
+	T &data() { return m.data; }
+
+	void update() {
+		m.api->buffer_sub(m.handle, 0, sizeof(T), &m.data);
+	}
+
+	operator UniformBind() {
+		return {
+			.buffer = {
+				.buffer = m.handle,
+				.offset = 0,
+				.range = sizeof(T)
+			},
+			.type = UniformType::BUFFER
+		};
+	}
+};
+
 template<typename T, size_t Size>
 class StorageBuffer {
 	struct M {
@@ -178,8 +216,7 @@ class StorageBuffer {
 
 	explicit StorageBuffer(M m) : m(std::move(m)) {}
 public:
-	~StorageBuffer() {
-	}
+	~StorageBuffer() {}
 
 	static StorageBuffer create(RenderAPI *api) {
 		auto handle = api->create_buffer();
@@ -191,11 +228,11 @@ public:
 		});
 	}
 
-	void lock() {
+	void map() {
 		m.data = static_cast<T*>(m.api->map(m.handle));
 	}
 
-	void unlock() {
+	void unmap() {
 		m.api->unmap(m.handle);
 		m.data = nullptr;
 	}
@@ -357,12 +394,12 @@ public:
 		UNUSED(geometry_layout);
 
 		m.api->begin_label(DebugLabel { .name = fmt::format("Model ({})", (void*)this).c_str(), .rgba = { 0.2f, 0.761f, 0.71f, 1.0f } });
-		render_objects.lock();
+		render_objects.map();
 		for(auto &data: m.meshes) {
 			data.mesh.draw(1, object_index > 0 ? object_index : 0);
 			render_objects.data()[object_index++].model = data.transform;
 		}
-		render_objects.unlock();
+		render_objects.unmap();
 		m.api->end_label();
 	}
 
@@ -377,15 +414,13 @@ struct RenderResources {
 	SamplerHandle normal_sampler = SamplerHandle::Invalid;
 	SamplerHandle albedo_sampler = SamplerHandle::Invalid;
 
-	BufferHandle scene_buffer = BufferHandle::Invalid;
-
 	NewTexture position;
 	NewTexture normal;
 	NewTexture albedo;
 	NewTexture depth;
 	NewTexture composition;
 
-	SceneData scene;
+	UniformBuffer<SceneData> scene;
 	StorageBuffer<StorageData, StorageData::MAX_OBJECTS> storage;
 	StorageBuffer<LightData, LightData::MAX_LIGHTS> lights;
 };
@@ -459,7 +494,6 @@ public:
 };
 
 void setup_resources(RenderAPI *api, RenderResources *resources);
-void update_shader_buffers(RenderAPI *api, RenderResources *resources);
 
 int main(int argc, char *argv[]) {
 	UNUSED(argc);
@@ -548,6 +582,7 @@ int main(int argc, char *argv[]) {
 			ImageFormat::R16G16B16A16_SFLOAT,
 			ImageFlags::COLOR_ATTACHMENT
 		),
+		.scene = UniformBuffer<SceneData>::create(render_api),
 		.storage = StorageBuffer<StorageData, StorageData::MAX_OBJECTS>::create(render_api),
 		.lights = StorageBuffer<LightData, LightData::MAX_LIGHTS>::create(render_api),
 	};
@@ -734,19 +769,17 @@ int main(int argc, char *argv[]) {
 
 		camera.update();
 
-		resources.scene.view = camera.get_view_matrix();
-		resources.scene.projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
-		resources.scene.projection[1][1] *= -1;
-		resources.scene.resolution = glm::vec2(context.width, context.height);
-		resources.scene.time = time.time();
-		resources.scene.time_delta = time.delta();
-		resources.scene.camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+		resources.scene.data().view = camera.get_view_matrix();
+		resources.scene.data().projection = glm::perspective(glm::radians(70.f), static_cast<float>(context.width) / static_cast<float>(context.height), 0.1f, 1000.0f);
+		resources.scene.data().projection[1][1] *= -1;
+		resources.scene.data().resolution = glm::vec2(context.width, context.height);
+		resources.scene.data().time = time.time();
+		resources.scene.data().time_delta = time.delta();
+		resources.scene.data().camera_position = glm::vec4(camera.get_position(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+		resources.scene.update();
 
 		render_api->begin();
 		{
-			update_shader_buffers(render_api, &resources);
-
-
 			render_api->clear(0, 0, 0, 1);
 			render_api->viewport(static_cast<float>(context.width), static_cast<float>(context.height));
 			render_api->scissor(context.width, context.height);
@@ -780,13 +813,7 @@ int main(int argc, char *argv[]) {
 			};
 
 			static std::vector<UniformBind> deferred_binds = {
-				{
-					.buffer = {
-						.buffer = resources.scene_buffer,
-						.range = sizeof(SceneData)
-					},
-					.type = UniformType::BUFFER,
-				},
+				resources.scene,
 				resources.storage,
 				armor_albedo_texture,
 				armor_normal_texture
@@ -829,14 +856,7 @@ int main(int argc, char *argv[]) {
 			};
 
 			static std::vector<UniformBind> composition_binds = {
-				{
-					.buffer = {
-						.buffer = resources.scene_buffer,
-						.offset = 0,
-						.range = sizeof(SceneData)
-					},
-					.type = UniformType::BUFFER
-				},
+				resources.scene,
 				resources.lights,
 				{
 					.texture = {
@@ -883,13 +903,7 @@ int main(int argc, char *argv[]) {
 			};
 
 			static std::vector<UniformBind> skybox_uniforms = {
-				{
-					.buffer = {
-						.buffer = resources.scene_buffer,
-						.range = sizeof(SceneData)
-					},
-					.type = UniformType::BUFFER,
-				},
+				resources.scene,
 				skybox_texture
 			};
 
@@ -916,11 +930,11 @@ int main(int argc, char *argv[]) {
 					"Specular",
 					"Composition"
 				};
-				ImGui::Combo("G-Buffer", &resources.scene.gbuffer_selection, items, IM_ARRAYSIZE(items));
+				ImGui::Combo("G-Buffer", &resources.scene.data().gbuffer_selection, items, IM_ARRAYSIZE(items));
 /*
-				resources.lights.lock();
+				resources.lights.map();
 				for(uint32_t i = 0; i < 4; i++) {
-					LightData &light = resources.lights.at(i);
+					LightData light = resources.lights.at(i);
 					ImGui::SliderFloat3(fmt::format("Light {} Position", i).c_str(), glm::value_ptr(light.position), -100, 100);
 					ImGui::ColorEdit3(fmt::format("Light {} Color", i).c_str(), glm::value_ptr(light.color));
 					ImGui::SliderFloat(fmt::format("Light {} Radius", i).c_str(), &light.radius, 0.5, 100);
@@ -930,8 +944,8 @@ int main(int argc, char *argv[]) {
 
 					auto pos = calculate_billboard(
 						light.position,
-						resources.scene.projection,
-						resources.scene.view,
+						resources.scene.data().projection,
+						resources.scene.data().view,
 						context.width,
 						context.height
 					);
@@ -944,8 +958,9 @@ int main(int argc, char *argv[]) {
 							light.color.z
 						)
 					);
+					memcpy(&resources.lights.at(i), &light, sizeof(LightData));
 				}
-				resources.lights.unlock();
+				resources.lights.unmap();
 */
 
 				ImGui::Checkbox("Enable Testing Shader", &testing);
@@ -993,7 +1008,6 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 	resources->position_sampler 	= render_api->create_sampler();
 	resources->normal_sampler 		= render_api->create_sampler();
 	resources->albedo_sampler 		= render_api->create_sampler();
-	resources->scene_buffer 		= render_api->create_buffer();
 
 	render_api->sampler(
 		resources->position_sampler,
@@ -1015,15 +1029,4 @@ void setup_resources(RenderAPI *render_api, RenderResources *resources) {
 		SamplerAddressMode::REPEAT,
 		SamplerAddressMode::REPEAT
 	);
-
-	render_api->buffer(
-		resources->scene_buffer,
-		BufferType::UNIFORM,
-		sizeof(SceneData),
-		nullptr
-	);
-}
-
-void update_shader_buffers(RenderAPI *api, RenderResources *resources) {
-	api->buffer_sub(resources->scene_buffer, 0, sizeof(SceneData), &resources->scene);
 }
